@@ -202,10 +202,11 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       return;
     }
 
-    // ── SAY "Is that all?" out loud ──────────────────────────────────────
-    speakPrompt('Is that all?', () => {
-      // Start listening for confirmation AFTER the prompt finishes speaking
-      startConfirmListening(currentTranscript);
+    // ── SAY "Is that all? Say no to keep going." out loud ──────────────
+    speakPrompt('Is that all? Say no if you want to keep going.', () => {
+      // Wait a brief moment after speech ends to avoid the recognizer
+      // catching the tail of the synthesized voice on some Android devices.
+      setTimeout(() => startConfirmListening(currentTranscript), 350);
     });
   }, [analyseAndSave, speakPrompt]);
 
@@ -218,27 +219,32 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
     confirmRecognition.lang = 'en-US';
     isStoppingIntentionallyRef.current = false;
 
-    // Wait 3 seconds — if user says nothing, assume yes and proceed
+    // Wait 6 seconds — if user says nothing, assume yes and proceed
     const confirmTimer = setTimeout(() => {
       isStoppingIntentionallyRef.current = true;
       try { confirmRecognition.stop(); } catch (e) {}
       speakPrompt('Saving your episode.', () => analyseAndSave(currentTranscript));
-    }, 3000);
+    }, 6000);
+
+    const NEGATIVE_KEYWORDS = [
+      'no', 'nope', 'nah', 'not yet', 'not done', 'not finished', "didn't finish",
+      'hold on', 'wait', 'one moment', 'one sec', 'one second', 'hang on',
+      'actually', 'one more', 'one more thing', 'let me', 'keep going',
+      "i'm not done", 'im not done', 'not all', "that's not all", 'thats not all',
+      'continue', 'more', 'add'
+    ];
 
     confirmRecognition.onresult = (event: any) => {
       clearTimeout(confirmTimer);
       const response = event.results[0][0].transcript.toLowerCase().trim();
 
-      if (
-        response.includes('no') ||
-        response.includes('wait') ||
-        response.includes('more') ||
-        response.includes('hold') ||
-        response.includes('not yet') ||
-        response.includes('continue')
-      ) {
-        // User wants to add more — go back to listening
-        startListeningInternal(true);
+      const isNegative = NEGATIVE_KEYWORDS.some(k => response.includes(k));
+
+      if (isNegative) {
+        // User wants to add more — say so and resume listening
+        speakPrompt('Go ahead, I am still listening.', () => {
+          startListeningInternal(true);
+        });
       } else {
         // "yes", or anything else — save
         speakPrompt('Saving your episode.', () => analyseAndSave(currentTranscript));
@@ -310,12 +316,16 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       setTranscript(combined);
       fullTranscriptRef.current = combined;
 
-      // 5 seconds of silence = done speaking
+      // Adaptive silence: short speakers get 8s, medium 10s, long-winded 12s.
+      // Slower speakers naturally produce longer transcripts and need more wait time.
+      const wordCount = combined.split(/\s+/).filter(Boolean).length;
+      const silenceMs = wordCount < 8 ? 8000 : wordCount < 25 ? 10000 : 12000;
+
       silenceTimerRef.current = setTimeout(() => {
         isStoppingIntentionallyRef.current = true;
         try { recognition.stop(); } catch (e) {}
         askConfirmation(fullTranscriptRef.current);
-      }, 5000);
+      }, silenceMs);
     };
 
     recognition.onend = () => {
@@ -378,13 +388,30 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       }
     };
 
-    try {
-      recognition.start();
-    } catch (e) {
-      console.error('Failed to start recognition:', e);
-      setVoiceStatus(null);
+    const beginRecognition = () => {
+      try {
+        recognition.start();
+      } catch (e) {
+        console.error('Failed to start recognition:', e);
+        setVoiceStatus(null);
+      }
+    };
+
+    if (!isResuming) {
+      // Warm opener — speak FIRST, then start mic so TTS doesn't get captured.
+      // Show LISTENING immediately so the UI reflects the active session.
+      setVoiceStatus('LISTENING');
+      speakPrompt(
+        "I'm listening. Please describe your episode in your own words. Take your time.",
+        () => {
+          // Small gap so audio routing fully settles on Android before mic opens.
+          setTimeout(beginRecognition, 300);
+        }
+      );
+    } else {
+      beginRecognition();
     }
-  }, [analyseAndSave, askConfirmation, voiceStatus]);
+  }, [analyseAndSave, askConfirmation, speakPrompt, voiceStatus]);
 
   const startListening = useCallback(() => {
     startListeningInternal(false);
