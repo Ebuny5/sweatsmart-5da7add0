@@ -51,6 +51,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const fullTranscriptRef = useRef("");
   const isStoppingIntentionallyRef = useRef(false);
+  const activeListeningRef = useRef(false);
   const restartAttemptsRef = useRef(0);
   const MAX_RESTART_ATTEMPTS = 5;
 
@@ -286,18 +287,26 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       setTranscript('');
     }
 
+    clearSilenceTimer();
+    if (recognitionRef.current) {
+      isStoppingIntentionallyRef.current = true;
+      try { recognitionRef.current.abort?.(); } catch (e) { console.warn('Previous recognition abort ignored:', e); }
+      recognitionRef.current = null;
+    }
     isStoppingIntentionallyRef.current = false;
+    activeListeningRef.current = true;
 
     const recognition = new SpeechRecognition();
     recognitionRef.current = recognition;
 
-    // continuous=false works more reliably on Android Chrome
-    // We restart it ourselves in onend when needed
+    // continuous=false works more reliably on Android Chrome.
+    // We restart it ourselves in onend when needed.
     recognition.continuous = false;
     recognition.interimResults = true;
     recognition.lang = 'en-US';
 
     recognition.onstart = () => {
+      activeListeningRef.current = true;
       setVoiceStatus('LISTENING');
     };
 
@@ -331,7 +340,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
     recognition.onend = () => {
       // Mobile Chrome stops recognition after ~5-10 seconds automatically
       // If we didn't stop it intentionally and user hasn't finished — restart it
-      if (!isStoppingIntentionallyRef.current && voiceStatus === 'LISTENING') {
+      if (!isStoppingIntentionallyRef.current && activeListeningRef.current) {
         if (restartAttemptsRef.current < MAX_RESTART_ATTEMPTS) {
           restartAttemptsRef.current += 1;
           try {
@@ -363,12 +372,10 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
           isStoppingIntentionallyRef.current = true;
           askConfirmation(fullTranscriptRef.current);
         } else if (restartAttemptsRef.current < MAX_RESTART_ATTEMPTS) {
-          // Keep waiting — restart silently
-          restartAttemptsRef.current += 1;
-          try { recognition.start(); } catch (e) {
-            setTimeout(() => startListeningInternal(true), 300);
-          }
+          // Keep waiting. Let onend perform the restart so Android Chrome
+          // does not reject start() while the recognizer is still closing.
         } else {
+          activeListeningRef.current = false;
           setVoiceStatus(null);
         }
         return;
@@ -384,6 +391,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       if (fullTranscriptRef.current.trim()) {
         analyseAndSave(fullTranscriptRef.current);
       } else {
+        activeListeningRef.current = false;
         setVoiceStatus(null);
       }
     };
@@ -393,25 +401,20 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
         recognition.start();
       } catch (e) {
         console.error('Failed to start recognition:', e);
+        activeListeningRef.current = false;
         setVoiceStatus(null);
       }
     };
 
     if (!isResuming) {
-      // Warm opener — speak FIRST, then start mic so TTS doesn't get captured.
-      // Show LISTENING immediately so the UI reflects the active session.
+      // Start the mic immediately inside the user's tap. Android Chrome can block
+      // speech recognition if start() happens after TTS, promises, or timers.
       setVoiceStatus('LISTENING');
-      speakPrompt(
-        "I'm listening. Please describe your episode in your own words. Take your time.",
-        () => {
-          // Small gap so audio routing fully settles on Android before mic opens.
-          setTimeout(beginRecognition, 300);
-        }
-      );
+      beginRecognition();
     } else {
       beginRecognition();
     }
-  }, [analyseAndSave, askConfirmation, speakPrompt, voiceStatus]);
+  }, [analyseAndSave, askConfirmation, speakPrompt]);
 
   const startListening = useCallback(() => {
     startListeningInternal(false);
@@ -420,6 +423,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
   const stopListening = useCallback(() => {
     clearSilenceTimer();
     isStoppingIntentionallyRef.current = true;
+    activeListeningRef.current = false;
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch (e) {}
     }
@@ -432,6 +436,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
     return () => {
       clearSilenceTimer();
       isStoppingIntentionallyRef.current = true;
+      activeListeningRef.current = false;
       if (recognitionRef.current) {
         try { recognitionRef.current.stop(); } catch (e) {}
       }
