@@ -48,96 +48,43 @@ const AIGeneratedInsights: React.FC<AIInsightsProps> = ({ insights }) => {
       .join('. ');
   };
 
-  const unlockAudioAndSpeak = (text: string) => {
-    // Android Chrome blocks speechSynthesis until audio context is unlocked
-    // Trick: play a silent sound via AudioContext first, then speak
-    try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (AudioCtx) {
-        const ctx = new AudioCtx();
-        const buf = ctx.createBuffer(1, 1, 22050);
-        const src = ctx.createBufferSource();
-        src.buffer = buf;
-        src.connect(ctx.destination);
-        src.start(0);
-        ctx.resume().then(() => {
-          doSpeak(text);
-        });
-        return;
-      }
-    } catch (e) {
-      // AudioContext not available — try speaking directly
-    }
-    doSpeak(text);
-  };
-
-  const doSpeak = (text: string) => {
+  const doSpeak = (utterance: SpeechSynthesisUtterance) => {
     const synth = window.speechSynthesis;
-
-    // Always cancel first to reset internal state
     synth.cancel();
 
-    // Small delay after cancel — required on Android Chrome
-    setTimeout(() => {
-      const speakWithVoices = () => {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'en-US';
-        utterance.rate = 0.95;
-        utterance.pitch = 1.05;
-        utterance.volume = 1.0;
+    const voices = synth.getVoices();
+    const preferred = voices.find(v =>
+      v.lang.startsWith('en') &&
+      ['samantha', 'victoria', 'karen', 'aria', 'zira', 'hazel', 'google uk english female']
+        .some(k => v.name.toLowerCase().includes(k))
+    ) || voices.find(v => v.lang.startsWith('en'));
+    if (preferred) utterance.voice = preferred;
 
-        const voices = synth.getVoices();
-        const preferred = voices.find(v =>
-          v.lang.startsWith('en') &&
-          ['samantha', 'victoria', 'karen', 'aria', 'zira', 'hazel', 'google uk english female']
-            .some(k => v.name.toLowerCase().includes(k))
-        ) || voices.find(v => v.lang.startsWith('en'));
-        if (preferred) utterance.voice = preferred;
+    let heartbeat: ReturnType<typeof setInterval> | null = null;
+    const cleanup = () => {
+      if (heartbeat) { clearInterval(heartbeat); heartbeat = null; }
+      setIsSpeaking(false);
+    };
 
-        let heartbeat: ReturnType<typeof setInterval> | null = null;
-        const cleanup = () => {
-          if (heartbeat) { clearInterval(heartbeat); heartbeat = null; }
-          setIsSpeaking(false);
-        };
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = cleanup;
+    utterance.onerror = (e) => {
+      console.warn('Speech error:', e);
+      cleanup();
+      toast({
+        title: 'Speech unavailable',
+        description: 'Your browser blocked the reader. Please tap Listen again.',
+        variant: 'destructive',
+      });
+    };
 
-        utterance.onstart = () => setIsSpeaking(true);
-        utterance.onend = cleanup;
-        utterance.onerror = (e) => {
-          console.warn('Speech error:', e);
-          cleanup();
-        };
+    heartbeat = setInterval(() => {
+      if (!synth.speaking && !synth.pending) { cleanup(); return; }
+      if (synth.paused) synth.resume();
+    }, 5000);
 
-        // Mobile Chrome heartbeat — keeps speech alive if paused
-        heartbeat = setInterval(() => {
-          if (!synth.speaking) { cleanup(); return; }
-          if (synth.paused) synth.resume();
-        }, 5000);
-
-        setIsSpeaking(true);
-        synth.speak(utterance);
-
-        // Android sometimes silently drops speak() — retry once if nothing started
-        setTimeout(() => {
-          if (!synth.speaking && !synth.pending) {
-            try {
-              synth.cancel();
-              synth.speak(utterance);
-            } catch {}
-          }
-        }, 600);
-      };
-
-      // Wait for voices to load (Android often returns empty list initially)
-      if (synth.getVoices().length === 0) {
-        let fired = false;
-        const onVoices = () => { if (!fired) { fired = true; speakWithVoices(); } };
-        synth.addEventListener('voiceschanged', onVoices, { once: true });
-        // Hard fallback after 1s — speak even if voiceschanged never fires
-        setTimeout(onVoices, 1000);
-      } else {
-        speakWithVoices();
-      }
-    }, 100);
+    setIsSpeaking(true);
+    synth.speak(utterance);
   };
 
   const handleToggleSpeak = () => {
@@ -162,7 +109,14 @@ const AIGeneratedInsights: React.FC<AIInsightsProps> = ({ insights }) => {
     const text = buildInsightText();
     if (!text.trim()) return;
 
-    unlockAudioAndSpeak(text);
+    // Create and speak synchronously inside the tap. Android Chrome can silently
+    // block speech if utterance creation/speak() is delayed by timers/promises.
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.95;
+    utterance.pitch = 1.05;
+    utterance.volume = 1.0;
+    doSpeak(utterance);
   };
 
   const handleCopyInsights = async () => {
