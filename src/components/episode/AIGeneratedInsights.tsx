@@ -79,13 +79,13 @@ const AIGeneratedInsights: React.FC<AIInsightsProps> = ({ insights }) => {
 
     // Small delay after cancel — required on Android Chrome
     setTimeout(() => {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'en-US';
-      utterance.rate = 0.92;
-      utterance.pitch = 1.05;
-      utterance.volume = 1.0;
+      const speakWithVoices = () => {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US';
+        utterance.rate = 0.95;
+        utterance.pitch = 1.05;
+        utterance.volume = 1.0;
 
-      const go = () => {
         const voices = synth.getVoices();
         const preferred = voices.find(v =>
           v.lang.startsWith('en') &&
@@ -94,30 +94,48 @@ const AIGeneratedInsights: React.FC<AIInsightsProps> = ({ insights }) => {
         ) || voices.find(v => v.lang.startsWith('en'));
         if (preferred) utterance.voice = preferred;
 
-        utterance.onstart = () => setIsSpeaking(true);
-        utterance.onend = () => setIsSpeaking(false);
-        utterance.onerror = (e) => {
-          console.warn('Speech error:', e);
+        let heartbeat: ReturnType<typeof setInterval> | null = null;
+        const cleanup = () => {
+          if (heartbeat) { clearInterval(heartbeat); heartbeat = null; }
           setIsSpeaking(false);
         };
 
+        utterance.onstart = () => setIsSpeaking(true);
+        utterance.onend = cleanup;
+        utterance.onerror = (e) => {
+          console.warn('Speech error:', e);
+          cleanup();
+        };
+
         // Mobile Chrome heartbeat — keeps speech alive if paused
-        const heartbeat = setInterval(() => {
-          if (!synth.speaking) { clearInterval(heartbeat); setIsSpeaking(false); return; }
+        heartbeat = setInterval(() => {
+          if (!synth.speaking) { cleanup(); return; }
           if (synth.paused) synth.resume();
         }, 5000);
 
-        utterance.onend = () => { clearInterval(heartbeat); setIsSpeaking(false); };
-        utterance.onerror = () => { clearInterval(heartbeat); setIsSpeaking(false); };
-
         setIsSpeaking(true);
         synth.speak(utterance);
+
+        // Android sometimes silently drops speak() — retry once if nothing started
+        setTimeout(() => {
+          if (!synth.speaking && !synth.pending) {
+            try {
+              synth.cancel();
+              synth.speak(utterance);
+            } catch {}
+          }
+        }, 600);
       };
 
+      // Wait for voices to load (Android often returns empty list initially)
       if (synth.getVoices().length === 0) {
-        synth.addEventListener('voiceschanged', go, { once: true });
+        let fired = false;
+        const onVoices = () => { if (!fired) { fired = true; speakWithVoices(); } };
+        synth.addEventListener('voiceschanged', onVoices, { once: true });
+        // Hard fallback after 1s — speak even if voiceschanged never fires
+        setTimeout(onVoices, 1000);
       } else {
-        go();
+        speakWithVoices();
       }
     }, 100);
   };
