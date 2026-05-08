@@ -288,12 +288,13 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
     }
 
     clearSilenceTimer();
-    isStoppingIntentionallyRef.current = false;
-    activeListeningRef.current = true;
     if (recognitionRef.current) {
+      isStoppingIntentionallyRef.current = true;
       try { recognitionRef.current.abort?.(); } catch (e) { console.warn('Previous recognition abort ignored:', e); }
       recognitionRef.current = null;
     }
+    isStoppingIntentionallyRef.current = false;
+    activeListeningRef.current = true;
 
     const recognition = new SpeechRecognition();
     recognitionRef.current = recognition;
