@@ -235,6 +235,7 @@ const LogEpisode = () => {
     isListening,
     voiceStatus,
     startListening,
+    stopListening,
     transcript,
   } = useVoiceLogging({
     onAnalysisComplete: async (detectedAreas, detectedTriggers, transcriptText) => {
@@ -540,7 +541,7 @@ const LogEpisode = () => {
 
           <button
             type="button"
-            onClick={startListening}
+            onClick={isListening ? stopListening : startListening}
             className={cn(
               "w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all active:scale-95",
               isListening
