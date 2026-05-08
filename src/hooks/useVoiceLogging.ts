@@ -316,12 +316,16 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       setTranscript(combined);
       fullTranscriptRef.current = combined;
 
-      // 5 seconds of silence = done speaking
+      // Adaptive silence: short speakers get 8s, medium 10s, long-winded 12s.
+      // Slower speakers naturally produce longer transcripts and need more wait time.
+      const wordCount = combined.split(/\s+/).filter(Boolean).length;
+      const silenceMs = wordCount < 8 ? 8000 : wordCount < 25 ? 10000 : 12000;
+
       silenceTimerRef.current = setTimeout(() => {
         isStoppingIntentionallyRef.current = true;
         try { recognition.stop(); } catch (e) {}
         askConfirmation(fullTranscriptRef.current);
-      }, 5000);
+      }, silenceMs);
     };
 
     recognition.onend = () => {
