@@ -219,27 +219,32 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
     confirmRecognition.lang = 'en-US';
     isStoppingIntentionallyRef.current = false;
 
-    // Wait 3 seconds — if user says nothing, assume yes and proceed
+    // Wait 6 seconds — if user says nothing, assume yes and proceed
     const confirmTimer = setTimeout(() => {
       isStoppingIntentionallyRef.current = true;
       try { confirmRecognition.stop(); } catch (e) {}
       speakPrompt('Saving your episode.', () => analyseAndSave(currentTranscript));
-    }, 3000);
+    }, 6000);
+
+    const NEGATIVE_KEYWORDS = [
+      'no', 'nope', 'nah', 'not yet', 'not done', 'not finished', "didn't finish",
+      'hold on', 'wait', 'one moment', 'one sec', 'one second', 'hang on',
+      'actually', 'one more', 'one more thing', 'let me', 'keep going',
+      "i'm not done", 'im not done', 'not all', "that's not all", 'thats not all',
+      'continue', 'more', 'add'
+    ];
 
     confirmRecognition.onresult = (event: any) => {
       clearTimeout(confirmTimer);
       const response = event.results[0][0].transcript.toLowerCase().trim();
 
-      if (
-        response.includes('no') ||
-        response.includes('wait') ||
-        response.includes('more') ||
-        response.includes('hold') ||
-        response.includes('not yet') ||
-        response.includes('continue')
-      ) {
-        // User wants to add more — go back to listening
-        startListeningInternal(true);
+      const isNegative = NEGATIVE_KEYWORDS.some(k => response.includes(k));
+
+      if (isNegative) {
+        // User wants to add more — say so and resume listening
+        speakPrompt('Go ahead, I am still listening.', () => {
+          startListeningInternal(true);
+        });
       } else {
         // "yes", or anything else — save
         speakPrompt('Saving your episode.', () => analyseAndSave(currentTranscript));
