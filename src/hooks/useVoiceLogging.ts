@@ -373,7 +373,6 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
         } else if (restartAttemptsRef.current < MAX_RESTART_ATTEMPTS) {
           // Keep waiting. Let onend perform the restart so Android Chrome
           // does not reject start() while the recognizer is still closing.
-          restartAttemptsRef.current += 1;
         } else {
           activeListeningRef.current = false;
           setVoiceStatus(null);
