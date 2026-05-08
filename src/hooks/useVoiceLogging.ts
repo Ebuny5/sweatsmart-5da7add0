@@ -202,10 +202,11 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       return;
     }
 
-    // ── SAY "Is that all?" out loud ──────────────────────────────────────
-    speakPrompt('Is that all?', () => {
-      // Start listening for confirmation AFTER the prompt finishes speaking
-      startConfirmListening(currentTranscript);
+    // ── SAY "Is that all? Say no to keep going." out loud ──────────────
+    speakPrompt('Is that all? Say no if you want to keep going.', () => {
+      // Wait a brief moment after speech ends to avoid the recognizer
+      // catching the tail of the synthesized voice on some Android devices.
+      setTimeout(() => startConfirmListening(currentTranscript), 350);
     });
   }, [analyseAndSave, speakPrompt]);
 
