@@ -388,13 +388,30 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       }
     };
 
-    try {
-      recognition.start();
-    } catch (e) {
-      console.error('Failed to start recognition:', e);
-      setVoiceStatus(null);
+    const beginRecognition = () => {
+      try {
+        recognition.start();
+      } catch (e) {
+        console.error('Failed to start recognition:', e);
+        setVoiceStatus(null);
+      }
+    };
+
+    if (!isResuming) {
+      // Warm opener — speak FIRST, then start mic so TTS doesn't get captured.
+      // Show LISTENING immediately so the UI reflects the active session.
+      setVoiceStatus('LISTENING');
+      speakPrompt(
+        "I'm listening. Please describe your episode in your own words. Take your time.",
+        () => {
+          // Small gap so audio routing fully settles on Android before mic opens.
+          setTimeout(beginRecognition, 300);
+        }
+      );
+    } else {
+      beginRecognition();
     }
-  }, [analyseAndSave, askConfirmation, voiceStatus]);
+  }, [analyseAndSave, askConfirmation, speakPrompt, voiceStatus]);
 
   const startListening = useCallback(() => {
     startListeningInternal(false);
