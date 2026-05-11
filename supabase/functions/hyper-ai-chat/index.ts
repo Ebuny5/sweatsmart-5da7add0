@@ -277,7 +277,7 @@ serve(async (req) => {
     }
 
     // ── CHAT: main conversation flow ─────────────────────────────────────────
-    const { messages, dashboardAnalytics, edaReading, climateSnapshot, userName, imageBase64 } = reqBody;
+    const { messages, dashboardAnalytics, edaReading, climateSnapshot, userName, imageBase64, attachmentMime, attachmentCarriedOver } = reqBody;
 
     // Validate messages
     if (!Array.isArray(messages) || messages.length > MAX_MESSAGES) {
@@ -705,23 +705,95 @@ IMPORTANT NUANCE — do NOT refuse questions that are adjacent to HH:
 
 CURRENT MESSAGE TYPE: ${isCasualGreeting ? 'CASUAL GREETING — respond warmly and briefly. Do NOT reference episode data or clinical information.' : isSigningOff ? 'SIGN-OFF — respond warmly and briefly. Let them go. No questions. No new topics.' : isClinical ? 'CLINICAL — apply full reasoning with their personal data.' : 'GENERAL — be warm and present. No need to push clinical data.'}`;
 
-    // ── Build messages array (with multimodal image if present) ──────────────
+    // ── Build messages array (with multimodal attachment if present) ─────────
     const apiMessages = messages.map((m: any, idx: number) => {
-      // Attach image to the last user message
+      // Attach image / PDF to the last user message
       if (imageBase64 && m.role === 'user' && idx === messages.length - 1) {
         const base64Data = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64;
-        const mType = imageBase64.startsWith('data:') ? imageBase64.split(';')[0].split(':')[1] : 'image/jpeg';
-        const imageUrl = 'data:' + mType + ';base64,' + base64Data;
+        const detectedMime = imageBase64.startsWith('data:')
+          ? imageBase64.split(';')[0].split(':')[1]
+          : null;
+        const mType = attachmentMime || detectedMime || 'image/jpeg';
+        const dataUrl = 'data:' + mType + ';base64,' + base64Data;
+        const isPdf = mType === 'application/pdf';
+        const carryNote = attachmentCarriedOver
+          ? `[The user previously shared this ${isPdf ? 'PDF document' : 'image'} earlier in this same conversation. They are still referring to it. Re-read it and answer based on its contents — including who/what generated it if relevant.] `
+          : '';
+        const askText = m.content || (isPdf ? 'Please read this document.' : 'Please analyse this image.');
         return {
           role: 'user',
           content: [
-            { type: 'image_url', image_url: { url: imageUrl } },
-            { type: 'text', text: m.content || 'Please analyse this image.' },
+            { type: 'image_url', image_url: { url: dataUrl } },
+            { type: 'text', text: carryNote + askText },
           ],
         };
       }
       return { role: m.role, content: m.content };
     });
+
+    // ── PDF attachments: route to Gemini directly (it reads PDFs natively) ───
+    const isPdfAttachment = imageBase64 && (attachmentMime === 'application/pdf'
+      || (imageBase64.startsWith('data:') && imageBase64.split(';')[0].includes('application/pdf')));
+
+    if (isPdfAttachment && GEMINI_API_KEY) {
+      try {
+        const base64Data = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64;
+        // Build conversation history as Gemini contents
+        const geminiContents: any[] = [];
+        for (let i = 0; i < messages.length; i++) {
+          const m = messages[i];
+          const role = m.role === 'assistant' ? 'model' : 'user';
+          const isLastUser = i === messages.length - 1 && m.role === 'user';
+          const parts: any[] = [];
+          if (isLastUser) {
+            parts.push({ inline_data: { mime_type: 'application/pdf', data: base64Data } });
+            const carryNote = attachmentCarriedOver
+              ? '[The user previously shared this PDF document earlier in this same conversation. They are still referring to it. Re-read it and answer based on its contents — including who/what generated it if relevant.] '
+              : '';
+            parts.push({ text: carryNote + (m.content || 'Please read this document and tell me what it says.') });
+          } else {
+            parts.push({ text: m.content || '' });
+          }
+          geminiContents.push({ role, parts });
+        }
+
+        const geminiRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              system_instruction: { parts: [{ text: systemPrompt }] },
+              contents: geminiContents,
+              generationConfig: { temperature: 0.7, maxOutputTokens: 1200 },
+            }),
+          }
+        );
+
+        if (!geminiRes.ok) {
+          const errBody = await geminiRes.text();
+          console.error('Gemini PDF chat error:', geminiRes.status, errBody);
+          return new Response(JSON.stringify({ error: 'PDF analysis failed. Please try again.' }), {
+            status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        const geminiData = await geminiRes.json();
+        const reply = geminiData.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('').trim()
+          || "I had trouble reading that PDF. Could you try uploading it again? 💙";
+
+        // Return as a single-shot SSE-style stream so the frontend handler works unchanged
+        const sseChunk = `data: ${JSON.stringify({ choices: [{ delta: { content: reply } }] })}\n\ndata: [DONE]\n\n`;
+        return new Response(sseChunk, {
+          headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
+        });
+      } catch (pdfErr) {
+        console.error('PDF route error:', pdfErr);
+        return new Response(JSON.stringify({ error: 'PDF analysis failed' }), {
+          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
 
     // ── Call AI gateway ───────────────────────────────────────────────────────
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {

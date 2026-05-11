@@ -427,6 +427,9 @@ const HyperAI = () => {
   const currentAudioRef  = useRef<HTMLAudioElement | null>(null);
   const autoSpeakIdxRef  = useRef<number | null>(null);
   const hasLoadedConvRef = useRef<boolean>(false); // prevents welcome overwriting loaded conv
+  // Persist the most recent attachment (PDF/image) for the whole conversation
+  // so follow-up questions still have access to it. Cleared on New Chat / load.
+  const lastAttachmentRef = useRef<{ base64: string; mime: string; kind: 'image' | 'pdf' } | null>(null);
 
   // ── Inject CSS once ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -764,6 +767,7 @@ const HyperAI = () => {
 
   const handleNewChat = () => {
     hasLoadedConvRef.current = false;
+    lastAttachmentRef.current = null;
     setMessages([{ role: 'assistant', content: "Welcome back, Warrior 💙 What's on your mind today?" }]);
     setCurrentConversationId(null);
     setHistoryOpen(false);
@@ -773,6 +777,7 @@ const HyperAI = () => {
   const loadConversation = async (convId: string) => {
     // Set ref SYNCHRONOUSLY before any async — this blocks the welcome useEffect immediately
     hasLoadedConvRef.current = true;
+    lastAttachmentRef.current = null;
     setCurrentConversationId(convId);
     setShowSuggestions(false);
     setHistoryOpen(false);
@@ -823,6 +828,26 @@ const HyperAI = () => {
     setShowSuggestions(false);
     const capturedImage = pendingImage;
     setPendingImage(null);
+
+    // If a new attachment came in, remember it for the rest of the conversation.
+    if (capturedImage) {
+      const mime = capturedImage.startsWith('data:')
+        ? capturedImage.split(';')[0].split(':')[1] || 'image/jpeg'
+        : 'image/jpeg';
+      lastAttachmentRef.current = {
+        base64: capturedImage,
+        mime,
+        kind: mime === 'application/pdf' ? 'pdf' : 'image',
+      };
+    }
+
+    // Use the new attachment if any, otherwise reuse the last one from this conversation.
+    const attachmentToSend = capturedImage
+      ? { base64: capturedImage, mime: lastAttachmentRef.current?.mime || 'image/jpeg' }
+      : lastAttachmentRef.current
+        ? { base64: lastAttachmentRef.current.base64, mime: lastAttachmentRef.current.mime }
+        : null;
+    const isCarriedOver = !capturedImage && !!attachmentToSend;
 
     // Message limit check
     const userMsgCount = messages.filter(m => m.role === 'user').length;
@@ -877,7 +902,9 @@ const HyperAI = () => {
           edaReading,
           climateSnapshot,
           userName,
-          imageBase64: capturedImage || undefined,
+          imageBase64: attachmentToSend?.base64 || undefined,
+          attachmentMime: attachmentToSend?.mime || undefined,
+          attachmentCarriedOver: isCarriedOver,
         }),
       });
 
