@@ -427,6 +427,9 @@ const HyperAI = () => {
   const currentAudioRef  = useRef<HTMLAudioElement | null>(null);
   const autoSpeakIdxRef  = useRef<number | null>(null);
   const hasLoadedConvRef = useRef<boolean>(false); // prevents welcome overwriting loaded conv
+  // Persist the most recent attachment (PDF/image) for the whole conversation
+  // so follow-up questions still have access to it. Cleared on New Chat / load.
+  const lastAttachmentRef = useRef<{ base64: string; mime: string; kind: 'image' | 'pdf' } | null>(null);
 
   // ── Inject CSS once ───────────────────────────────────────────────────────
   useEffect(() => {
