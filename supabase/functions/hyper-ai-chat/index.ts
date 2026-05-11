@@ -705,18 +705,26 @@ IMPORTANT NUANCE — do NOT refuse questions that are adjacent to HH:
 
 CURRENT MESSAGE TYPE: ${isCasualGreeting ? 'CASUAL GREETING — respond warmly and briefly. Do NOT reference episode data or clinical information.' : isSigningOff ? 'SIGN-OFF — respond warmly and briefly. Let them go. No questions. No new topics.' : isClinical ? 'CLINICAL — apply full reasoning with their personal data.' : 'GENERAL — be warm and present. No need to push clinical data.'}`;
 
-    // ── Build messages array (with multimodal image if present) ──────────────
+    // ── Build messages array (with multimodal attachment if present) ─────────
     const apiMessages = messages.map((m: any, idx: number) => {
-      // Attach image to the last user message
+      // Attach image / PDF to the last user message
       if (imageBase64 && m.role === 'user' && idx === messages.length - 1) {
         const base64Data = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64;
-        const mType = imageBase64.startsWith('data:') ? imageBase64.split(';')[0].split(':')[1] : 'image/jpeg';
-        const imageUrl = 'data:' + mType + ';base64,' + base64Data;
+        const detectedMime = imageBase64.startsWith('data:')
+          ? imageBase64.split(';')[0].split(':')[1]
+          : null;
+        const mType = attachmentMime || detectedMime || 'image/jpeg';
+        const dataUrl = 'data:' + mType + ';base64,' + base64Data;
+        const isPdf = mType === 'application/pdf';
+        const carryNote = attachmentCarriedOver
+          ? `[The user previously shared this ${isPdf ? 'PDF document' : 'image'} earlier in this same conversation. They are still referring to it. Re-read it and answer based on its contents — including who/what generated it if relevant.] `
+          : '';
+        const askText = m.content || (isPdf ? 'Please read this document.' : 'Please analyse this image.');
         return {
           role: 'user',
           content: [
-            { type: 'image_url', image_url: { url: imageUrl } },
-            { type: 'text', text: m.content || 'Please analyse this image.' },
+            { type: 'image_url', image_url: { url: dataUrl } },
+            { type: 'text', text: carryNote + askText },
           ],
         };
       }
