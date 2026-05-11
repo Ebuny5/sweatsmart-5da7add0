@@ -731,6 +731,70 @@ CURRENT MESSAGE TYPE: ${isCasualGreeting ? 'CASUAL GREETING — respond warmly a
       return { role: m.role, content: m.content };
     });
 
+    // ── PDF attachments: route to Gemini directly (it reads PDFs natively) ───
+    const isPdfAttachment = imageBase64 && (attachmentMime === 'application/pdf'
+      || (imageBase64.startsWith('data:') && imageBase64.split(';')[0].includes('application/pdf')));
+
+    if (isPdfAttachment && GEMINI_API_KEY) {
+      try {
+        const base64Data = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64;
+        // Build conversation history as Gemini contents
+        const geminiContents: any[] = [];
+        for (let i = 0; i < messages.length; i++) {
+          const m = messages[i];
+          const role = m.role === 'assistant' ? 'model' : 'user';
+          const isLastUser = i === messages.length - 1 && m.role === 'user';
+          const parts: any[] = [];
+          if (isLastUser) {
+            parts.push({ inline_data: { mime_type: 'application/pdf', data: base64Data } });
+            const carryNote = attachmentCarriedOver
+              ? '[The user previously shared this PDF document earlier in this same conversation. They are still referring to it. Re-read it and answer based on its contents — including who/what generated it if relevant.] '
+              : '';
+            parts.push({ text: carryNote + (m.content || 'Please read this document and tell me what it says.') });
+          } else {
+            parts.push({ text: m.content || '' });
+          }
+          geminiContents.push({ role, parts });
+        }
+
+        const geminiRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              system_instruction: { parts: [{ text: systemPrompt }] },
+              contents: geminiContents,
+              generationConfig: { temperature: 0.7, maxOutputTokens: 1200 },
+            }),
+          }
+        );
+
+        if (!geminiRes.ok) {
+          const errBody = await geminiRes.text();
+          console.error('Gemini PDF chat error:', geminiRes.status, errBody);
+          return new Response(JSON.stringify({ error: 'PDF analysis failed. Please try again.' }), {
+            status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        const geminiData = await geminiRes.json();
+        const reply = geminiData.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('').trim()
+          || "I had trouble reading that PDF. Could you try uploading it again? 💙";
+
+        // Return as a single-shot SSE-style stream so the frontend handler works unchanged
+        const sseChunk = `data: ${JSON.stringify({ choices: [{ delta: { content: reply } }] })}\n\ndata: [DONE]\n\n`;
+        return new Response(sseChunk, {
+          headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
+        });
+      } catch (pdfErr) {
+        console.error('PDF route error:', pdfErr);
+        return new Response(JSON.stringify({ error: 'PDF analysis failed' }), {
+          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     // ── Call AI gateway ───────────────────────────────────────────────────────
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
