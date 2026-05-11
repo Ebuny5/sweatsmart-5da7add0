@@ -767,6 +767,7 @@ const HyperAI = () => {
 
   const handleNewChat = () => {
     hasLoadedConvRef.current = false;
+    lastAttachmentRef.current = null;
     setMessages([{ role: 'assistant', content: "Welcome back, Warrior 💙 What's on your mind today?" }]);
     setCurrentConversationId(null);
     setHistoryOpen(false);
@@ -776,6 +777,7 @@ const HyperAI = () => {
   const loadConversation = async (convId: string) => {
     // Set ref SYNCHRONOUSLY before any async — this blocks the welcome useEffect immediately
     hasLoadedConvRef.current = true;
+    lastAttachmentRef.current = null;
     setCurrentConversationId(convId);
     setShowSuggestions(false);
     setHistoryOpen(false);
