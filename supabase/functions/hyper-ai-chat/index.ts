@@ -277,7 +277,7 @@ serve(async (req) => {
     }
 
     // ── CHAT: main conversation flow ─────────────────────────────────────────
-    const { messages, dashboardAnalytics, edaReading, climateSnapshot, userName, imageBase64 } = reqBody;
+    const { messages, dashboardAnalytics, edaReading, climateSnapshot, userName, imageBase64, attachmentMime, attachmentCarriedOver } = reqBody;
 
     // Validate messages
     if (!Array.isArray(messages) || messages.length > MAX_MESSAGES) {
