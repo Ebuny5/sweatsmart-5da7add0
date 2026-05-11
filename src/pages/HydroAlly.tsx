@@ -829,6 +829,26 @@ const HyperAI = () => {
     const capturedImage = pendingImage;
     setPendingImage(null);
 
+    // If a new attachment came in, remember it for the rest of the conversation.
+    if (capturedImage) {
+      const mime = capturedImage.startsWith('data:')
+        ? capturedImage.split(';')[0].split(':')[1] || 'image/jpeg'
+        : 'image/jpeg';
+      lastAttachmentRef.current = {
+        base64: capturedImage,
+        mime,
+        kind: mime === 'application/pdf' ? 'pdf' : 'image',
+      };
+    }
+
+    // Use the new attachment if any, otherwise reuse the last one from this conversation.
+    const attachmentToSend = capturedImage
+      ? { base64: capturedImage, mime: lastAttachmentRef.current?.mime || 'image/jpeg' }
+      : lastAttachmentRef.current
+        ? { base64: lastAttachmentRef.current.base64, mime: lastAttachmentRef.current.mime }
+        : null;
+    const isCarriedOver = !capturedImage && !!attachmentToSend;
+
     // Message limit check
     const userMsgCount = messages.filter(m => m.role === 'user').length;
     if (userMsgCount >= MAX_MESSAGES_PER_CONV / 2) {
@@ -882,7 +902,9 @@ const HyperAI = () => {
           edaReading,
           climateSnapshot,
           userName,
-          imageBase64: capturedImage || undefined,
+          imageBase64: attachmentToSend?.base64 || undefined,
+          attachmentMime: attachmentToSend?.mime || undefined,
+          attachmentCarriedOver: isCarriedOver,
         }),
       });
 
