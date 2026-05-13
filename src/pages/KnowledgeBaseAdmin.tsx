@@ -80,7 +80,7 @@ const KnowledgeBaseAdmin = () => {
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/knowledge-base?action=stats`,
         {
           headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token ?? ''}`,
           },
         }
       );
@@ -100,7 +100,7 @@ const KnowledgeBaseAdmin = () => {
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/knowledge-base?action=list`,
         {
           headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token ?? ''}`,
           },
         }
       );
@@ -131,7 +131,7 @@ const KnowledgeBaseAdmin = () => {
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token ?? ''}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -183,7 +183,7 @@ const KnowledgeBaseAdmin = () => {
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token ?? ''}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -214,7 +214,7 @@ const KnowledgeBaseAdmin = () => {
         {
           method: 'DELETE',
           headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token ?? ''}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ id }),
