@@ -120,6 +120,14 @@ serve(async (req) => {
   }
 
   try {
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Missing Authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const reqBody = await req.json();
     const { imageData, hrData, gsrData, sensorReliability = 'low', simulationScenario } = reqBody;
 
@@ -314,7 +322,7 @@ Be specific, thorough, and professional. Avoid vague statements like "appears dr
     console.error('Analysis error:', error?.message);
 
     const errorResponse = { 
-      error: 'Unable to complete analysis. Please try again.',
+      error: 'An internal error occurred',
       confidence: 0,
       severity: { level: 1, assessment: "Analysis unavailable" },
       sweatGlandActivity: { level: 1, assessment: "Unable to analyze" },

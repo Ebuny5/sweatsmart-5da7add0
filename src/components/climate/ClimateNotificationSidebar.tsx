@@ -29,7 +29,7 @@ const MapPinIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (<svg {..
 const RefreshIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (<svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356-2A8.001 8.001 0 004 12c0 2.127.766 4.047 2.031 5.488M16 20v-5h.582m-15.356 2A8.001 8.001 0 0020 12c0-2.127-.766-4.047-2.031-5.488" /></svg>);
 
 const PHYSIOLOGICAL_EDA_THRESHOLD = 5.0;
-const LOG_INTERVAL = 4 * 60 * 60 * 1000;
+const LOG_INTERVAL = 6 * 60 * 60 * 1000;
 const DATA_SIMULATION_INTERVAL = 5000;
 const LOG_CHECK_INTERVAL = 60000;
 const WEATHER_REFRESH_INTERVAL = 10 * 60 * 1000;
@@ -233,7 +233,7 @@ const ClimateNotificationSidebar: React.FC<ClimateNotificationSidebarProps> = ({
     updateNextLogTime();
     const interval = setInterval(() => {
       if (nextLogTime && Date.now() >= nextLogTime && arePermissionsGranted) {
-        sendNotification('Time to Log', 'Please record your sweat level for the last 4 hours.');
+        sendNotification('Time to Log', "It's time for your six-hour check-in");
         setIsLoggingModalOpen(true);
         updateNextLogTime();
       }

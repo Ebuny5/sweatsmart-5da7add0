@@ -109,6 +109,14 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Missing Authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const body = await req.json();
     const mode = body.mode || 'transcribe';
 
@@ -133,7 +141,7 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     console.error('voice-transcribe error', e);
-    return new Response(JSON.stringify({ error: String(e?.message || e) }), {
+    return new Response(JSON.stringify({ error: 'An internal error occurred during transcription' }), {
       status: 500,
       headers: { ...corsHeaders, 'content-type': 'application/json' },
     });
