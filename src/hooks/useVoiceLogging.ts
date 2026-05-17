@@ -35,7 +35,7 @@ const SOUND = {
   savingEpisode: '/sounds/voice-saving-episode.mp3',
 };
 
-const SILENCE_RMS = 0.012;        // RMS below this = "silence"
+const SILENCE_RMS = 0.008;        // RMS below this = "silence" (lowered from 0.012)
 const SILENCE_HOLD_MS = 3000;     // hold silence this long to stop
 const MIN_SPEECH_MS = 1200;       // require some speech before silence-stop fires
 const MAX_SEGMENT_MS = 60000;     // hard cap per segment
@@ -194,6 +194,12 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
 
       const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
       const ctx: AudioContext = new Ctx();
+
+      // Critical: Ensure context is resumed after user interaction (fixes iOS/Android audio blockage)
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
+      }
+
       audioCtxRef.current = ctx;
       const src = ctx.createMediaStreamSource(stream);
       const analyser = ctx.createAnalyser();

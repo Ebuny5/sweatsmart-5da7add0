@@ -1,6 +1,6 @@
 import { notificationManager } from './NotificationManager';
 
-const PRODUCTION_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 hours
+const PRODUCTION_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
 const LAST_LOG_TIME_KEY = 'sweatsmart_last_log_time';
 const ONBOARDING_TIME_KEY = 'sweatsmart_onboarding_time';
 
@@ -52,7 +52,7 @@ class LoggingReminderService {
   }
 
   /**
-   * Calculates when the next log is due (4 hours after last log or onboarding).
+   * Calculates when the next log is due (6 hours after last log or onboarding).
    */
   getNextScheduledTime(): number {
     const lastLog = parseInt(localStorage.getItem(LAST_LOG_TIME_KEY) || '0', 10);
@@ -62,7 +62,7 @@ class LoggingReminderService {
     const baseline = lastLog || onboarding || Date.now();
     let nextTime = baseline + PRODUCTION_INTERVAL_MS;
 
-    // If nextTime is in the past, find the next 4-hour slot from now
+    // If nextTime is in the past, find the next 6-hour slot from now
     const now = Date.now();
     if (nextTime < now) {
       const diff = now - baseline;
@@ -83,7 +83,7 @@ class LoggingReminderService {
     await notificationManager.scheduleReminder(
       new Date(nextTime),
       '⏰ Time to Check In',
-      'Time to check in. Log your sweat level for the past 4 hours.',
+      "It's time for your six-hour check-in",
       '/log-episode'
     );
 
@@ -94,7 +94,7 @@ class LoggingReminderService {
         channel: 'reminder',
         kind: 'reminder',
         title: '⏰ Time to Check In',
-        body: 'Time to check in. Log your sweat level for the past 4 hours.',
+        body: "It's time for your six-hour check-in",
         dedupKey: `log-reminder-${nextTime}`,
         url: '/log-episode',
       });

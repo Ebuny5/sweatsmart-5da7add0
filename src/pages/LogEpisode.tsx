@@ -157,7 +157,7 @@ const LogEpisode = () => {
         setLastSavedEpisodeId(data[0].id);
       }
 
-      // Reschedule the next reminder 4 hours from now
+      // Reschedule the next reminder 6 hours from now
       loggingReminderService.handleLogSaved();
 
       toast({ title: "Episode logged successfully", description: "Generating your personalised insights..." });
@@ -531,7 +531,7 @@ const LogEpisode = () => {
               <p className="text-xs text-gray-600 italic line-clamp-3">
                 {voiceUIStatus.hint}
               </p>
-              {voiceStatus === 'LISTENING' && transcript && (
+              {['LISTENING', 'CONFIRMING', 'REASONING', 'SAVING'].includes(voiceStatus || '') && transcript && (
                 <p className="text-[10px] text-blue-400 mt-2 line-clamp-2 italic border-t border-blue-100 pt-1">
                   "{transcript}"
                 </p>

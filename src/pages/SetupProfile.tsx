@@ -160,7 +160,7 @@ const SetupProfile = () => {
               <div className="space-y-4 text-center">
                 <Bell className="h-12 w-12 mx-auto text-primary" />
                 <p className="text-sm text-muted-foreground">
-                  Climate alerts and 4-hour log reminders are delivered through notifications — even when the app is closed.
+                  Climate alerts and 6-hour log reminders are delivered through notifications — even when the app is closed.
                 </p>
                 <Button onClick={requestNotifications} className="w-full">
                   Allow notifications

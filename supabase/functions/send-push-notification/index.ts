@@ -395,18 +395,18 @@ serve(async (req) => {
     // send_logging_reminders
     if (action === 'send_logging_reminders') {
       const { data: subs } = await supabase.from('push_subscriptions').select('*').eq('is_active', true);
-      const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
+      const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
       const now = Date.now();
       let sent = 0, skipped = 0, failed = 0;
 
       for (const sub of subs || []) {
         try {
           const todayCount = await getNotificationCountToday(supabase, sub.id, 'logging_reminder');
-          if (todayCount >= 6) { skipped++; continue; }
+          if (todayCount >= 4) { skipped++; continue; } // Max 4 times a day for 6-hour intervals
 
           if (sub.last_reminder_sent_at) {
             const lastSent = new Date(sub.last_reminder_sent_at).getTime();
-            if (now - lastSent < FOUR_HOURS_MS) { skipped++; continue; }
+            if (now - lastSent < SIX_HOURS_MS) { skipped++; continue; }
           }
 
           if (sub.user_id) {
@@ -419,7 +419,7 @@ serve(async (req) => {
               .single();
             if (lastEpisode) {
               const lastLogTime = new Date(lastEpisode.created_at).getTime();
-              if (now - lastLogTime < FOUR_HOURS_MS) { skipped++; continue; }
+              if (now - lastLogTime < SIX_HOURS_MS) { skipped++; continue; }
             }
           }
 
@@ -427,7 +427,7 @@ serve(async (req) => {
             { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
             {
               title: '⏰ Time to Log Your Episode',
-              body: 'Record your sweat level for the last 4 hours.',
+              body: "It's time for your six-hour check-in",
               tag: 'logging-reminder',
               type: 'reminder',
               url: '/log-episode',
