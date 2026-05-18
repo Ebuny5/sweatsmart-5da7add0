@@ -22,6 +22,7 @@ import { useEpisodes } from "@/hooks/useEpisodes";
 import { generateFallbackInsights } from "@/engine/recommendationEngine";
 import { loggingReminderService } from "@/services/LoggingReminderService";
 import { useVoiceLogging } from "@/hooks/useVoiceLogging";
+import VoiceVisualizer from "@/components/episode/VoiceVisualizer";
 
 // ── Section wrapper ──────────────────────────────────────────────────────────
 const Section = ({
@@ -104,10 +105,11 @@ const LogEpisode = () => {
   }, [episodes]);
 
   // ── All original logic ─────────────────────────────────────────────────────
-  const handleSubmit = useCallback(async (e?: React.FormEvent, manualNotes?: string, manualBodyAreas?: BodyArea[], manualTriggers?: Trigger[]) => {
+  const handleSubmit = useCallback(async (e?: React.FormEvent, manualNotes?: string, manualBodyAreas?: BodyArea[], manualTriggers?: Trigger[], manualSeverity?: SeverityLevel) => {
     if (e) e.preventDefault();
     const finalBodyAreas = manualBodyAreas ?? bodyAreas;
     const finalTriggers = manualTriggers ?? triggers;
+    const finalSeverity = manualSeverity ?? severity;
 
     if (!user) {
       toast({ title: "Authentication required", description: "Please log in to save episodes.", variant: "destructive" });
@@ -144,7 +146,7 @@ const LogEpisode = () => {
 
       const { data, error } = await supabase.from("episodes").insert({
         user_id: user.id,
-        severity: severity,
+        severity: finalSeverity,
         body_areas: finalBodyAreas,
         triggers: triggerStrings,
         notes: finalNotes || null,
@@ -172,7 +174,7 @@ const LogEpisode = () => {
         }));
 
         const insights = generateFallbackInsights(
-          severity,
+          finalSeverity,
           finalBodyAreas,
           triggerData,
           finalNotes,
@@ -237,14 +239,26 @@ const LogEpisode = () => {
     startListening,
     stopListening,
     transcript,
+    volume,
   } = useVoiceLogging({
-    onAnalysisComplete: async (detectedAreas, detectedTriggers, transcriptText) => {
+    onAnalysisComplete: async (detectedAreas, detectedTriggers, transcriptText, extractedSeverity) => {
       setBodyAreas(detectedAreas);
       setTriggers(detectedTriggers);
       setNotes(transcriptText);
 
-      // Save directly with currently selected severity
-      await handleSubmit(undefined, transcriptText, detectedAreas, detectedTriggers);
+      const finalSeverity = extractedSeverity ? (extractedSeverity as SeverityLevel) : severity;
+      if (extractedSeverity) {
+        setSeverity(finalSeverity);
+      }
+
+      // Save directly with updated severity
+      await handleSubmit(
+        undefined,
+        transcriptText,
+        detectedAreas,
+        detectedTriggers,
+        finalSeverity
+      );
     }
   });
 
@@ -531,6 +545,8 @@ const LogEpisode = () => {
               <p className="text-xs text-gray-600 italic line-clamp-3">
                 {voiceUIStatus.hint}
               </p>
+              <VoiceVisualizer volume={volume} isListening={voiceStatus === 'LISTENING'} />
+
               {['LISTENING', 'CONFIRMING', 'REASONING', 'SAVING'].includes(voiceStatus || '') && transcript && (
                 <p className="text-[10px] text-blue-400 mt-2 line-clamp-2 italic border-t border-blue-100 pt-1">
                   "{transcript}"

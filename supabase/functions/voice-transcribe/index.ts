@@ -77,8 +77,14 @@ Return ONLY valid JSON, no prose, with this exact shape:
 {
   "body_areas": string[],   // values from: palms, fingers, soles, feet, toes, feet_soles, face, scalp, face_scalp, underarms, chest, back, trunk, groin, entire_body
   "triggers": string[],     // values from: hot_temperature, high_humidity, crowded_spaces, bright_lights, loud_noises, transitional_temperature, synthetic_fabrics, outdoor_sun_exposure, stress, anxiety, anticipatory_sweating, embarrassment, excitement, anger, nervousness, public_speaking, social_interaction, work_pressure, exam_test_situation, spicy_food, caffeine, alcohol, hot_drinks, heavy_meals, gustatory_sweating, physical_exercise, night_sweats, poor_sleep, hormonal_changes, illness_fever, hypoglycemia, certain_clothing, ssris_antidepressants, opioids_pain_medication, nsaids, blood_pressure_medication, insulin_diabetes_medication, supplements_herbal, new_medication
-  "severity": number        // 1 (mild) to 5 (extreme), inferred from intensity words
+  "severity": number        // 1 (mild) to 5 (extreme), inferred from intensity words. Default to 3 if unclear.
 }
+
+Guidelines:
+- body_areas: map common terms like "hands" to "palms", "feet" to "soles" or "feet_soles".
+- triggers: map activities like "gym" to "physical_exercise", "work" to "work_pressure", "hot" to "hot_temperature".
+- severity: 1=barely noticeable, 2=mild, 3=moderate, 4=severe, 5=extreme.
+
 Episode description: """${text}"""`;
 
   const res = await fetch(

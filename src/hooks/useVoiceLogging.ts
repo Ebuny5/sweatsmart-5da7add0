@@ -25,7 +25,7 @@ export const isVoiceSupported = (): boolean => {
 export type VoiceStatus = 'LISTENING' | 'CONFIRMING' | 'REASONING' | 'SAVING' | null;
 
 interface UseVoiceLoggingProps {
-  onAnalysisComplete: (bodyAreas: BodyArea[], triggers: Trigger[], notes: string) => void;
+  onAnalysisComplete: (bodyAreas: BodyArea[], triggers: Trigger[], notes: string, severity?: number) => void;
 }
 
 const SOUND = {
@@ -35,9 +35,9 @@ const SOUND = {
   savingEpisode: '/sounds/voice-saving-episode.mp3',
 };
 
-const SILENCE_RMS = 0.008;        // RMS below this = "silence" (lowered from 0.012)
+const SILENCE_RMS = 0.02;         // Increased threshold for better detection in noisy spots
 const SILENCE_HOLD_MS = 3000;     // hold silence this long to stop
-const MIN_SPEECH_MS = 1200;       // require some speech before silence-stop fires
+const MIN_SPEECH_MS = 1000;       // slightly shorter min speech
 const MAX_SEGMENT_MS = 60000;     // hard cap per segment
 const CONFIRM_LISTEN_MS = 5000;   // window to detect yes/no
 
@@ -122,6 +122,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>(null);
   const [voiceNotSupported, setVoiceNotSupported] = useState(!isVoiceSupported());
   const [transcript, setTranscript] = useState('');
+  const [volume, setVolume] = useState(0);
 
   // refs
   const streamRef = useRef<MediaStream | null>(null);
@@ -132,14 +133,22 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
   const segmentChunksRef = useRef<Blob[]>([]);   // current segment
   const silenceStartRef = useRef<number | null>(null);
   const segmentStartRef = useRef<number>(0);
-  const rafRef = useRef<number | null>(null);
+  const rafRef = useRef<number | any>(null);
   const cancelledRef = useRef(false);
+  const finishedRef = useRef(false);
   const transcriptRef = useRef('');
   const mimeTypeRef = useRef<string>('audio/webm');
 
   const cleanupAudio = () => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    if (rafRef.current) {
+      if (typeof rafRef.current === 'number') {
+        cancelAnimationFrame(rafRef.current);
+      } else {
+        clearTimeout(rafRef.current);
+      }
+    }
     rafRef.current = null;
+    setVolume(0);
     if (recorderRef.current && recorderRef.current.state !== 'inactive') {
       try { recorderRef.current.stop(); } catch {}
     }
@@ -162,6 +171,12 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
     segmentChunksRef.current = [];
     transcriptRef.current = '';
     setTranscript('');
+    setVolume(0);
+  }, []);
+
+  const finishSession = useCallback(() => {
+    finishedRef.current = true;
+    // This will break the loop in runFlow
   }, []);
 
   // ── Open mic + recorder + analyser ────────────────────────────────────────
@@ -235,16 +250,27 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
         } else {
           resolve();
         }
-        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        if (rafRef.current) {
+          if (typeof rafRef.current === 'number') {
+            cancelAnimationFrame(rafRef.current);
+          } else {
+            clearTimeout(rafRef.current);
+          }
+        }
         rafRef.current = null;
       };
 
       const tick = () => {
-        if (cancelledRef.current) return;
+        if (cancelledRef.current || finishedRef.current) {
+          return stopAndResolve();
+        }
+
         analyser.getFloatTimeDomainData(buf);
         let sum = 0;
         for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
         const rms = Math.sqrt(sum / buf.length);
+        setVolume(rms); // For visualizer
+
         const elapsed = Date.now() - segmentStartRef.current;
 
         if (rms < SILENCE_RMS) {
@@ -258,7 +284,8 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
         }
 
         if (elapsed >= MAX_SEGMENT_MS) return stopAndResolve();
-        rafRef.current = requestAnimationFrame(tick);
+        // Use setTimeout instead of RAF for better background/mobile performance
+        rafRef.current = setTimeout(tick, 100);
       };
 
       try {
@@ -267,7 +294,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
         console.warn('recorder.start failed', e);
         return resolve();
       }
-      rafRef.current = requestAnimationFrame(tick);
+      rafRef.current = setTimeout(tick, 100);
     });
 
   // ── Transcribe a blob via edge function ───────────────────────────────────
@@ -288,6 +315,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
   // ── Main flow ─────────────────────────────────────────────────────────────
   const runFlow = useCallback(async () => {
     cancelledRef.current = false;
+    finishedRef.current = false;
     chunksRef.current = [];
     transcriptRef.current = '';
     setTranscript('');
@@ -304,15 +332,15 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
     if (cancelledRef.current) return cleanupAudio();
 
     // Loop: record → confirm → maybe go again
-    while (!cancelledRef.current) {
+    while (!cancelledRef.current && !finishedRef.current) {
       setVoiceStatus('LISTENING');
       await recordSegmentUntilSilence();
-      if (cancelledRef.current) return cleanupAudio();
+      if (cancelledRef.current || finishedRef.current) break;
 
       // Ask "Got it, anything else?"
       setVoiceStatus('CONFIRMING');
       await playSound(SOUND.gotItAnythingElse);
-      if (cancelledRef.current) return cleanupAudio();
+      if (cancelledRef.current || finishedRef.current) break;
 
       // Record short confirmation segment (yes/no)
       const confirmRecorder = recorderRef.current;
@@ -323,7 +351,13 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
         if (e.data && e.data.size > 0) confirmChunks.push(e.data);
       };
       try { confirmRecorder.start(250); } catch {}
-      await new Promise((r) => setTimeout(r, CONFIRM_LISTEN_MS));
+
+      // Wait for confirm or manual stop
+      const waitStart = Date.now();
+      while (Date.now() - waitStart < CONFIRM_LISTEN_MS && !finishedRef.current && !cancelledRef.current) {
+        await new Promise(r => setTimeout(r, 200));
+      }
+
       await new Promise<void>((r) => {
         if (confirmRecorder.state === 'inactive') return r();
         confirmRecorder.onstop = () => r();
@@ -331,6 +365,13 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       });
       // restore handler for any next segment
       confirmRecorder.ondataavailable = origHandler as any;
+
+      if (cancelledRef.current) break;
+      if (finishedRef.current) {
+        // If they tapped during confirm, also treat as done
+        for (const c of confirmChunks) chunksRef.current.push(c);
+        break;
+      }
 
       const confirmBlob = new Blob(confirmChunks, { type: mimeTypeRef.current });
       const confirmText = await transcribeBlob(confirmBlob);
@@ -386,6 +427,8 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
     // LLM extract tags (with keyword fallback)
     let bodyAreas: BodyArea[] = [];
     let triggerValues: string[] = [];
+    let extractedSeverity: number | undefined = undefined;
+
     try {
       const { data } = await supabase.functions.invoke('voice-transcribe', {
         body: { mode: 'extract', text: fullText },
@@ -393,6 +436,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       const tags = data?.tags;
       if (tags?.body_areas?.length) bodyAreas = tags.body_areas as BodyArea[];
       if (tags?.triggers?.length) triggerValues = tags.triggers;
+      if (tags?.severity) extractedSeverity = tags.severity;
     } catch (e) {
       console.warn('extract failed, falling back', e);
     }
@@ -408,6 +452,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       Array.from(new Set(bodyAreas)),
       valuesToTriggers(triggerValues),
       fullText.trim(),
+      extractedSeverity
     );
   }, [onAnalysisComplete]);
 
@@ -421,8 +466,12 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
   }, [runFlow, voiceNotSupported, voiceStatus]);
 
   const stopListening = useCallback(() => {
-    fullStop();
-  }, [fullStop]);
+    if (voiceStatus === 'LISTENING' || voiceStatus === 'CONFIRMING') {
+      finishSession();
+    } else {
+      fullStop();
+    }
+  }, [voiceStatus, finishSession, fullStop]);
 
   useEffect(() => {
     return () => {
@@ -436,6 +485,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
     startListening,
     stopListening,
     transcript,
+    volume,
     isListening: voiceStatus !== null,
     voiceNotSupported,
   };
