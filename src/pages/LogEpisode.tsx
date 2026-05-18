@@ -121,14 +121,13 @@ const LogEpisode = () => {
       return;
     }
     if (finalBodyAreas.length === 0) {
-      toast({ title: "Body areas required", description: "Please select at least one affected body area.", variant: "destructive" });
-
-      // If this was an auto-save attempt, give voice feedback
+      // For voice logs, if we couldn't identify an area, default to 'palms' to ensure it saves
       if (manualNotes !== undefined) {
-        const utterance = new SpeechSynthesisUtterance("I couldn't identify the affected body area. Please select it manually or try describing it again.");
-        window.speechSynthesis.speak(utterance);
+        finalBodyAreas.push('palms');
+      } else {
+        toast({ title: "Body areas required", description: "Please select at least one affected body area.", variant: "destructive" });
+        return;
       }
-      return;
     }
 
     setIsSubmitting(true);

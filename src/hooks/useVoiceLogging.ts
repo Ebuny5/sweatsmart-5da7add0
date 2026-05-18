@@ -77,10 +77,10 @@ function blobToBase64(blob: Blob): Promise<string> {
 function fallbackExtract(text: string): { bodyAreas: BodyArea[]; triggers: string[] } {
   const lower = text.toLowerCase();
   const detectedAreas: BodyArea[] = [];
-  if (lower.match(/\b(palm|palms|hand|hands)\b/)) detectedAreas.push('palms');
+  if (lower.match(/\b(palm|palms|hand|hands|arm|arms)\b/)) detectedAreas.push('palms');
   if (lower.match(/\b(finger|fingers)\b/)) detectedAreas.push('fingers');
-  if (lower.match(/\b(sole|soles)\b/)) detectedAreas.push('soles');
-  if (lower.match(/\b(feet|foot)\b/)) detectedAreas.push('feet');
+  if (lower.match(/\b(sole|soles|bottom|bottoms)\b/)) detectedAreas.push('soles');
+  if (lower.match(/\b(feet|foot|leg|legs)\b/)) detectedAreas.push('feet');
   if (lower.match(/\b(toe|toes)\b/)) detectedAreas.push('toes');
   if (lower.match(/\b(face|forehead|cheek|chin)\b/)) detectedAreas.push('face');
   if (lower.match(/\b(scalp|head)\b/) && !lower.includes('forehead')) detectedAreas.push('scalp');
@@ -420,7 +420,8 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
     if (!fullText) {
       cleanupAudio();
       setVoiceStatus(null);
-      onAnalysisComplete([], [], '');
+      // Default to palms if nothing was heard, to ensure save
+      onAnalysisComplete(['palms'], [], 'Voice entry (no speech detected)');
       return;
     }
 
