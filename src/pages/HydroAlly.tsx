@@ -14,7 +14,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useClimateData } from '@/hooks/useClimateData';
 import { edaManager } from '@/utils/edaManager';
 import { speakProfessionally, stopProfessionalSpeech } from '@/utils/webSpeechVoice';
-import { generateProfessionalWarriorReport } from '@/utils/reportGenerator';
+import { generateProfessionalWarriorReport, canGenerateReport } from '@/utils/reportGenerator';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -922,24 +922,52 @@ const HyperAI = () => {
       if (contentType.includes('application/json')) {
         const json = await response.json();
 
-        // Handle Professional PDF Trigger
-        if (json.triggerPdf && json.content) {
-          const assistantMsg: Message = { role: 'assistant', content: json.content, isReport: true };
-          setMessages(prev => [...prev, assistantMsg]);
+        // Handle Warrior Report — generate branded PDF, show download message in chat
+        if (json.triggerPdf) {
+          if (!dashboardAnalytics) {
+            const errMsg: Message = { role: 'assistant', content: 'Unable to generate report — no episode data found. Please log some episodes first.' };
+            setMessages(prev => [...prev, errMsg]);
+            if (convId) await saveMessages(convId, [...allMessages, errMsg]);
+            setIsLoading(false);
+            return;
+          }
 
-          if (dashboardAnalytics) {
-            generateProfessionalWarriorReport({
+          // Check episode gate
+          const gate = canGenerateReport(dashboardAnalytics.totalEpisodes);
+          if (!gate.allowed) {
+            const gateMsg: Message = { role: 'assistant', content: gate.message };
+            setMessages(prev => [...prev, gateMsg]);
+            if (convId) await saveMessages(convId, [...allMessages, gateMsg]);
+            setIsLoading(false);
+            return;
+          }
+
+          // Generate the branded PDF — it downloads automatically
+          try {
+            const fileName = generateProfessionalWarriorReport({
               userName: userName || 'Warrior',
               totalEpisodes: dashboardAnalytics.totalEpisodes,
               avgSeverity: dashboardAnalytics.avgSeverity,
               topTriggers: dashboardAnalytics.topTriggers,
               topAreas: dashboardAnalytics.topAreas,
-              weeklyTrends: dashboardAnalytics.weeklyTrends
+              weeklyTrends: dashboardAnalytics.weeklyTrends,
             });
-            toast.success('Professional Clinical Report generated!');
+
+            // Show a clean download confirmation message — NOT the raw report text
+            const downloadMsg: Message = {
+              role: 'assistant',
+              content: `Here is your comprehensive Warrior Report 📋\n\nYour clinical report has been generated and is downloading now as **${fileName}**.\n\nThis report includes your trigger analysis, affected area mapping, temporal patterns, and a full treatment ladder — ready to hand to your dermatologist or GP.`,
+              isReport: true,
+            };
+            setMessages(prev => [...prev, downloadMsg]);
+            if (convId) await saveMessages(convId, [...allMessages, downloadMsg]);
+            toast.success('Clinical Warrior Report downloaded!');
+          } catch (err: any) {
+            const errMsg: Message = { role: 'assistant', content: err.message || 'Something went wrong generating your report. Please try again.' };
+            setMessages(prev => [...prev, errMsg]);
+            if (convId) await saveMessages(convId, [...allMessages, errMsg]);
           }
 
-          if (convId) await saveMessages(convId, [...allMessages, assistantMsg]);
           setIsLoading(false);
           return;
         }
