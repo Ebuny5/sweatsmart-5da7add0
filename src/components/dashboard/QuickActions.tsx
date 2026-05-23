@@ -153,6 +153,23 @@ const WarriorLaunchpad = () => {
 
   const [tipIndex] = useState(() => Math.floor(Math.random() * COMMUNITY_TIPS.length));
 
+  const avgSeverity = useMemo(() => {
+    if (!episodes.length) return null;
+    return (episodes.reduce((sum, e) => sum + (e.severityLevel || e.severity || 0), 0) / episodes.length).toFixed(1);
+  }, [episodes]);
+
+  const getHDSSLabel = (avg: string | null) => {
+    if (!avg) return null;
+    const n = parseFloat(avg);
+    if (isNaN(n)) return null;
+    if (n <= 1.5) return { label: "HDSS 1 — Mild", color: "text-sky-600", bg: "bg-sky-50" };
+    if (n <= 2.5) return { label: "HDSS 2 — Tolerable", color: "text-blue-600", bg: "bg-blue-50" };
+    if (n <= 3.5) return { label: "HDSS 3 — Frequent", color: "text-indigo-600", bg: "bg-indigo-50" };
+    return { label: "HDSS 4 — Severe", color: "text-violet-700", bg: "bg-violet-50" };
+  };
+
+  const hdss = getHDSSLabel(avgSeverity);
+
   const displayName = profile?.display_name || user?.email?.split("@")[0] || "Warrior";
   const firstName   = displayName.split(" ")[0];
   const greeting    = getGreeting();
@@ -179,7 +196,16 @@ const WarriorLaunchpad = () => {
         <h1 className="text-white text-2xl font-black tracking-tight leading-tight">
           {greeting.text}, {firstName}!
         </h1>
-        <p className="text-purple-100 text-xs mt-1">{today}</p>
+
+        <div className="flex items-center gap-3 mt-1.5">
+          <p className="text-purple-100 text-xs">{today}</p>
+          {hdss && (
+            <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full ${hdss.bg} bg-opacity-90 backdrop-blur-sm border border-white/10`}>
+              <span className="text-[10px]">📊</span>
+              <span className={`text-[10px] font-bold ${hdss.color}`}>{hdss.label}</span>
+            </div>
+          )}
+        </div>
 
         {/* Warrior Status Banner */}
         <div className="mt-4 bg-white/15 backdrop-blur-sm rounded-2xl px-4 py-3 border border-white/20">

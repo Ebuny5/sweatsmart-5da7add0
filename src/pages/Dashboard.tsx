@@ -352,6 +352,23 @@ const Dashboard = () => {
             />
           </div>
 
+          {/* Continue with HidroAlly Bridge */}
+          <button
+            onClick={() => navigate("/hyper-ai", { state: { initialMessage: "I'd like to continue our deep-dive into my episode analytics. Can you explain the patterns you see in my data?" } })}
+            className="w-full bg-white border-2 border-dashed border-violet-200 rounded-2xl p-5 flex items-center gap-4 hover:bg-violet-50 transition-all text-left"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-violet-100 flex items-center justify-center shrink-0">
+              <TrendingUp className="h-6 w-6 text-violet-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-gray-800 font-black text-sm leading-tight">Continue with HidroAlly 🤖</p>
+              <p className="text-gray-500 text-xs mt-0.5 leading-snug">
+                Let's go deeper into these charts. HidroAlly can explain your risk levels and patterns.
+              </p>
+            </div>
+            <ChevronRight className="h-5 w-5 text-violet-300 shrink-0" />
+          </button>
+
           {/* Hyper AI prompt card */}
           <button
             onClick={() => navigate("/hyper-ai")}

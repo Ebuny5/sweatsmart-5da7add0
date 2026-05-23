@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import { Send, Sparkles, Loader2, Copy, Check, Mic, MicOff,
   Trash2, Volume2, VolumeX, FileText, ChevronRight,
@@ -13,6 +14,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useClimateData } from '@/hooks/useClimateData';
 import { edaManager } from '@/utils/edaManager';
 import { speakProfessionally, stopProfessionalSpeech } from '@/utils/webSpeechVoice';
+import { generateProfessionalWarriorReport } from '@/utils/reportGenerator';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -188,11 +190,12 @@ const VoiceSettingsModal = ({
 // ── Message bubble ────────────────────────────────────────────────────────────
 const MessageBubble = ({
   message, index, copiedIndex, speakingIndex,
-  onCopy, onSpeak,
+  onCopy, onSpeak, onDownloadReport,
 }: {
   message: Message; index: number; copiedIndex: number | null; speakingIndex: number | null;
   onCopy: (text: string, idx: number) => void;
   onSpeak: (text: string, idx: number) => void;
+  onDownloadReport?: () => void;
 }) => {
   const isUser   = message.role === 'user';
   const isReport = message.isReport;
@@ -273,16 +276,7 @@ const MessageBubble = ({
             </button>
             {isReport && (
               <button
-                onClick={() => {
-                  const blob = new Blob([message.content], { type: 'text/plain' });
-                  const url  = URL.createObjectURL(blob);
-                  const a    = document.createElement('a');
-                  a.href = url;
-                  a.download = `sweatsmart-warrior-report-${format(new Date(), 'yyyy-MM-dd')}.txt`;
-                  a.click();
-                  URL.revokeObjectURL(url);
-                  toast.success('Warrior Report downloaded');
-                }}
+                onClick={onDownloadReport}
                 className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold text-teal-300 border border-teal-500/40 hover:bg-teal-500/20 transition-colors ml-1"
               >
                 <FileText className="h-3 w-3" /> Download Report
@@ -390,6 +384,7 @@ const HyperAI = () => {
   const { profile } = useProfile();
   const { episodes: rawEpisodes } = useEpisodes();
   const { weather, sweatRisk } = useClimateData();
+  const location = useLocation();
 
   // ── Core state ────────────────────────────────────────────────────────────
   const [messages, setMessages]           = useState<Message[]>([]);
@@ -447,28 +442,40 @@ const HyperAI = () => {
   // ── Load conversations + dynamic welcome message ───────────────────────────
   useEffect(() => {
     if (!user) return;
-    supabase.from('chat_conversations').select('*')
-      .eq('user_id', user.id).order('updated_at', { ascending: false })
-      .then(({ data }) => {
-        if (data) {
-          setConversations(data);
-          // ONLY set welcome if user has NOT tapped a history item
-          // hasLoadedConvRef is set synchronously on history tap, so this is always safe
-          if (hasLoadedConvRef.current) return;
-          let welcome: string;
-          if (!data.length) {
-            welcome = "Hello Warrior 💙 I'm your 24/7 personal hyperhidrosis consultant, here to help you turn sweat into strength. What's on your mind today?";
-          } else {
-            const lastUpdated = new Date(data[0].updated_at);
-            const isToday = format(lastUpdated, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
-            welcome = isToday
-              ? "Welcome back, Warrior 💙 Ready to continue restoring your dignity? What's on your mind today?"
-              : "Welcome back, Warrior 💙 What's on your mind today?";
-          }
-          setMessages([{ role: 'assistant', content: welcome }]);
+
+    const initChat = async () => {
+      const { data } = await supabase.from('chat_conversations').select('*')
+        .eq('user_id', user.id).order('updated_at', { ascending: false });
+
+      if (data) {
+        setConversations(data);
+        if (hasLoadedConvRef.current) return;
+
+        // Check for initial message from navigation state
+        const state = location.state as { initialMessage?: string } | null;
+        if (state?.initialMessage) {
+          handleSend(state.initialMessage);
+          // Clear state to prevent re-sending on re-render
+          window.history.replaceState({}, document.title);
+          return;
         }
-      });
-  }, [user]);
+
+        let welcome: string;
+        if (!data.length) {
+          welcome = "Hello Warrior 💙 I'm your 24/7 personal hyperhidrosis consultant, here to help you turn sweat into strength. What's on your mind today?";
+        } else {
+          const lastUpdated = new Date(data[0].updated_at);
+          const isToday = format(lastUpdated, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+          welcome = isToday
+            ? "Welcome back, Warrior 💙 Ready to continue restoring your dignity? What's on your mind today?"
+            : "Welcome back, Warrior 💙 What's on your mind today?";
+        }
+        setMessages([{ role: 'assistant', content: welcome }]);
+      }
+    };
+
+    initChat();
+  }, [user, location.state]);
 
   // ── EDA data ───────────────────────────────────────────────────────────────
   const edaReading = useMemo(() => {
@@ -910,14 +917,38 @@ const HyperAI = () => {
 
       if (!response.ok) throw new Error('Failed to get response');
 
-      // Non-streaming JSON (warrior report)
+      // Non-streaming JSON (warrior report or error)
       const contentType = response.headers.get('content-type') || '';
       if (contentType.includes('application/json')) {
         const json = await response.json();
-        if (json.report && json.content) {
-          const reportMsg: Message = { role: 'assistant', content: json.content, isReport: true };
-          setMessages(prev => [...prev, reportMsg]);
-          if (convId) await saveMessages(convId, [...allMessages, reportMsg]);
+
+        // Handle Professional PDF Trigger
+        if (json.triggerPdf && json.content) {
+          const assistantMsg: Message = { role: 'assistant', content: json.content, isReport: true };
+          setMessages(prev => [...prev, assistantMsg]);
+
+          if (dashboardAnalytics) {
+            generateProfessionalWarriorReport({
+              userName: userName || 'Warrior',
+              totalEpisodes: dashboardAnalytics.totalEpisodes,
+              avgSeverity: dashboardAnalytics.avgSeverity,
+              topTriggers: dashboardAnalytics.topTriggers,
+              topAreas: dashboardAnalytics.topAreas,
+              weeklyTrends: dashboardAnalytics.weeklyTrends
+            });
+            toast.success('Professional Clinical Report generated!');
+          }
+
+          if (convId) await saveMessages(convId, [...allMessages, assistantMsg]);
+          setIsLoading(false);
+          return;
+        }
+
+        // Handle Legacy Text Report or Error Message
+        if (json.content) {
+          const assistantMsg: Message = { role: 'assistant', content: json.content };
+          setMessages(prev => [...prev, assistantMsg]);
+          if (convId) await saveMessages(convId, [...allMessages, assistantMsg]);
           setIsLoading(false);
           return;
         }
@@ -1092,6 +1123,18 @@ const HyperAI = () => {
               speakingIndex={speakingIndex}
               onCopy={handleCopy}
               onSpeak={speakMessage}
+              onDownloadReport={msg.isReport ? () => {
+                if (dashboardAnalytics) {
+                  generateProfessionalWarriorReport({
+                    userName: userName || 'Warrior',
+                    totalEpisodes: dashboardAnalytics.totalEpisodes,
+                    avgSeverity: dashboardAnalytics.avgSeverity,
+                    topTriggers: dashboardAnalytics.topTriggers,
+                    topAreas: dashboardAnalytics.topAreas,
+                    weeklyTrends: dashboardAnalytics.weeklyTrends
+                  });
+                }
+              } : undefined}
             />
           ))}
           {isLoading && messages[messages.length - 1]?.role === 'user' && <TypingIndicator />}

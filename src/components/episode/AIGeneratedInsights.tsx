@@ -8,6 +8,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import { cn } from '@/lib/utils';
+import { generateProfessionalWarriorReport } from '@/utils/reportGenerator';
+import { useEpisodes } from '@/hooks/useEpisodes';
+import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/hooks/useProfile';
+import { useMemo } from 'react';
 
 interface AIInsightsProps {
   insights: {
@@ -17,6 +22,7 @@ interface AIInsightsProps {
     lifestyleModifications: string[];
     medicalAttention: string;
     emotionalOpener?: string;
+    emotionalSupport?: string;
     cta?: string;
   };
 }
@@ -24,7 +30,62 @@ interface AIInsightsProps {
 const AIGeneratedInsights: React.FC<AIInsightsProps> = ({ insights }) => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { profile } = useProfile();
+  const { episodes: rawEpisodes } = useEpisodes();
   const [isSpeaking, setIsSpeaking] = useState(false);
+
+  const dashboardAnalytics = useMemo(() => {
+    if (!rawEpisodes?.length) return null;
+    const episodes = rawEpisodes.map(ep => ({
+      ...ep,
+      datetime: new Date(ep.datetime),
+      severityLevel: Number(ep.severityLevel),
+      triggers: Array.isArray(ep.triggers) ? ep.triggers : [],
+      bodyAreas: Array.isArray(ep.bodyAreas) ? ep.bodyAreas : [],
+    }));
+
+    const triggerCounts = new Map<string, { count: number; severities: number[] }>();
+    const areaCounts    = new Map<string, { count: number; severities: number[] }>();
+    episodes.forEach(ep => {
+      ep.triggers.forEach((t: any) => {
+        const label = t.label || t.value || 'Unknown';
+        const x = triggerCounts.get(label) || { count: 0, severities: [] };
+        x.count++; x.severities.push(ep.severityLevel);
+        triggerCounts.set(label, x);
+      });
+      ep.bodyAreas.forEach((a: string) => {
+        const x = areaCounts.get(a) || { count: 0, severities: [] };
+        x.count++; x.severities.push(ep.severityLevel);
+        areaCounts.set(a, x);
+      });
+    });
+
+    const topTriggers = [...triggerCounts.entries()]
+      .sort((a, b) => b[1].count - a[1].count).slice(0, 5)
+      .map(([name, d]) => ({
+        name, count: d.count,
+        avgSeverity: (d.severities.reduce((a, b) => a + b, 0) / d.severities.length).toFixed(1),
+        percentage: Math.round((d.count / episodes.length) * 100),
+      }));
+
+    const topAreas = [...areaCounts.entries()]
+      .sort((a, b) => b[1].count - a[1].count)
+      .map(([area, d]) => ({
+        area, count: d.count,
+        avgSeverity: (d.severities.reduce((a, b) => a + b, 0) / d.severities.length).toFixed(1),
+        percentage: Math.round((d.count / episodes.length) * 100),
+      }));
+
+    return {
+      totalEpisodes: episodes.length,
+      avgSeverity: (episodes.reduce((s, e) => s + e.severityLevel, 0) / episodes.length).toFixed(1),
+      topTriggers,
+      topAreas
+    };
+  }, [rawEpisodes]);
+
+  const userName = profile?.display_name || user?.email?.split('@')[0] || 'Warrior';
 
   // Cancel speech when component unmounts
   useEffect(() => {
@@ -160,62 +221,50 @@ Disclaimer: These insights are AI-generated and for educational purposes only. A
   };
 
   const handleDownloadPDF = () => {
+    if (!dashboardAnalytics || dashboardAnalytics.totalEpisodes < 5) {
+      toast({
+        title: "Minimum Logging Required",
+        description: `Please log at least 5 episodes (you have ${dashboardAnalytics?.totalEpisodes || 0}) to generate a professional clinical report for your dermatologist.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
-      const doc = new jsPDF();
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const margin = 15;
-      const maxWidth = pageWidth - margin * 2;
-      let y = 20;
-
-      const addSection = (title: string, content: string | string[]) => {
-        if (y > 250) { doc.addPage(); y = 20; }
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.text(title, margin, y);
-        y += 7;
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        const lines = Array.isArray(content)
-          ? content.flatMap((item, i) => doc.splitTextToSize(`${i + 1}. ${item}`, maxWidth - 5))
-          : doc.splitTextToSize(content, maxWidth);
-        lines.forEach((line: string) => {
-          if (y > 270) { doc.addPage(); y = 20; }
-          doc.text(line, margin + (Array.isArray(content) ? 5 : 0), y);
-          y += 5;
-        });
-        y += 8;
-      };
-
-      doc.setFontSize(18);
-      doc.setFont('helvetica', 'bold');
-      doc.text('SweatSmart AI Insights', margin, y);
-      y += 10;
-
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'italic');
-      const disclaimer = doc.splitTextToSize(
-        'These insights are AI-generated for educational purposes only. Always consult with a healthcare provider for personalized medical advice.',
-        maxWidth
-      );
-      doc.text(disclaimer, margin, y);
-      y += disclaimer.length * 4 + 10;
-
-      addSection('Clinical Analysis', insights.clinicalAnalysis);
-      addSection('Immediate Relief Strategies', insights.immediateRelief);
-      addSection('Treatment Recommendations', insights.treatmentOptions);
-      addSection('Lifestyle Modifications', insights.lifestyleModifications);
-      addSection('When to Seek Medical Attention', insights.medicalAttention);
-
-      doc.save(`sweatsmart-insights-${new Date().toISOString().split('T')[0]}.pdf`);
-      toast({ title: 'PDF downloaded', description: 'Your AI insights have been saved as a PDF.' });
+      generateProfessionalWarriorReport({
+        userName,
+        totalEpisodes: dashboardAnalytics.totalEpisodes,
+        avgSeverity: dashboardAnalytics.avgSeverity,
+        topTriggers: dashboardAnalytics.topTriggers,
+        topAreas: dashboardAnalytics.topAreas,
+        weeklyTrends: [] // Not strictly required for the simplified clinical report layout
+      });
+      toast({ title: 'Professional Report downloaded', description: 'Your Warrior Clinical Report has been saved.' });
     } catch (error) {
       console.error('PDF generation error:', error);
-      toast({ title: 'Download failed', description: 'Could not generate PDF. Please try again.', variant: 'destructive' });
+      toast({ title: 'Download failed', description: 'Could not generate report. Please try again.', variant: 'destructive' });
     }
   };
 
   return (
     <div className="space-y-4">
+      {/* HidroAlly Hears You - Emotional Support Card */}
+      {insights.emotionalSupport && (
+        <Card className="border-l-4 border-l-pink-400 bg-pink-50/50 shadow-sm">
+          <CardHeader className="pb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">💜</span>
+              <CardTitle className="text-pink-700 text-base font-bold">HidroAlly Hears You</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-700 leading-relaxed italic text-sm">
+              {insights.emotionalSupport}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* HidroAlly greeting card */}
       {insights.emotionalOpener && (
         <Card className="border-none bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg overflow-hidden relative">
