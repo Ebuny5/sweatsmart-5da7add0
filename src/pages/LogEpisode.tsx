@@ -264,9 +264,9 @@ const LogEpisode = () => {
 
   const voiceUIStatus = {
     LISTENING: { label: "LISTENING", hint: "Speak naturally about your episode" },
-    CONFIRMING: { label: "CONFIRMING", hint: "Is that all?" },
+    CONFIRMING: { label: "CONFIRMING", hint: "Got it, anything else?" },
     REASONING: { label: "REASONING", hint: "Analysing your episode" },
-    SAVING: { label: "SAVING", hint: "Generating your episode" },
+    SAVING: { label: "SAVING", hint: "Saving your episode" },
   }[voiceStatus as string] || { label: "Voice log", hint: "Tap and speak naturally" };
 
   // ── Success / Insights screen ──────────────────────────────────────────────
