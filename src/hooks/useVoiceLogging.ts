@@ -41,12 +41,18 @@ const MIN_SPEECH_MS = 1000;       // slightly shorter min speech
 const MAX_SEGMENT_MS = 60000;     // hard cap per segment
 const CONFIRM_LISTEN_MS = 5000;   // window to detect yes/no
 
-const NEGATIVE_KEYWORDS = [
-  'no', 'nope', 'nah', 'not yet', 'not done', 'not finished', "didn't finish",
-  'hold on', 'wait', 'one moment', 'one sec', 'one second', 'hang on',
-  'actually', 'one more', 'one more thing', 'let me', 'keep going',
-  "i'm not done", 'im not done', 'not all', "that's not all", 'thats not all',
-  'continue', 'more', 'add'
+const CONTINUE_KEYWORDS = [
+  'yes', 'yeah', 'yep', 'yup', 'yeb', 'sure', 'ok', 'okay', 'more', 'add',
+  'continue', 'actually', 'one more', 'wait', 'hold on', 'one moment',
+  'one sec', 'one second', 'hang on', 'not yet', 'not done', 'not finished',
+  "didn't finish", "i'm not done", 'im not done', 'not all', "that's not all",
+  'thats not all'
+];
+
+const FINISH_KEYWORDS = [
+  'no', 'nope', 'nah', 'no more', "that's it", "thats it", "that's all",
+  "thats all", 'done', 'finish', 'finished', 'save', 'stop', 'all good',
+  'nothing else', 'no thanks'
 ];
 
 function playSound(src: string): Promise<void> {
@@ -89,7 +95,10 @@ function fallbackExtract(text: string): { bodyAreas: BodyArea[]; triggers: strin
   if (lower.match(/\b(back)\b/)) detectedAreas.push('back');
   if (lower.match(/\b(groin)\b/)) detectedAreas.push('groin');
   if (lower.match(/whole body|entire body|everywhere/)) detectedAreas.push('entire_body');
-  if (detectedAreas.length === 0) detectedAreas.push('palms');
+  if (detectedAreas.length === 0) {
+    console.log('[voice] No areas detected in transcript, defaulting to palms');
+    detectedAreas.push('palms');
+  }
 
   const triggers: string[] = [];
   if (/\b(hot|heat|warm)\b/.test(lower)) triggers.push('hot_temperature');
@@ -129,7 +138,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);          // entire session (appended)
+  const fullTranscriptRef = useRef<string>('');
   const segmentChunksRef = useRef<Blob[]>([]);   // current segment
   const silenceStartRef = useRef<number | null>(null);
   const segmentStartRef = useRef<number>(0);
@@ -167,7 +176,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
     cancelledRef.current = true;
     cleanupAudio();
     setVoiceStatus(null);
-    chunksRef.current = [];
+    fullTranscriptRef.current = '';
     segmentChunksRef.current = [];
     transcriptRef.current = '';
     setTranscript('');
@@ -316,7 +325,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
   const runFlow = useCallback(async () => {
     cancelledRef.current = false;
     finishedRef.current = false;
-    chunksRef.current = [];
+    fullTranscriptRef.current = '';
     transcriptRef.current = '';
     setTranscript('');
 
@@ -331,11 +340,21 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
     await playSound(SOUND.imListening);
     if (cancelledRef.current) return cleanupAudio();
 
-    // Loop: record → confirm → maybe go again
+    // Loop: record → transcribe → confirm → maybe go again
     while (!cancelledRef.current && !finishedRef.current) {
       setVoiceStatus('LISTENING');
       await recordSegmentUntilSilence();
       if (cancelledRef.current || finishedRef.current) break;
+
+      // Transcribe the segment immediately
+      const segmentBlob = new Blob(segmentChunksRef.current, { type: mimeTypeRef.current });
+      console.log('[voice] transcribing segment, size:', segmentBlob.size);
+      const segmentText = await transcribeBlob(segmentBlob);
+      if (segmentText) {
+        console.log('[voice] segment transcript:', segmentText);
+        fullTranscriptRef.current = (fullTranscriptRef.current + ' ' + segmentText).trim();
+        setTranscript(fullTranscriptRef.current);
+      }
 
       // Ask "Got it, anything else?"
       setVoiceStatus('CONFIRMING');
@@ -367,28 +386,26 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       confirmRecorder.ondataavailable = origHandler as any;
 
       if (cancelledRef.current) break;
-      if (finishedRef.current) {
-        // If they tapped during confirm, also treat as done
-        for (const c of confirmChunks) chunksRef.current.push(c);
-        break;
-      }
+      if (finishedRef.current) break;
 
       const confirmBlob = new Blob(confirmChunks, { type: mimeTypeRef.current });
       const confirmText = await transcribeBlob(confirmBlob);
       const lower = (confirmText || '').toLowerCase().trim();
       console.log('[voice] confirm transcript:', lower);
 
-      const isNegative = NEGATIVE_KEYWORDS.some((k) => lower.includes(k));
-      if (isNegative) {
-        // User has more — append this confirm audio to session too (in case they
-        // said something useful) and resume recording
-        for (const c of confirmChunks) chunksRef.current.push(c);
+      const isContinue = CONTINUE_KEYWORDS.some((k) => lower.includes(k));
+      const isFinish = FINISH_KEYWORDS.some((k) => lower.includes(k));
+
+      // User wants more (explicit YES or not a FINISH keyword)
+      if (isContinue || (lower.length > 0 && !isFinish)) {
+        console.log('[voice] continuing based on:', lower);
         await playSound(SOUND.goAhead);
         if (cancelledRef.current) return cleanupAudio();
         continue; // loop → record another segment
       }
 
-      // Treat as "yes / done" (also default if confirm was empty)
+      // Default to finish if they said "no" or nothing
+      console.log('[voice] finishing based on:', lower || 'timeout/silence');
       break;
     }
 
@@ -398,7 +415,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
     setVoiceStatus('SAVING');
     await playSound(SOUND.savingEpisode);
 
-    // Stop mic before transcription to save battery
+    // Stop mic before final processing
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
@@ -406,16 +423,8 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
 
     setVoiceStatus('REASONING');
 
-    // Combine entire session and transcribe in one shot for best accuracy
-    const finalBlob = new Blob(chunksRef.current, { type: mimeTypeRef.current });
-    let fullText = '';
-    try {
-      fullText = await transcribeBlob(finalBlob);
-    } catch (e) {
-      console.error('final transcribe failed', e);
-    }
-    transcriptRef.current = fullText;
-    setTranscript(fullText);
+    const fullText = fullTranscriptRef.current.trim();
+    console.log('[voice] final full text:', fullText);
 
     if (!fullText) {
       cleanupAudio();
@@ -434,16 +443,26 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
         body: { mode: 'extract', text: fullText },
       });
       const tags = data?.tags;
+      console.log('[voice] Gemini tags:', tags);
+
       if (tags?.body_areas?.length) bodyAreas = tags.body_areas as BodyArea[];
       if (tags?.triggers?.length) triggerValues = tags.triggers;
       if (tags?.severity) extractedSeverity = tags.severity;
     } catch (e) {
       console.warn('extract failed, falling back', e);
     }
+
+    // Always check for fallback if Gemini didn't return complete data
     if (bodyAreas.length === 0 || triggerValues.length === 0) {
       const fb = fallbackExtract(fullText);
-      if (bodyAreas.length === 0) bodyAreas = fb.bodyAreas;
-      if (triggerValues.length === 0) triggerValues = fb.triggers;
+      if (bodyAreas.length === 0) {
+        console.log('[voice] Body areas empty, using fallback:', fb.bodyAreas);
+        bodyAreas = fb.bodyAreas;
+      }
+      if (triggerValues.length === 0) {
+        console.log('[voice] Triggers empty, using fallback:', fb.triggers);
+        triggerValues = fb.triggers;
+      }
     }
 
     cleanupAudio();
@@ -451,7 +470,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
     onAnalysisComplete(
       Array.from(new Set(bodyAreas)),
       valuesToTriggers(triggerValues),
-      fullText.trim(),
+      fullText,
       extractedSeverity
     );
   }, [onAnalysisComplete]);
