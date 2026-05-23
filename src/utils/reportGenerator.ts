@@ -164,3 +164,14 @@ export const generateProfessionalWarriorReport = (data: ReportData) => {
   doc.save(fileName);
   return fileName;
 };
+
+export const canGenerateReport = (totalEpisodes: number) => {
+  const MIN_EPISODES = 5;
+  if (totalEpisodes < MIN_EPISODES) {
+    return {
+      allowed: false,
+      message: `I need a bit more data to create a clinical-grade report. Please log at least ${MIN_EPISODES} episodes (you've logged ${totalEpisodes}) so I can identify your patterns accurately. 💙`
+    };
+  }
+  return { allowed: true, message: '' };
+};
