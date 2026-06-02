@@ -83,7 +83,7 @@ class LoggingReminderService {
     await notificationManager.scheduleReminder(
       new Date(nextTime),
       '⏰ Time to Check In',
-      "Log your sweat level for the last six hours",
+      "It's time for your six-hour check-in 💧",
       '/log-episode'
     );
 
@@ -94,7 +94,7 @@ class LoggingReminderService {
         channel: 'reminder',
         kind: 'reminder',
         title: '⏰ Time to Check In',
-        body: "Log your sweat level for the last six hours",
+        body: "It's time for your six-hour check-in 💧",
         dedupKey: `log-reminder-${nextTime}`,
         url: '/log-episode',
       });
