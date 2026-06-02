@@ -427,7 +427,7 @@ serve(async (req) => {
             { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
             {
               title: '⏰ Time to Log Your Episode',
-              body: "It's time for your six-hour check-in",
+              body: "It's time for your six-hour check-in 💧",
               tag: 'logging-reminder',
               type: 'reminder',
               url: '/log-episode',
