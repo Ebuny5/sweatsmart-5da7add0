@@ -29,16 +29,17 @@ const FEMALE_VOICES: Record<AlertKind, string> = {
   moderate: '/sounds/voice-female-moderate.mp3',
   high: '/sounds/voice-female-high.mp3',
   extreme: '/sounds/voice-female-extreme.mp3',
-  reminder: '/sounds/6-hour-reminder.mp3',
-  checkin: '/sounds/6-hour-reminder.mp3',
+  reminder: '/sounds/voice-female-reminder.mp3',
+  checkin: '/sounds/voice-female-checkin.mp3',
 };
 
 // Male voices — we only have low/reminder/checkin uploaded today.
 // Missing entries fall back to the female file of the same kind.
+// Reminder and checkin use the female voice as it's the clinical standard.
 const MALE_VOICES: Partial<Record<AlertKind, string>> = {
   low: '/sounds/voice-male-low.mp3',
-  reminder: '/sounds/6-hour-reminder.mp3',
-  checkin: '/sounds/6-hour-reminder.mp3',
+  reminder: '/sounds/voice-female-reminder.mp3',
+  checkin: '/sounds/voice-female-checkin.mp3',
 };
 
 const GENDER_STORAGE_KEY = 'sweatsmart_voice_gender';
