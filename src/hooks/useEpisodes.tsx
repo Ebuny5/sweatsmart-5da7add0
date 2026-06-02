@@ -120,5 +120,31 @@ export const useEpisodes = () => {
     fetchEpisodes();
   }, [fetchEpisodes]);
 
-  return { episodes, loading, error, refetch: fetchEpisodes };
+  const deleteEpisode = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('episodes')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setEpisodes(prev => prev.filter(ep => ep.id !== id));
+      toast({
+        title: "Episode deleted",
+        description: "The episode has been successfully removed.",
+      });
+      return { error: null };
+    } catch (error) {
+      console.error('Error deleting episode:', error);
+      toast({
+        title: "Error deleting episode",
+        description: "Failed to delete the episode. Please try again.",
+        variant: "destructive",
+      });
+      return { error };
+    }
+  };
+
+  return { episodes, loading, error, refetch: fetchEpisodes, deleteEpisode };
 };
