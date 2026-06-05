@@ -415,15 +415,22 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       await recordSegmentUntilSilence();
       if (cancelledRef.current || finishedRef.current) break;
 
-      // Transcribe the segment immediately
-      const segmentBlob = new Blob(segmentChunksRef.current, { type: mimeTypeRef.current });
-      console.log('[voice] transcribing segment, size:', segmentBlob.size);
-      const segmentText = await transcribeBlob(segmentBlob);
+      // Prefer Web Speech API live transcript (instant, no network),
+      // fall back to AssemblyAI on the segment blob if SR returned nothing.
+      let segmentText = liveSegmentTextRef.current.trim();
       if (segmentText) {
-        console.log('[voice] segment transcript:', segmentText);
+        console.log('[voice] segment transcript (Web Speech):', segmentText);
+      } else {
+        const segmentBlob = new Blob(segmentChunksRef.current, { type: mimeTypeRef.current });
+        console.log('[voice] SR empty, transcribing segment via AssemblyAI, size:', segmentBlob.size);
+        segmentText = await transcribeBlob(segmentBlob);
+        if (segmentText) console.log('[voice] segment transcript (AssemblyAI):', segmentText);
+      }
+      if (segmentText) {
         fullTranscriptRef.current = (fullTranscriptRef.current + ' ' + segmentText).trim();
         setTranscript(fullTranscriptRef.current);
       }
+
 
       // Ask "Got it, anything else?"
       setVoiceStatus('CONFIRMING');
