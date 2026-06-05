@@ -428,15 +428,30 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
 
     setVoiceStatus('REASONING');
 
-    const fullText = fullTranscriptRef.current.trim();
-    console.log('[voice] final full text:', fullText);
+    let fullText = fullTranscriptRef.current.trim();
+    console.log('[voice] final full text (from segments):', fullText);
+
+    // Fallback: if per-segment transcription returned nothing, transcribe the
+    // entire session as one blob so we never lose the user's speech.
+    if (!fullText && allChunksRef.current.length > 0) {
+      try {
+        const fullBlob = new Blob(allChunksRef.current, { type: mimeTypeRef.current });
+        console.log('[voice] segment transcripts empty — falling back to full-session transcribe, size:', fullBlob.size);
+        fullText = (await transcribeBlob(fullBlob)).trim();
+        console.log('[voice] full-session transcript:', fullText);
+      } catch (e) {
+        console.error('[voice] full-session fallback transcribe failed', e);
+      }
+    }
 
     if (!fullText) {
+      console.warn('[voice] No transcript captured for this session.');
       cleanupAudio();
       setVoiceStatus(null);
       onAnalysisComplete([], [], '');
       return;
     }
+
 
     // LLM extract tags (with keyword fallback)
     let bodyAreas: BodyArea[] = [];
