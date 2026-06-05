@@ -214,9 +214,10 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       recorder.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) {
           segmentChunksRef.current.push(e.data);
-          chunksRef.current.push(e.data);
+          allChunksRef.current.push(e.data);
         }
       };
+
 
       const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
       const ctx: AudioContext = new Ctx();
