@@ -127,6 +127,13 @@ function valuesToTriggers(values: string[]): Trigger[] {
   }));
 }
 
+// ── Web Speech API helpers ─────────────────────────────────────────────────
+const getSpeechRecognitionCtor = (): any => {
+  if (typeof window === 'undefined') return null;
+  return (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition || null;
+};
+const hasWebSpeech = (): boolean => !!getSpeechRecognitionCtor();
+
 export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) => {
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>(null);
   const [voiceNotSupported, setVoiceNotSupported] = useState(!isVoiceSupported());
@@ -148,6 +155,11 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
   const finishedRef = useRef(false);
   const transcriptRef = useRef('');
   const mimeTypeRef = useRef<string>('audio/webm');
+
+  // Web Speech API refs (live transcription, runs alongside MediaRecorder)
+  const recognitionRef = useRef<any>(null);
+  const liveSegmentTextRef = useRef<string>('');
+
 
 
   const cleanupAudio = () => {
