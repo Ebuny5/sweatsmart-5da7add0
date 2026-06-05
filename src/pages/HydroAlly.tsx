@@ -825,7 +825,7 @@ const HyperAI = () => {
 
       y += 6;
       const primaryTrigger = dashboardAnalytics.topTriggers[0]?.name || 'various factors';
-      const triggerInterpret = `Clinical interpretation reveals that ${primaryTrigger} is the primary exacerbating factor, accounting for ${dashboardAnalytics.topTriggers[0]?.percentage || 0}% of reported episodes. This suggests a strong correlation between ${dashboardAnalytics.topTriggers[0]?.category || 'environmental/emotional'} stimuli and autonomic over-activity.`;
+      const triggerInterpret = `Clinical interpretation reveals that ${primaryTrigger} is the primary exacerbating factor, accounting for ${dashboardAnalytics.topTriggers[0]?.percentage || 0}% of reported episodes. This suggests a strong correlation between environmental/emotional stimuli and autonomic over-activity.`;
       const triggerLines = doc.splitTextToSize(triggerInterpret, contentWidth);
       doc.text(triggerLines, margin, y);
       y += (triggerLines.length * 5) + 10;

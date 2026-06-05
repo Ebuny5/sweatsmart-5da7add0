@@ -123,13 +123,13 @@ const LogEpisode = () => {
     if (finalBodyAreas.length === 0) {
       toast({ title: "Body areas required", description: "Please select at least one affected body area.", variant: "destructive" });
 
-      // If this was an auto-save attempt, give voice feedback
+      // Silently log auto-save attempts (no spoken voice fallback per product decision)
       if (manualNotes !== undefined) {
-        const utterance = new SpeechSynthesisUtterance("I couldn't identify the affected body area. Please select it manually or try describing it again.");
-        window.speechSynthesis.speak(utterance);
+        console.warn('[voice] auto-save attempted with no body areas detected. Transcript:', manualNotes);
       }
       return;
     }
+
 
     setIsSubmitting(true);
 

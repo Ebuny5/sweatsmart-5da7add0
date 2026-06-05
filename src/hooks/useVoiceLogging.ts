@@ -140,6 +140,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
   const recorderRef = useRef<MediaRecorder | null>(null);
   const fullTranscriptRef = useRef<string>('');
   const segmentChunksRef = useRef<Blob[]>([]);   // current segment
+  const allChunksRef = useRef<Blob[]>([]);       // every chunk across the whole session (fallback)
   const silenceStartRef = useRef<number | null>(null);
   const segmentStartRef = useRef<number>(0);
   const rafRef = useRef<number | any>(null);
@@ -147,6 +148,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
   const finishedRef = useRef(false);
   const transcriptRef = useRef('');
   const mimeTypeRef = useRef<string>('audio/webm');
+
 
   const cleanupAudio = () => {
     if (rafRef.current) {
@@ -212,9 +214,10 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       recorder.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) {
           segmentChunksRef.current.push(e.data);
-          chunksRef.current.push(e.data);
+          allChunksRef.current.push(e.data);
         }
       };
+
 
       const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
       const ctx: AudioContext = new Ctx();
@@ -327,6 +330,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
     finishedRef.current = false;
     fullTranscriptRef.current = '';
     transcriptRef.current = '';
+    allChunksRef.current = [];
     setTranscript('');
 
     const ok = await openMic();
@@ -334,6 +338,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       setVoiceStatus(null);
       return;
     }
+
 
     // Step A: announce "I'm listening"
     setVoiceStatus('LISTENING');
@@ -423,15 +428,30 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
 
     setVoiceStatus('REASONING');
 
-    const fullText = fullTranscriptRef.current.trim();
-    console.log('[voice] final full text:', fullText);
+    let fullText = fullTranscriptRef.current.trim();
+    console.log('[voice] final full text (from segments):', fullText);
+
+    // Fallback: if per-segment transcription returned nothing, transcribe the
+    // entire session as one blob so we never lose the user's speech.
+    if (!fullText && allChunksRef.current.length > 0) {
+      try {
+        const fullBlob = new Blob(allChunksRef.current, { type: mimeTypeRef.current });
+        console.log('[voice] segment transcripts empty — falling back to full-session transcribe, size:', fullBlob.size);
+        fullText = (await transcribeBlob(fullBlob)).trim();
+        console.log('[voice] full-session transcript:', fullText);
+      } catch (e) {
+        console.error('[voice] full-session fallback transcribe failed', e);
+      }
+    }
 
     if (!fullText) {
+      console.warn('[voice] No transcript captured for this session.');
       cleanupAudio();
       setVoiceStatus(null);
       onAnalysisComplete([], [], '');
       return;
     }
+
 
     // LLM extract tags (with keyword fallback)
     let bodyAreas: BodyArea[] = [];
