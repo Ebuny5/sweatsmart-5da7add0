@@ -314,6 +314,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       const buf = new Float32Array(analyser.fftSize);
 
       const stopAndResolve = () => {
+        stopRecognition();
         if (recorder.state !== 'inactive') {
           recorder.onstop = () => resolve();
           try { recorder.stop(); } catch { resolve(); }
@@ -329,6 +330,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
         }
         rafRef.current = null;
       };
+
 
       const tick = () => {
         if (cancelledRef.current || finishedRef.current) {
