@@ -140,6 +140,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
   const recorderRef = useRef<MediaRecorder | null>(null);
   const fullTranscriptRef = useRef<string>('');
   const segmentChunksRef = useRef<Blob[]>([]);   // current segment
+  const allChunksRef = useRef<Blob[]>([]);       // every chunk across the whole session (fallback)
   const silenceStartRef = useRef<number | null>(null);
   const segmentStartRef = useRef<number>(0);
   const rafRef = useRef<number | any>(null);
@@ -147,6 +148,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
   const finishedRef = useRef(false);
   const transcriptRef = useRef('');
   const mimeTypeRef = useRef<string>('audio/webm');
+
 
   const cleanupAudio = () => {
     if (rafRef.current) {
