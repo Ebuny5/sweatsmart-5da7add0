@@ -330,6 +330,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
     finishedRef.current = false;
     fullTranscriptRef.current = '';
     transcriptRef.current = '';
+    allChunksRef.current = [];
     setTranscript('');
 
     const ok = await openMic();
@@ -337,6 +338,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       setVoiceStatus(null);
       return;
     }
+
 
     // Step A: announce "I'm listening"
     setVoiceStatus('LISTENING');
