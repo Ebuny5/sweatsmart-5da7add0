@@ -162,7 +162,52 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
 
 
 
+  // ── Web Speech API segment helpers ────────────────────────────────────────
+  const stopRecognition = () => {
+    const rec = recognitionRef.current;
+    if (!rec) return;
+    try { rec.onresult = null; rec.onerror = null; rec.onend = null; } catch {}
+    try { rec.stop(); } catch {}
+    try { rec.abort(); } catch {}
+    recognitionRef.current = null;
+  };
+
+  const startRecognitionForSegment = () => {
+    const Ctor = getSpeechRecognitionCtor();
+    if (!Ctor) return;
+    stopRecognition();
+    liveSegmentTextRef.current = '';
+    try {
+      const rec = new Ctor();
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.lang = 'en-US';
+      rec.onresult = (event: any) => {
+        let finalText = '';
+        let interim = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const r = event.results[i];
+          if (r.isFinal) finalText += r[0].transcript + ' ';
+          else interim += r[0].transcript + ' ';
+        }
+        if (finalText) {
+          liveSegmentTextRef.current = (liveSegmentTextRef.current + ' ' + finalText).trim();
+        }
+        // Surface live preview (final + interim) for the UI
+        const preview = (fullTranscriptRef.current + ' ' + liveSegmentTextRef.current + ' ' + interim).trim();
+        setTranscript(preview);
+      };
+      rec.onerror = (e: any) => console.warn('[voice] SR error', e?.error || e);
+      rec.onend = () => { /* segment loop will restart if needed */ };
+      rec.start();
+      recognitionRef.current = rec;
+    } catch (e) {
+      console.warn('[voice] SR start failed', e);
+    }
+  };
+
   const cleanupAudio = () => {
+    stopRecognition();
     if (rafRef.current) {
       if (typeof rafRef.current === 'number') {
         cancelAnimationFrame(rafRef.current);
@@ -196,6 +241,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
     setTranscript('');
     setVolume(0);
   }, []);
+
 
   const finishSession = useCallback(() => {
     finishedRef.current = true;
