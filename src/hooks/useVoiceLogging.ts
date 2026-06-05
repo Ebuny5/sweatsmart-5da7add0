@@ -127,6 +127,13 @@ function valuesToTriggers(values: string[]): Trigger[] {
   }));
 }
 
+// ── Web Speech API helpers ─────────────────────────────────────────────────
+const getSpeechRecognitionCtor = (): any => {
+  if (typeof window === 'undefined') return null;
+  return (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition || null;
+};
+const hasWebSpeech = (): boolean => !!getSpeechRecognitionCtor();
+
 export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) => {
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>(null);
   const [voiceNotSupported, setVoiceNotSupported] = useState(!isVoiceSupported());
@@ -149,8 +156,58 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
   const transcriptRef = useRef('');
   const mimeTypeRef = useRef<string>('audio/webm');
 
+  // Web Speech API refs (live transcription, runs alongside MediaRecorder)
+  const recognitionRef = useRef<any>(null);
+  const liveSegmentTextRef = useRef<string>('');
+
+
+
+  // ── Web Speech API segment helpers ────────────────────────────────────────
+  const stopRecognition = () => {
+    const rec = recognitionRef.current;
+    if (!rec) return;
+    try { rec.onresult = null; rec.onerror = null; rec.onend = null; } catch {}
+    try { rec.stop(); } catch {}
+    try { rec.abort(); } catch {}
+    recognitionRef.current = null;
+  };
+
+  const startRecognitionForSegment = () => {
+    const Ctor = getSpeechRecognitionCtor();
+    if (!Ctor) return;
+    stopRecognition();
+    liveSegmentTextRef.current = '';
+    try {
+      const rec = new Ctor();
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.lang = 'en-US';
+      rec.onresult = (event: any) => {
+        let finalText = '';
+        let interim = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const r = event.results[i];
+          if (r.isFinal) finalText += r[0].transcript + ' ';
+          else interim += r[0].transcript + ' ';
+        }
+        if (finalText) {
+          liveSegmentTextRef.current = (liveSegmentTextRef.current + ' ' + finalText).trim();
+        }
+        // Surface live preview (final + interim) for the UI
+        const preview = (fullTranscriptRef.current + ' ' + liveSegmentTextRef.current + ' ' + interim).trim();
+        setTranscript(preview);
+      };
+      rec.onerror = (e: any) => console.warn('[voice] SR error', e?.error || e);
+      rec.onend = () => { /* segment loop will restart if needed */ };
+      rec.start();
+      recognitionRef.current = rec;
+    } catch (e) {
+      console.warn('[voice] SR start failed', e);
+    }
+  };
 
   const cleanupAudio = () => {
+    stopRecognition();
     if (rafRef.current) {
       if (typeof rafRef.current === 'number') {
         cancelAnimationFrame(rafRef.current);
@@ -184,6 +241,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
     setTranscript('');
     setVolume(0);
   }, []);
+
 
   const finishSession = useCallback(() => {
     finishedRef.current = true;
@@ -256,6 +314,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       const buf = new Float32Array(analyser.fftSize);
 
       const stopAndResolve = () => {
+        stopRecognition();
         if (recorder.state !== 'inactive') {
           recorder.onstop = () => resolve();
           try { recorder.stop(); } catch { resolve(); }
@@ -271,6 +330,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
         }
         rafRef.current = null;
       };
+
 
       const tick = () => {
         if (cancelledRef.current || finishedRef.current) {
@@ -302,12 +362,16 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
 
       try {
         recorder.start(250); // 250ms chunks
+        // Start Web Speech recognition AFTER prompt audio has finished,
+        // so the MP3 playback isn't picked up as user speech.
+        startRecognitionForSegment();
       } catch (e) {
         console.warn('recorder.start failed', e);
         return resolve();
       }
       rafRef.current = setTimeout(tick, 100);
     });
+
 
   // ── Transcribe a blob via edge function ───────────────────────────────────
   const transcribeBlob = async (blob: Blob): Promise<string> => {
@@ -351,15 +415,22 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       await recordSegmentUntilSilence();
       if (cancelledRef.current || finishedRef.current) break;
 
-      // Transcribe the segment immediately
-      const segmentBlob = new Blob(segmentChunksRef.current, { type: mimeTypeRef.current });
-      console.log('[voice] transcribing segment, size:', segmentBlob.size);
-      const segmentText = await transcribeBlob(segmentBlob);
+      // Prefer Web Speech API live transcript (instant, no network),
+      // fall back to AssemblyAI on the segment blob if SR returned nothing.
+      let segmentText = liveSegmentTextRef.current.trim();
       if (segmentText) {
-        console.log('[voice] segment transcript:', segmentText);
+        console.log('[voice] segment transcript (Web Speech):', segmentText);
+      } else {
+        const segmentBlob = new Blob(segmentChunksRef.current, { type: mimeTypeRef.current });
+        console.log('[voice] SR empty, transcribing segment via AssemblyAI, size:', segmentBlob.size);
+        segmentText = await transcribeBlob(segmentBlob);
+        if (segmentText) console.log('[voice] segment transcript (AssemblyAI):', segmentText);
+      }
+      if (segmentText) {
         fullTranscriptRef.current = (fullTranscriptRef.current + ' ' + segmentText).trim();
         setTranscript(fullTranscriptRef.current);
       }
+
 
       // Ask "Got it, anything else?"
       setVoiceStatus('CONFIRMING');
@@ -375,6 +446,8 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
         if (e.data && e.data.size > 0) confirmChunks.push(e.data);
       };
       try { confirmRecorder.start(250); } catch {}
+      // Start Web Speech for confirm window too — instant yes/no detection
+      startRecognitionForSegment();
 
       // Wait for confirm or manual stop
       const waitStart = Date.now();
@@ -382,6 +455,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
         await new Promise(r => setTimeout(r, 200));
       }
 
+      stopRecognition();
       await new Promise<void>((r) => {
         if (confirmRecorder.state === 'inactive') return r();
         confirmRecorder.onstop = () => r();
@@ -393,8 +467,12 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       if (cancelledRef.current) break;
       if (finishedRef.current) break;
 
-      const confirmBlob = new Blob(confirmChunks, { type: mimeTypeRef.current });
-      const confirmText = await transcribeBlob(confirmBlob);
+      // Prefer Web Speech confirm text; fall back to AssemblyAI on the blob
+      let confirmText = liveSegmentTextRef.current.trim();
+      if (!confirmText) {
+        const confirmBlob = new Blob(confirmChunks, { type: mimeTypeRef.current });
+        confirmText = await transcribeBlob(confirmBlob);
+      }
       const lower = (confirmText || '').toLowerCase().trim();
       console.log('[voice] confirm transcript:', lower);
 
@@ -404,6 +482,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       // User wants more (explicit YES or not a FINISH keyword)
       if (isContinue || (lower.length > 0 && !isFinish)) {
         console.log('[voice] continuing based on:', lower);
+
         await playSound(SOUND.goAhead);
         if (cancelledRef.current) return cleanupAudio();
         continue; // loop → record another segment
