@@ -362,12 +362,16 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
 
       try {
         recorder.start(250); // 250ms chunks
+        // Start Web Speech recognition AFTER prompt audio has finished,
+        // so the MP3 playback isn't picked up as user speech.
+        startRecognitionForSegment();
       } catch (e) {
         console.warn('recorder.start failed', e);
         return resolve();
       }
       rafRef.current = setTimeout(tick, 100);
     });
+
 
   // ── Transcribe a blob via edge function ───────────────────────────────────
   const transcribeBlob = async (blob: Blob): Promise<string> => {
