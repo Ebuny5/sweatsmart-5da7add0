@@ -446,6 +446,8 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
         if (e.data && e.data.size > 0) confirmChunks.push(e.data);
       };
       try { confirmRecorder.start(250); } catch {}
+      // Start Web Speech for confirm window too — instant yes/no detection
+      startRecognitionForSegment();
 
       // Wait for confirm or manual stop
       const waitStart = Date.now();
@@ -453,6 +455,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
         await new Promise(r => setTimeout(r, 200));
       }
 
+      stopRecognition();
       await new Promise<void>((r) => {
         if (confirmRecorder.state === 'inactive') return r();
         confirmRecorder.onstop = () => r();
@@ -464,8 +467,12 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       if (cancelledRef.current) break;
       if (finishedRef.current) break;
 
-      const confirmBlob = new Blob(confirmChunks, { type: mimeTypeRef.current });
-      const confirmText = await transcribeBlob(confirmBlob);
+      // Prefer Web Speech confirm text; fall back to AssemblyAI on the blob
+      let confirmText = liveSegmentTextRef.current.trim();
+      if (!confirmText) {
+        const confirmBlob = new Blob(confirmChunks, { type: mimeTypeRef.current });
+        confirmText = await transcribeBlob(confirmBlob);
+      }
       const lower = (confirmText || '').toLowerCase().trim();
       console.log('[voice] confirm transcript:', lower);
 
@@ -475,6 +482,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       // User wants more (explicit YES or not a FINISH keyword)
       if (isContinue || (lower.length > 0 && !isFinish)) {
         console.log('[voice] continuing based on:', lower);
+
         await playSound(SOUND.goAhead);
         if (cancelledRef.current) return cleanupAudio();
         continue; // loop → record another segment
