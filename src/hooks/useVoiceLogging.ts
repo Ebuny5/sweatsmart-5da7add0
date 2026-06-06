@@ -95,10 +95,6 @@ function fallbackExtract(text: string): { bodyAreas: BodyArea[]; triggers: strin
   if (lower.match(/\b(back)\b/)) detectedAreas.push('back');
   if (lower.match(/\b(groin)\b/)) detectedAreas.push('groin');
   if (lower.match(/whole body|entire body|everywhere/)) detectedAreas.push('entire_body');
-  if (detectedAreas.length === 0) {
-    console.log('[voice] No areas detected in transcript, defaulting to palms');
-    detectedAreas.push('palms');
-  }
 
   const triggers: string[] = [];
   if (/\b(hot|heat|warm)\b/.test(lower)) triggers.push('hot_temperature');
@@ -115,14 +111,57 @@ function fallbackExtract(text: string): { bodyAreas: BodyArea[]; triggers: strin
   return { bodyAreas: Array.from(new Set(detectedAreas)), triggers: Array.from(new Set(triggers)) };
 }
 
+const TRIGGER_CATEGORY_BY_VALUE: Record<string, Trigger['type']> = {
+  hot_temperature: 'environmental',
+  high_humidity: 'environmental',
+  crowded_spaces: 'environmental',
+  bright_lights: 'environmental',
+  loud_noises: 'environmental',
+  transitional_temperature: 'environmental',
+  synthetic_fabrics: 'environmental',
+  outdoor_sun_exposure: 'environmental',
+  stress: 'emotional',
+  anxiety: 'emotional',
+  anticipatory_sweating: 'emotional',
+  embarrassment: 'emotional',
+  excitement: 'emotional',
+  anger: 'emotional',
+  nervousness: 'emotional',
+  public_speaking: 'situational',
+  social_interaction: 'situational',
+  work_pressure: 'situational',
+  exam_test_situation: 'situational',
+  spicy_food: 'dietary',
+  caffeine: 'dietary',
+  alcohol: 'dietary',
+  hot_drinks: 'dietary',
+  heavy_meals: 'dietary',
+  gustatory_sweating: 'dietary',
+  energy_drinks: 'dietary',
+  physical_exercise: 'physical',
+  night_sweats: 'physical',
+  poor_sleep: 'physical',
+  hormonal_changes: 'physical',
+  illness_fever: 'physical',
+  hypoglycemia: 'physical',
+  certain_clothing: 'environmental',
+  ssris_antidepressants: 'medical',
+  opioids_pain_medication: 'medical',
+  nsaids: 'medical',
+  blood_pressure_medication: 'medical',
+  insulin_diabetes_medication: 'medical',
+  supplements_herbal: 'medical',
+  new_medication: 'medical',
+};
+
 function valuesToTriggers(values: string[]): Trigger[] {
   return values.map((t) => ({
     id: `${Date.now()}-${t}`,
     name: t.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
     label: t.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
     value: t,
-    type: 'environmental',
-    category: 'environmental',
+    type: TRIGGER_CATEGORY_BY_VALUE[t] || 'environmental',
+    category: TRIGGER_CATEGORY_BY_VALUE[t] || 'environmental',
     icon: 'zap',
   }));
 }
@@ -527,7 +566,6 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       console.warn('[voice] No transcript captured for this session.');
       cleanupAudio();
       setVoiceStatus(null);
-      onAnalysisComplete([], [], '');
       return;
     }
 
