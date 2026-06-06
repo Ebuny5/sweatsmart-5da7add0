@@ -506,11 +506,11 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       if (cancelledRef.current) break;
       if (finishedRef.current) break;
 
-      // Prefer Web Speech confirm text; fall back to AssemblyAI on the blob
-      let confirmText = liveSegmentTextRef.current.trim();
-      if (!confirmText) {
-        const confirmBlob = new Blob(confirmChunks, { type: mimeTypeRef.current });
-        confirmText = await transcribeBlob(confirmBlob);
+      // PRIMARY: AssemblyAI on the confirm blob; Web Speech only as fallback.
+      const confirmBlob = new Blob(confirmChunks, { type: mimeTypeRef.current });
+      let confirmText = await transcribeBlob(confirmBlob);
+      if (!confirmText && liveSegmentTextRef.current.trim()) {
+        confirmText = liveSegmentTextRef.current.trim();
       }
       const lower = (confirmText || '').toLowerCase().trim();
       console.log('[voice] confirm transcript:', lower);
