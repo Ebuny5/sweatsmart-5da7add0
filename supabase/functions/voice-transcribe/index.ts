@@ -12,9 +12,9 @@ const corsHeaders = {
 
 const ASSEMBLYAI_KEY = Deno.env.get('ASSEMBLYAI_API_KEY');
 const GEMINI_KEY =
-  Deno.env.get('GOOGLE_AI_STUDIO_API_KEY_WEB') ||
   Deno.env.get('GOOGLE_AI_STUDIO_API_KEY') ||
-  Deno.env.get('GOOGLE_AI_STUDIO_API_KEY_ANDROID');
+  Deno.env.get('GOOGLE_AI_STUDIO_API_KEY_ANDROID') ||
+  Deno.env.get('GOOGLE_AI_STUDIO_API_KEY_WEB');
 
 const VALID_BODY_AREAS = new Set([
   'palms', 'hands', 'fingers', 'soles', 'feet', 'toes', 'feet_soles',
