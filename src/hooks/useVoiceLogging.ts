@@ -566,7 +566,6 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       console.warn('[voice] No transcript captured for this session.');
       cleanupAudio();
       setVoiceStatus(null);
-      onAnalysisComplete([], [], '');
       return;
     }
 
