@@ -121,13 +121,12 @@ const LogEpisode = () => {
       return;
     }
     if (finalBodyAreas.length === 0) {
-      toast({ title: "Body areas required", description: "Please select at least one affected body area.", variant: "destructive" });
-
-      // Silently log auto-save attempts (no spoken voice fallback per product decision)
-      if (manualNotes !== undefined) {
-        console.warn('[voice] auto-save attempted with no body areas detected. Transcript:', manualNotes);
+      if (manualNotes === undefined) {
+        toast({ title: "Body areas required", description: "Please select at least one affected body area.", variant: "destructive" });
+        return;
       }
-      return;
+
+      console.warn('[voice] saving transcript-only episode with no body areas detected. Transcript:', manualNotes);
     }
 
 
