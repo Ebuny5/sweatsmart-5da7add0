@@ -168,17 +168,19 @@ async function transcribeWithAssemblyAI(audioBytes: Uint8Array): Promise<string>
 }
 
 async function extractTagsWithGemini(text: string): Promise<any> {
-  if (!GEMINI_KEY) return null;
+  const fallback = deterministicExtract(text);
+  if (!GEMINI_KEY) return { ...fallback, source: 'deterministic' };
   const prompt = `You are extracting structured data from a hyperhidrosis (excessive sweating) episode description.
 Return ONLY valid JSON, no prose, with this exact shape:
 {
-  "body_areas": string[],   // values from: palms, fingers, soles, feet, toes, feet_soles, face, scalp, face_scalp, underarms, chest, back, trunk, groin, entire_body
+  "body_areas": string[],   // values from: palms, hands, fingers, soles, feet, toes, feet_soles, face, scalp, face_scalp, underarms, chest, back, trunk, groin, entire_body
   "triggers": string[],     // values from: hot_temperature, high_humidity, crowded_spaces, bright_lights, loud_noises, transitional_temperature, synthetic_fabrics, outdoor_sun_exposure, stress, anxiety, anticipatory_sweating, embarrassment, excitement, anger, nervousness, public_speaking, social_interaction, work_pressure, exam_test_situation, spicy_food, caffeine, alcohol, hot_drinks, heavy_meals, gustatory_sweating, physical_exercise, night_sweats, poor_sleep, hormonal_changes, illness_fever, hypoglycemia, certain_clothing, ssris_antidepressants, opioids_pain_medication, nsaids, blood_pressure_medication, insulin_diabetes_medication, supplements_herbal, new_medication
   "severity": number        // 1 (mild) to 5 (extreme), inferred from intensity words. Default to 3 if unclear.
 }
 
 Guidelines:
-- body_areas: map common terms like "hands" to "palms", "feet" to "soles" or "feet_soles".
+- body_areas: map common terms directly when possible: "hands" to "hands", "palm/palms" to "palms", "feet" to "feet", "soles" to "soles".
+- If the affected area is unclear, infer the most likely area from the episode text; only return an empty array if there is truly no body-location clue.
 - triggers: map activities like "gym" to "physical_exercise", "work" to "work_pressure", "hot" to "hot_temperature".
 - severity: 1=barely noticeable, 2=mild, 3=moderate, 4=severe, 5=extreme.
 
@@ -197,14 +199,24 @@ Episode description: """${text}"""`;
   );
   if (!res.ok) {
     console.warn('Gemini extract failed', res.status, await res.text());
-    return null;
+    return { ...fallback, source: 'deterministic_after_gemini_http_error' };
   }
   const data = await res.json();
   const txt = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
   try {
-    return JSON.parse(txt);
+    const parsed = JSON.parse(txt);
+    const bodyAreas = uniqueValid(parsed?.body_areas, VALID_BODY_AREAS);
+    const triggers = uniqueValid(parsed?.triggers, VALID_TRIGGERS);
+    return {
+      body_areas: bodyAreas.length ? bodyAreas : fallback.body_areas,
+      triggers: triggers.length ? triggers : fallback.triggers,
+      severity: Number.isFinite(Number(parsed?.severity))
+        ? Math.min(5, Math.max(1, Math.round(Number(parsed.severity))))
+        : fallback.severity,
+      source: 'gemini_with_deterministic_fallback',
+    };
   } catch {
-    return null;
+    return { ...fallback, source: 'deterministic_after_gemini_parse_error' };
   }
 }
 
