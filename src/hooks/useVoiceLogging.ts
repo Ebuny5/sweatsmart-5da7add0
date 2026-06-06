@@ -570,36 +570,36 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
     }
 
 
-    // LLM extract tags (with keyword fallback)
+    // Extract tags using the high-intelligence edge engine
     let bodyAreas: BodyArea[] = [];
     let triggerValues: string[] = [];
     let extractedSeverity: number | undefined = undefined;
 
     try {
-      const { data } = await supabase.functions.invoke('voice-transcribe', {
+      const { data, error } = await supabase.functions.invoke('voice-transcribe', {
         body: { mode: 'extract', text: fullText },
       });
+
+      if (error) throw error;
+
       const tags = data?.tags;
-      console.log('[voice] Gemini tags:', tags);
+      console.log('[voice] Edge Engine tags:', tags);
 
       if (tags?.body_areas?.length) bodyAreas = tags.body_areas as BodyArea[];
       if (tags?.triggers?.length) triggerValues = tags.triggers;
       if (tags?.severity) extractedSeverity = tags.severity;
     } catch (e) {
-      console.warn('extract failed, falling back', e);
+      console.warn('[voice] Edge extraction failed, using frontend fallback', e);
+      const fb = fallbackExtract(fullText);
+      bodyAreas = fb.bodyAreas;
+      triggerValues = fb.triggers;
     }
 
-    // Always check for fallback if Gemini didn't return complete data
-    if (bodyAreas.length === 0 || triggerValues.length === 0) {
-      const fb = fallbackExtract(fullText);
-      if (bodyAreas.length === 0) {
-        console.log('[voice] Body areas empty, using fallback:', fb.bodyAreas);
-        bodyAreas = fb.bodyAreas;
-      }
-      if (triggerValues.length === 0) {
-        console.log('[voice] Triggers empty, using fallback:', fb.triggers);
-        triggerValues = fb.triggers;
-      }
+    // FINAL GUARD: Ensure body areas are NEVER empty to prevent database/validation errors.
+    // Default to palms/face/feet for vague hyperhidrosis logs as requested.
+    if (bodyAreas.length === 0) {
+      console.log('[voice] No areas detected, defaulting to palms, face, feet');
+      bodyAreas = ['palms', 'face', 'feet'];
     }
 
     cleanupAudio();
