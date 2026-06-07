@@ -233,7 +233,7 @@ const ClimateNotificationSidebar: React.FC<ClimateNotificationSidebarProps> = ({
     updateNextLogTime();
     const interval = setInterval(() => {
       if (nextLogTime && Date.now() >= nextLogTime && arePermissionsGranted) {
-        sendNotification('Time to Log', "It's time for your six-hour check-in 💧");
+        sendNotification('⏰ Time for Your Six-Hour Check-In', "It's time for your six-hour check-in 💧");
         setIsLoggingModalOpen(true);
         updateNextLogTime();
       }
