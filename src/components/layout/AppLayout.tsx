@@ -47,7 +47,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, isAuthenticated }) => {
           </main>
         </div>
         {authenticated && isMobile && <MobileBottomNav />}
-        {authenticated && <NotificationPermissionModal />}
+        {/* NotificationPermissionModal moved to App.tsx for global early prompt */}
       </div>
     </SidebarProvider>
   );
