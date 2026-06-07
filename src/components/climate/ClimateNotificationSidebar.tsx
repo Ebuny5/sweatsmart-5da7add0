@@ -11,6 +11,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { audioAlertPlayer } from '@/utils/audioAlertPlayer';
 // ✅ Use the shared LoggingSystem — no duplicate LoggingModal here
 import { LoggingSystem } from './LoggingSystem';
 
@@ -175,16 +176,7 @@ const ClimateNotificationSidebar: React.FC<ClimateNotificationSidebarProps> = ({
   }, []);
 
   const playNotificationSound = useCallback(() => {
-    try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.type = 'sine'; osc.frequency.setValueAtTime(880, ctx.currentTime);
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-      osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.5);
-    } catch (e) { console.warn('Audio unavailable:', e); }
+    audioAlertPlayer.playAlert('reminder').catch((e) => console.warn('Audio unavailable:', e));
   }, []);
 
   const sendNotification = useCallback(async (title: string, body: string) => {

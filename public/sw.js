@@ -16,9 +16,8 @@ function normalizeReminderPayload(payload = {}) {
   const isLogReminder =
     tag.includes('logging-reminder') ||
     type === 'reminder' ||
-    title.toLowerCase().includes('time to log') ||
-    body.toLowerCase().includes('last 4 hours') ||
-    body.toLowerCase().includes('last four hours');
+    /time\s+to\s+log/i.test(title) ||
+    /last\s+(?:4|f(?:ou)?r)\s+hours/i.test(body);
 
   if (!isLogReminder) return payload;
 
@@ -81,14 +80,14 @@ self.addEventListener('message', async (event) => {
   }
 
   if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
-    const { title, options } = event.data;
-    await self.registration.showNotification(title, {
+    const payload = normalizeReminderPayload({ title: event.data.title, ...(event.data.options || {}) });
+    await self.registration.showNotification(payload.title, {
       icon: '/favicon.ico',
       badge: '/favicon.ico',
-      ...options,
+      ...payload,
       // ANDROID FIX: Always mark as user visible
       silent: false,
-      requireInteraction: options?.requireInteraction !== false,
+      requireInteraction: payload?.requireInteraction !== false,
     });
   }
 });

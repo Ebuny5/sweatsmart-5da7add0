@@ -20,9 +20,8 @@ function normalizeReminderNotification(notification: any) {
   const isLogReminder =
     tag.includes('logging-reminder') ||
     type === 'reminder' ||
-    title.toLowerCase().includes('time to log') ||
-    body.toLowerCase().includes('last 4 hours') ||
-    body.toLowerCase().includes('last four hours');
+    /time\s+to\s+log/i.test(title) ||
+    /last\s+(?:4|f(?:ou)?r)\s+hours/i.test(body);
 
   if (!isLogReminder) return notification;
 
