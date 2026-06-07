@@ -1,0 +1,80 @@
+{
+  "name": "SweatSmart",
+  "short_name": "SweatSmart",
+  "id": "com.giftovate.sweatsmart",
+  "description": "Turning sweat into strength: AI-powered ecosystem to restore dignity to Hyperhidrosis Warriors.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "/auth",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#6f42c1",
+  "categories": ["medical", "health", "lifestyle"],
+  "screenshots": [
+    {
+      "src": "/192 logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ],
+  "icons": [
+    {
+      "src": "/192 logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/192 logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/512 logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/512 logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Log Episode",
+      "short_name": "Log",
+      "url": "/log",
+      "description": "Log a new sweating episode",
+      "icons": [{ "src": "/192 logo.png", "sizes": "192x192", "purpose": "any" }]
+    },
+    {
+      "name": "HydroAlly Chat",
+      "short_name": "HydroAlly",
+      "url": "/hyper-ai",
+      "description": "Chat with your clinical companion",
+      "icons": [{ "src": "/192 logo.png", "sizes": "192x192", "purpose": "any" }]
+    }
+  ],
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "age_rating": "3+",
+  "iarc_rating_id": "false",
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
+  "protocol_handlers": [],
+  "note": "Android Notification Fix: Added scope, proper service worker path, and screenshot. Manifest now tells Android to expect notifications."
+}
