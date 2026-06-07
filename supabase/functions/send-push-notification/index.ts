@@ -6,6 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
 };
 
+const LOG_REMINDER_TITLE = '⏰ Time for Your Six-Hour Check-In';
+const LOG_REMINDER_BODY = "It's time for your six-hour check-in 💧";
+
 const MIN_CRON_SECRET_LENGTH = 32;
 
 // ── Base64url helpers ──
@@ -426,10 +429,11 @@ serve(async (req) => {
           const result = await sendWebPush(
             { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
             {
-              title: '⏰ Time to Log Your Episode',
-              body: "It's time for your six-hour check-in 💧",
+              title: LOG_REMINDER_TITLE,
+              body: LOG_REMINDER_BODY,
               tag: 'logging-reminder',
               type: 'reminder',
+              kind: 'reminder',
               url: '/log-episode',
             },
             vapidPublicKey, vapidPrivateKey, vapidSubject
