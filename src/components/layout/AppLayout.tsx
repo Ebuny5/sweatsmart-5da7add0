@@ -5,7 +5,6 @@ import Sidebar from "./Sidebar";
 import MobileBottomNav from "./MobileBottomNav";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { NotificationPermissionModal } from "@/components/climate/NotificationPermissionModal";
 
 interface AppLayoutProps {
   children: React.ReactNode;
