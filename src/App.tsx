@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import NotificationListener from "@/components/notifications/NotificationListener";
+import { NotificationPermissionModal } from "@/components/climate/NotificationPermissionModal";
 import Index from "./pages/Index";
 import NewIndex from "./pages/NewIndex";
 import Login from "./pages/Login";
@@ -219,6 +220,7 @@ const App = () => {
         <AuthProvider>
           <TooltipProvider>
             <NotificationListener />
+            <NotificationPermissionModal />
             <Toaster />
             <Sonner />
             <BrowserRouter>
