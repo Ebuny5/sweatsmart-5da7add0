@@ -6,7 +6,35 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
 };
 
+const LOG_REMINDER_TITLE = '⏰ Time for Your Six-Hour Check-In';
+const LOG_REMINDER_BODY = "It's time for your six-hour check-in 💧";
+
 const MIN_CRON_SECRET_LENGTH = 32;
+
+function normalizeReminderNotification(notification: any) {
+  if (!notification) return notification;
+  const title = String(notification.title || '');
+  const body = String(notification.body || '');
+  const tag = String(notification.tag || '');
+  const type = String(notification.type || notification.kind || '');
+  const isLogReminder =
+    tag.includes('logging-reminder') ||
+    type === 'reminder' ||
+    /time\s+to\s+log/i.test(title) ||
+    /last\s+(?:4|f(?:ou)?r)\s+hours/i.test(body);
+
+  if (!isLogReminder) return notification;
+
+  return {
+    ...notification,
+    title: LOG_REMINDER_TITLE,
+    body: LOG_REMINDER_BODY,
+    tag: 'logging-reminder',
+    type: 'reminder',
+    kind: 'reminder',
+    url: notification.url || '/log-episode',
+  };
+}
 
 // ── Base64url helpers ──
 function base64UrlToUint8Array(base64String: string): Uint8Array {
@@ -358,7 +386,7 @@ serve(async (req) => {
 
       const result = await sendWebPush(
         { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
-        notification || { title: '✅ Test', body: 'Push notifications working!', tag: 'test', url: '/climate' },
+        normalizeReminderNotification(notification) || { title: '✅ Test', body: 'Push notifications working!', tag: 'test', url: '/climate' },
         vapidPublicKey, vapidPrivateKey, vapidSubject
       );
 
@@ -378,7 +406,7 @@ serve(async (req) => {
       const results = await Promise.all((subs || []).map(async (sub: any) => {
         const result = await sendWebPush(
           { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
-          notification,
+          normalizeReminderNotification(notification),
           vapidPublicKey, vapidPrivateKey, vapidSubject
         );
         if (!result.success && result.error === 'subscription_expired') {
@@ -426,10 +454,11 @@ serve(async (req) => {
           const result = await sendWebPush(
             { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
             {
-              title: '⏰ Time to Log Your Episode',
-              body: "It's time for your six-hour check-in 💧",
+              title: LOG_REMINDER_TITLE,
+              body: LOG_REMINDER_BODY,
               tag: 'logging-reminder',
               type: 'reminder',
+              kind: 'reminder',
               url: '/log-episode',
             },
             vapidPublicKey, vapidPrivateKey, vapidSubject

@@ -82,7 +82,7 @@ class LoggingReminderService {
     // Schedule native reminder (Capacitor handles backgrounding)
     await notificationManager.scheduleReminder(
       new Date(nextTime),
-      '⏰ Time to Check In',
+      '⏰ Time for Your Six-Hour Check-In',
       "It's time for your six-hour check-in 💧",
       '/log-episode'
     );
@@ -93,7 +93,7 @@ class LoggingReminderService {
       await notificationManager.send({
         channel: 'reminder',
         kind: 'reminder',
-        title: '⏰ Time to Check In',
+        title: '⏰ Time for Your Six-Hour Check-In',
         body: "It's time for your six-hour check-in 💧",
         dedupKey: `log-reminder-${nextTime}`,
         url: '/log-episode',

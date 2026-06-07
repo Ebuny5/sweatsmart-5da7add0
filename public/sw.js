@@ -1,10 +1,36 @@
 // Professional Service Worker for SweatSmart App - FIXED FOR ANDROID
 // NOW INCLUDES: High-priority push notifications + Android support
 // Version control for cache busting
-const CACHE_VERSION = 'v2.5.2-android-fix';
+const CACHE_VERSION = 'v2.5.3-six-hour-reminder-fix';
 const CACHE_NAME = `sweatsmart-${CACHE_VERSION}`;
 
 const OFFLINE_FALLBACK_URL = '/offline.html';
+const LOG_REMINDER_TITLE = '⏰ Time for Your Six-Hour Check-In';
+const LOG_REMINDER_BODY = "It's time for your six-hour check-in 💧";
+
+function normalizeReminderPayload(payload = {}) {
+  const body = String(payload.body || '');
+  const title = String(payload.title || '');
+  const tag = String(payload.tag || '');
+  const type = String(payload.type || payload.kind || '');
+  const isLogReminder =
+    tag.includes('logging-reminder') ||
+    type === 'reminder' ||
+    /time\s+to\s+log/i.test(title) ||
+    /last\s+(?:4|f(?:ou)?r)\s+hours/i.test(body);
+
+  if (!isLogReminder) return payload;
+
+  return {
+    ...payload,
+    title: LOG_REMINDER_TITLE,
+    body: LOG_REMINDER_BODY,
+    tag: 'logging-reminder',
+    type: 'reminder',
+    kind: 'reminder',
+    url: payload.url || '/log-episode',
+  };
+}
 
 // ============= INSTALL & ACTIVATE =============
 self.addEventListener('install', (event) => {
@@ -54,14 +80,14 @@ self.addEventListener('message', async (event) => {
   }
 
   if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
-    const { title, options } = event.data;
-    await self.registration.showNotification(title, {
+    const payload = normalizeReminderPayload({ title: event.data.title, ...(event.data.options || {}) });
+    await self.registration.showNotification(payload.title, {
       icon: '/favicon.ico',
       badge: '/favicon.ico',
-      ...options,
+      ...payload,
       // ANDROID FIX: Always mark as user visible
       silent: false,
-      requireInteraction: options?.requireInteraction !== false,
+      requireInteraction: payload?.requireInteraction !== false,
     });
   }
 });
@@ -107,6 +133,8 @@ self.addEventListener('push', (event) => {
             data = { title: 'SweatSmart', body: event.data.text() };
           }
         }
+
+        data = normalizeReminderPayload(data);
 
         const title = data.title || 'SweatSmart';
         const tag = data.tag || 'sweatsmart-push';
