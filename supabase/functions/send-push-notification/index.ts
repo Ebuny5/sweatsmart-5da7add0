@@ -11,6 +11,32 @@ const LOG_REMINDER_BODY = "It's time for your six-hour check-in 💧";
 
 const MIN_CRON_SECRET_LENGTH = 32;
 
+function normalizeReminderNotification(notification: any) {
+  if (!notification) return notification;
+  const title = String(notification.title || '');
+  const body = String(notification.body || '');
+  const tag = String(notification.tag || '');
+  const type = String(notification.type || notification.kind || '');
+  const isLogReminder =
+    tag.includes('logging-reminder') ||
+    type === 'reminder' ||
+    title.toLowerCase().includes('time to log') ||
+    body.toLowerCase().includes('last 4 hours') ||
+    body.toLowerCase().includes('last four hours');
+
+  if (!isLogReminder) return notification;
+
+  return {
+    ...notification,
+    title: LOG_REMINDER_TITLE,
+    body: LOG_REMINDER_BODY,
+    tag: 'logging-reminder',
+    type: 'reminder',
+    kind: 'reminder',
+    url: notification.url || '/log-episode',
+  };
+}
+
 // ── Base64url helpers ──
 function base64UrlToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -361,7 +387,7 @@ serve(async (req) => {
 
       const result = await sendWebPush(
         { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
-        notification || { title: '✅ Test', body: 'Push notifications working!', tag: 'test', url: '/climate' },
+        normalizeReminderNotification(notification) || { title: '✅ Test', body: 'Push notifications working!', tag: 'test', url: '/climate' },
         vapidPublicKey, vapidPrivateKey, vapidSubject
       );
 
@@ -381,7 +407,7 @@ serve(async (req) => {
       const results = await Promise.all((subs || []).map(async (sub: any) => {
         const result = await sendWebPush(
           { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
-          notification,
+          normalizeReminderNotification(notification),
           vapidPublicKey, vapidPrivateKey, vapidSubject
         );
         if (!result.success && result.error === 'subscription_expired') {
