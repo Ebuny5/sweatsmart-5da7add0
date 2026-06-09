@@ -1,7 +1,7 @@
 // Professional Service Worker for SweatSmart App - FIXED FOR ANDROID
 // NOW INCLUDES: High-priority push notifications + Android support
 // Version control for cache busting
-const CACHE_VERSION = 'v2.5.3-six-hour-reminder-fix';
+const CACHE_VERSION = 'v2.5.4-reminder-audio-fix';
 const CACHE_NAME = `sweatsmart-${CACHE_VERSION}`;
 
 const OFFLINE_FALLBACK_URL = '/offline.html';
@@ -176,12 +176,13 @@ self.addEventListener('push', (event) => {
         console.log('✅ Notification shown:', title);
 
         // Notify open clients for audio playback (only if app is open)
-        const clients = await self.clients.matchAll({ type: 'window' });
+        const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+        const kind = data.kind || data.type || 'reminder';
         for (const client of clients) {
           client.postMessage({ type: 'PUSH_RECEIVED', data });
           client.postMessage({
             type: 'PLAY_NOTIFICATION_SOUND',
-            kind: data.type || data.kind || 'reminder',
+            kind,
           });
         }
 
