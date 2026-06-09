@@ -176,12 +176,13 @@ self.addEventListener('push', (event) => {
         console.log('✅ Notification shown:', title);
 
         // Notify open clients for audio playback (only if app is open)
-        const clients = await self.clients.matchAll({ type: 'window' });
+        const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+        const kind = data.kind || data.type || 'reminder';
         for (const client of clients) {
           client.postMessage({ type: 'PUSH_RECEIVED', data });
           client.postMessage({
             type: 'PLAY_NOTIFICATION_SOUND',
-            kind: data.type || data.kind || 'reminder',
+            kind,
           });
         }
 
