@@ -24,3 +24,5 @@ When you generate your APK/AAB on [pwabuilder.com](https://www.pwabuilder.com):
 
 ## Why this is necessary
 Android's Trusted Web Activity (TWA) requires a "Digital Asset Link" to verify that the website and the Android app are owned by the same person. Without this verification, Android will not allow the website to trigger native permission prompts or display notifications on the app's behalf.
+
+Note: Your primary domain is `https://www.sweatsmart.guru`. Ensure this matches the site you entered into PWA Builder.
