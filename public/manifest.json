@@ -61,8 +61,14 @@
       "icons": [{ "src": "/192 logo.png", "sizes": "192x192", "purpose": "any" }]
     }
   ],
-  "prefer_related_applications": false,
-  "related_applications": [],
+  "prefer_related_applications": true,
+  "related_applications": [
+    {
+      "platform": "play",
+      "id": "com.giftovate.sweatsmart",
+      "url": "https://play.google.com/store/apps/details?id=com.giftovate.sweatsmart"
+    }
+  ],
   "age_rating": "3+",
   "iarc_rating_id": "false",
   "share_target": {
