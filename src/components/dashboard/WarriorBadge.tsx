@@ -423,7 +423,7 @@ const WarriorBadge = ({
   const [showShareModal, setShowShareModal] = useState(false);
 
   const shareText = `I just unlocked the Hyperhidrosis Warrior Badge on SweatSmart! 🛡️ Tracking my journey and turning sweat into strength. Start tracking your resilience with SweatSmart today. #MySweatDoesNotDefineMe #SweatSmartWarrior #HyperhidrosisAwareness`;
-  const shareUrl = "https://sweatsmart.app";
+  const shareUrl = "https://www.sweatsmart.guru";
 
   const handleShare = async () => {
     if (!unlocked) { handleLockedTap(); return; }
