@@ -128,7 +128,7 @@ function generateFallbackResponse(eda: number, palmResult: string): Response {
   if (eda >= 10.0 || (eda >= 5.0 && palmResult === 'Moisture detected.')) {
     fallbackData = { 
       status: 'Episode Likely', 
-      explanation: 'High stress indicators detected based on sensor readings and palm scan. Please take a moment to relax and re-center.' 
+      explanation: 'High stress indicators detected based on sensor readings and affected-area scan. Please take a moment to relax and re-center.' 
     };
   } else if (eda >= 5.0 || palmResult === 'Moisture detected.') {
     fallbackData = { 
