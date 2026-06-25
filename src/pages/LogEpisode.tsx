@@ -273,17 +273,7 @@ const LogEpisode = () => {
     return (
       <AppLayout>
         <div className="min-h-screen bg-[#EE82EE]">
-          <div className="max-w-lg mx-auto pb-10">
-            {/* Success hero */}
-            <div className="bg-gradient-to-br from-green-400 via-emerald-400 to-teal-400 px-6 pt-10 pb-12 rounded-b-[2.5rem] shadow-lg shadow-green-100 text-center mb-6">
-            <div className="w-16 h-16 rounded-full bg-white/30 flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
-              <CheckCircle2 className="h-9 w-9 text-white" />
-            </div>
-            <h1 className="text-white text-2xl font-black tracking-tight">Episode Logged! 🎉</h1>
-            <p className="text-green-100 text-sm mt-1">Your data helps build a better understanding of your triggers</p>
-          </div>
-
-          <div className="px-4 space-y-4">
+          <div className="max-w-lg mx-auto py-6 px-4 space-y-4">
             {isLoadingInsights ? (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 flex flex-col items-center gap-4">
                 <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
@@ -339,7 +329,6 @@ const LogEpisode = () => {
             </div>
           </div>
         </div>
-      </div>
       </AppLayout>
     );
   }

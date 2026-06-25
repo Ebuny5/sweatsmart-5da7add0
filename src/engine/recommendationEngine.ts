@@ -971,10 +971,7 @@ function wrapWithHidroAlly(
     ? `Hi ${userName}, this is HidroAlly 👋`
     : `Hi, this is HidroAlly 👋`;
 
-  const opener = pick([
-    `${greeting} — your personal hyperhidrosis clinical guide, here to help you make sense of what your body just went through. I've analysed your episode data alongside your notes, and here is what I can tell you. 🔍`,
-    `${greeting} — SweatSmart's clinical companion. I've reviewed your episode, your triggers, and everything you noted. Here is a full analysis. 🔍`,
-  ], seed);
+  const opener = `Your data helps build a better understanding of your triggers.\n\n${greeting} — your personal hyperhidrosis clinical guide.\n\nI’ve analyzed your episode data to help you make sense of what your body just went through. By tracking these triggers, you are gaining a better understanding of your physiological patterns and showing incredible strength in managing this condition. Here is what I've found based on your recent report.`;
 
   const emotionalOpener = getEmotionalOpener(ni, seed);
   const cta = buildCTA(ni, seed);

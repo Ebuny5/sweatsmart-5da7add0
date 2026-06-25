@@ -147,9 +147,9 @@ Always consult with a healthcare provider for personalized medical advice.
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                <span className="text-sm">🛡️</span>
+                <span className="text-sm">🎉</span>
               </div>
-              <CardTitle className="text-lg font-bold">Hidro Ally Analysis</CardTitle>
+              <CardTitle className="text-lg font-bold">Episode Logged!</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
