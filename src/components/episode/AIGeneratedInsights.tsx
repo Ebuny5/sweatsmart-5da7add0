@@ -138,27 +138,19 @@ Always consult with a healthcare provider for personalized medical advice.
         </Card>
       )}
 
-      {/* Hidro Ally greeting */}
-      {insights.emotionalOpener && (
-        <Card className="border-none bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg overflow-hidden relative">
-          <div className="absolute top-0 right-0 p-4 opacity-10">
-            <Heart className="h-24 w-24 rotate-12" />
-          </div>
-          <CardHeader className="pb-2">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                <span className="text-sm">🎉</span>
-              </div>
-              <CardTitle className="text-lg font-bold">Episode Logged!</CardTitle>
+      {/* Hidro Ally greeting - Short & Classy version */}
+      <Card className="border-none bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md rounded-2xl overflow-hidden">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0 backdrop-blur-sm">
+              <span className="text-lg">✨</span>
             </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm leading-relaxed whitespace-pre-wrap font-medium">
-              {insights.emotionalOpener}
+            <p className="text-[15px] font-semibold leading-snug tracking-tight">
+              I've analyzed your triggers. Here is a detailed analysis of your episode 😊
             </p>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Action bar */}
       <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">

@@ -181,7 +181,7 @@ const LogEpisode = () => {
 
         setAiInsights(insights);
         toast({
-          title: "Insights ready",
+          title: "Episode logged 🎉",
           description: "Your personalised insights are below.",
         });
       } catch (insightError) {
