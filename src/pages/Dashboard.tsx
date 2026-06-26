@@ -5,6 +5,7 @@ import AppLayout from "@/components/layout/AppLayout";
 import { SeverityLevel } from "@/types";
 import DashboardSummary from "@/components/dashboard/DashboardSummary";
 import TriggerSummary from "@/components/dashboard/TriggerSummary";
+import BodyAreaRadarChart from "@/components/dashboard/BodyAreaRadarChart";
 import { TriggerFrequency, BodyAreaFrequency, BodyArea } from "@/types";
 import { useEpisodes } from "@/hooks/useEpisodes";
 import { useAuth } from "@/contexts/AuthContext";
@@ -361,34 +362,10 @@ const Dashboard = () => {
                   </p>
                 </div>
               </div>
-              <div className="p-4 space-y-3">
-                {dashboardData.bodyAreas.slice(0, 5).map((area, index) => {
-                  const maxCount = dashboardData.bodyAreas[0].count;
-                  const pct = Math.round((area.count / maxCount) * 100);
-                  const label = area.area.replace(/_/g, ' ').replace(/\w/g, (c: string) => c.toUpperCase());
-                  const gradients = [
-                    'from-violet-500 to-purple-400',
-                    'from-purple-500 to-violet-400',
-                    'from-pink-500 to-fuchsia-400',
-                    'from-indigo-500 to-blue-400',
-                    'from-fuchsia-500 to-pink-400',
-                  ];
-                  return (
-                    <div key={area.area}>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-xs font-bold text-gray-700">{label}</span>
-                        <span className="text-xs font-semibold text-gray-400">{area.count} episodes</span>
-                      </div>
-                      <div className="h-5 bg-gray-100 rounded-lg overflow-hidden">
-                        <div
-                          className={`h-full rounded-lg bg-gradient-to-r ${gradients[index] || gradients[0]}`}
-                          style={{ width: `${Math.max(pct, 8)}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <BodyAreaRadarChart
+                bodyAreas={dashboardData.bodyAreas}
+                totalEpisodes={totalEpisodes}
+              />
             </div>
           )}
 
