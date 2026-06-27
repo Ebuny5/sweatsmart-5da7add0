@@ -428,9 +428,9 @@ const Insights = () => {
           {/* ── TREATMENTS ────────────────────────────────────────────── */}
           <TreatmentsSection relevantTreatments={analytics?.relevantTreatments ?? []} />
 
-          {/* ── HYPER AI nudge ────────────────────────────────────────── */}
+          {/* ── HidroAlly nudge ────────────────────────────────────────── */}
           <button
-            onClick={() => navigate("/hyper-ai")}
+            onClick={() => navigate("/hidro-ally")}
             className="w-full bg-gradient-to-r from-violet-500 to-pink-500 rounded-2xl p-5 flex items-center gap-4 shadow-md text-left"
           >
             <span className="text-3xl">🤖</span>

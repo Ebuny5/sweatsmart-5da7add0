@@ -326,7 +326,7 @@ const TypingIndicator = () => (
       <div className="w-2 h-2 rounded-full bg-teal-400 typing-dot-1" />
       <div className="w-2 h-2 rounded-full bg-teal-400 typing-dot-2" />
       <div className="w-2 h-2 rounded-full bg-teal-400 typing-dot-3" />
-      <span className="text-[10px] text-white/40 ml-1">Hidro Ally is thinking...</span>
+      <span className="text-[10px] text-white/40 ml-1">HidroAlly is thinking...</span>
     </div>
   </div>
 );
@@ -400,7 +400,7 @@ const HistorySidebar = ({
 };
 
 // ── Main component ────────────────────────────────────────────────────────────
-const HyperAI = () => {
+const HidroAlly = () => {
   const { user }   = useAuth();
   const { profile } = useProfile();
   const { episodes: rawEpisodes } = useEpisodes();
@@ -426,10 +426,10 @@ const HyperAI = () => {
   const [voiceSettingsOpen, setVoiceSettingsOpen] = useState(false);
   const [voiceMenuOpen, setVoiceMenuOpen]     = useState(false);
   const [selectedVoiceId, setSelectedVoiceId] = useState(
-    () => localStorage.getItem('hyper_voice_id') || '21m00Tcm4TlvDq8ikWAM'
+    () => localStorage.getItem('hidro_voice_id') || '21m00Tcm4TlvDq8ikWAM'
   );
   const [voiceSpeed, setVoiceSpeed] = useState(
-    () => parseFloat(localStorage.getItem('hyper_voice_speed') || '1')
+    () => parseFloat(localStorage.getItem('hidro_voice_speed') || '1')
   );
 
   // ── Refs ──────────────────────────────────────────────────────────────────
@@ -446,9 +446,9 @@ const HyperAI = () => {
 
   // ── Inject CSS once ───────────────────────────────────────────────────────
   useEffect(() => {
-    if (document.getElementById('hyper-ai-styles')) return;
+    if (document.getElementById('hidro-ally-styles')) return;
     const style = document.createElement('style');
-    style.id = 'hyper-ai-styles';
+    style.id = 'hidro-ally-styles';
     style.textContent = NEURAL_GLOW_STYLE;
     document.head.appendChild(style);
   }, []);
@@ -615,13 +615,13 @@ const HyperAI = () => {
   // ── Voice usage helpers ────────────────────────────────────────────────────
   const getVoiceUsageToday = useCallback(() => {
     if (!user) return 0;
-    const key = `hyper_voice_${user.id}_${format(new Date(), 'yyyy-MM-dd')}`;
+    const key = `hidro_voice_${user.id}_${format(new Date(), 'yyyy-MM-dd')}`;
     return parseInt(localStorage.getItem(key) || '0');
   }, [user]);
 
   const incrementVoiceUsage = useCallback(() => {
     if (!user) return;
-    const key = `hyper_voice_${user.id}_${format(new Date(), 'yyyy-MM-dd')}`;
+    const key = `hidro_voice_${user.id}_${format(new Date(), 'yyyy-MM-dd')}`;
     localStorage.setItem(key, String(getVoiceUsageToday() + 1));
   }, [user, getVoiceUsageToday]);
 
@@ -978,12 +978,12 @@ const HyperAI = () => {
   // ── Voice settings persistence ─────────────────────────────────────────────
   const handleVoiceSelect = (id: string) => {
     setSelectedVoiceId(id);
-    localStorage.setItem('hyper_voice_id', id);
+    localStorage.setItem('hidro_voice_id', id);
   };
 
   const handleSpeedChange = (s: number) => {
     setVoiceSpeed(s);
-    localStorage.setItem('hyper_voice_speed', String(s));
+    localStorage.setItem('hidro_voice_speed', String(s));
   };
 
   // ── Helper: play browser-speech greeting before recording ─────────────────
@@ -1041,7 +1041,7 @@ const HyperAI = () => {
               const { data: sessionData } = await supabase.auth.getSession();
               if (!sessionData.session) { setIsProcessingVoice(false); return; }
 
-              const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/hyper-ai-chat`;
+              const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/hidro-ally-chat`;
 
               // Step 1 — STT: audio → transcript via Gemini
               const sttRes = await fetch(CHAT_URL, {
@@ -1202,7 +1202,7 @@ const HyperAI = () => {
     try {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !sessionData.session) {
-        toast.error('Please log in to use Hidro Ally');
+        toast.error('Please log in to use HidroAlly');
         setIsLoading(false);
         return;
       }
@@ -1215,7 +1215,7 @@ const HyperAI = () => {
         if (newConv) { convId = newConv.id; setCurrentConversationId(convId); }
       }
 
-      const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/hyper-ai-chat`;
+      const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/hidro-ally-chat`;
       const allMessages = [...messages, userMessage];
 
       abortRef.current = new AbortController();
@@ -1358,7 +1358,7 @@ const HyperAI = () => {
               <Sparkles className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h1 className="text-white font-black text-base leading-tight">Hidro Ally</h1>
+              <h1 className="text-white font-black text-base leading-tight">HidroAlly</h1>
               <p className="text-white/40 text-[10px]">World's first hyperhidrosis clinical companion</p>
             </div>
           </div>
@@ -1666,7 +1666,7 @@ const HyperAI = () => {
 
           {/* Voice chat hint */}
           <p className="text-center text-[10px] text-white/20 mt-2">
-            📞 Tap phone icon to speak with Hyper · {DAILY_VOICE_LIMIT - getVoiceUsageToday()} voice chats remaining today
+            📞 Tap phone icon to speak with HidroAlly · {DAILY_VOICE_LIMIT - getVoiceUsageToday()} voice chats remaining today
           </p>
         </div>
 
@@ -1697,4 +1697,4 @@ const HyperAI = () => {
   );
 };
 
-export default HyperAI;
+export default HidroAlly;

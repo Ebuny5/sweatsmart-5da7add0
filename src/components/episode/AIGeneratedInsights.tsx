@@ -61,9 +61,9 @@ Always consult with a healthcare provider for personalized medical advice.
   };
 
   const handleContinueToChat = () => {
-    // Store current insights in localStorage for Hidro Ally to pick up
+    // Store current insights in localStorage for HidroAlly to pick up
     localStorage.setItem('last_episode_insight', JSON.stringify(insights));
-    navigate('/hyper-ai?from=episode_insight');
+    navigate('/hidro-ally?from=episode_insight');
   };
 
   const handleDownloadPDF = () => {
@@ -138,7 +138,7 @@ Always consult with a healthcare provider for personalized medical advice.
         </Card>
       )}
 
-      {/* Hidro Ally greeting - Short & Classy version */}
+      {/* HidroAlly greeting - Short & Classy version */}
       <Card className="border-none bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md rounded-2xl overflow-hidden">
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
@@ -262,7 +262,7 @@ Always consult with a healthcare provider for personalized medical advice.
         </CardContent>
       </Card>
 
-      {/* Hidro Ally CTA */}
+      {/* HidroAlly CTA */}
       {insights.cta && (
         <Card className="border-2 border-violet-200 bg-violet-50">
           <CardContent className="pt-6">
@@ -274,7 +274,7 @@ Always consult with a healthcare provider for personalized medical advice.
                 onClick={handleContinueToChat}
                 className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl px-8"
               >
-                Continue in Hidro Ally Chat
+                Continue in HidroAlly Chat
               </Button>
             </div>
           </CardContent>

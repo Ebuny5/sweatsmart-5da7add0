@@ -277,7 +277,7 @@ export default function NewIndex() {
               <button onClick={() => navigate('/climate-monitor')} className="w-full py-2 text-orange-500 font-medium hover:bg-orange-50 rounded-lg transition">Set Up Alerts</button>
             </div>
 
-            {/* 5. Hyper AI Companion */}
+            {/* 5. HidroAlly Companion */}
             <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow">
               <div className="flex justify-center mb-4">
                 <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center">
@@ -288,7 +288,7 @@ export default function NewIndex() {
               <p className="text-gray-600 text-center mb-4">
                 Your 24/7 hyperhidrosis assistant: Get personalized insights from your episode data, ask questions about your condition, and receive practical tips for managing sweating.
               </p>
-              <button onClick={() => navigate('/hyper-ai')} className="w-full py-2 text-pink-500 font-medium hover:bg-pink-50 rounded-lg transition">Chat with HidroAlly</button>
+              <button onClick={() => navigate('/hidro-ally')} className="w-full py-2 text-pink-500 font-medium hover:bg-pink-50 rounded-lg transition">Chat with HidroAlly</button>
             </div>
 
             {/* 6. Supportive Community */}
