@@ -67,11 +67,11 @@ const moreItems = [
 
 const MobileBottomNav: React.FC = () => {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden safe-area-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden safe-area-bottom bg-white/95 backdrop-blur-md border-t border-purple-100">
       {/* Top colour stripe */}
       <div className="h-0.5 bg-gradient-to-r from-violet-400 via-pink-400 to-amber-400" />
 
-      <div className="bg-white/95 backdrop-blur-md border-t border-purple-100 shadow-lg shadow-purple-100/50">
+      <div className="bg-white/95 backdrop-blur-md shadow-lg shadow-purple-100/50">
         <div className="flex items-center justify-around h-16 px-2">
 
           {primaryItems.map((item) => {
