@@ -18,7 +18,7 @@ verify_jwt = true
 [functions.get-weather-data]
 verify_jwt = false
 
-[functions.hyper-ai-chat]
+[functions.hidro-ally-chat]
 verify_jwt = true
 
 [functions.send-push-notification]

@@ -303,7 +303,7 @@ const DoctorModal = ({ doctor, onClose, onShare }: { doctor: Doctor; onClose: ()
             </div>
           )}
 
-          {/* Hyper AI Note */}
+          {/* HidroAlly Note */}
           <div className="rounded-xl p-3.5 mb-5"
             style={{ background: 'rgba(0,188,212,0.06)', border: '1px solid rgba(0,188,212,0.18)' }}>
             <div className="flex items-center gap-2 mb-1.5">

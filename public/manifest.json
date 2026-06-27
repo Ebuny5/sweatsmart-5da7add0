@@ -5,13 +5,17 @@
   "description": "Turning sweat into strength: AI-powered ecosystem to restore dignity to Hyperhidrosis Warriors.",
   "lang": "en",
   "dir": "ltr",
-  "start_url": "/auth",
+  "start_url": "https://sweatsmart.guru",
   "scope": "/",
   "display": "standalone",
-  "orientation": "any",
+  "orientation": "portrait",
   "background_color": "#ffffff",
   "theme_color": "#6f42c1",
-  "categories": ["medical", "health", "lifestyle"],
+  "categories": [
+    "medical",
+    "health",
+    "lifestyle"
+  ],
   "screenshots": [
     {
       "src": "/192 logo.png",
@@ -51,14 +55,26 @@
       "short_name": "Log",
       "url": "/log",
       "description": "Log a new sweating episode",
-      "icons": [{ "src": "/192 logo.png", "sizes": "192x192", "purpose": "any" }]
+      "icons": [
+        {
+          "src": "/192 logo.png",
+          "sizes": "192x192",
+          "purpose": "any"
+        }
+      ]
     },
     {
-      "name": "HydroAlly Chat",
-      "short_name": "HydroAlly",
-      "url": "/hyper-ai",
+      "name": "HidroAlly",
+      "short_name": "HidroAlly",
+      "url": "/hidro-ally",
       "description": "Chat with your clinical companion",
-      "icons": [{ "src": "/192 logo.png", "sizes": "192x192", "purpose": "any" }]
+      "icons": [
+        {
+          "src": "/192 logo.png",
+          "sizes": "192x192",
+          "purpose": "any"
+        }
+      ]
     }
   ],
   "prefer_related_applications": true,
@@ -81,6 +97,9 @@
       "url": "url"
     }
   },
-  "protocol_handlers": [],
-  "note": "Android Notification Fix: Added scope, proper service worker path, and screenshot. Manifest now tells Android to expect notifications."
+  "note": "Android Notification Fix: Added scope, proper service worker path, and screenshot. Manifest now tells Android to expect notifications.",
+  "display_override": [
+    "standalone",
+    "fullscreen"
+  ]
 }

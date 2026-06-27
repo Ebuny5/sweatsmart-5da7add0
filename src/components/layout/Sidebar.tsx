@@ -90,7 +90,7 @@ const menuItems = [
     iconBg: "bg-teal-100",
   },
   {
-    path: "/hyper-ai",
+    path: "/hidro-ally",
     icon: Sparkles,
     label: "HidroAlly",
     activeGradient: "from-yellow-400 to-amber-500",
