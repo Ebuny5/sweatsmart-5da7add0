@@ -8,7 +8,7 @@
   "start_url": "/auth",
   "scope": "/",
   "display": "standalone",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "background_color": "#ffffff",
   "theme_color": "#6f42c1",
   "categories": ["medical", "health", "lifestyle"],

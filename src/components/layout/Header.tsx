@@ -48,7 +48,7 @@ const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
   const avatarGradient = getAvatarGradient(userInitials);
 
   return (
-    <header className="w-full z-50 sticky top-0">
+    <header className="w-full z-50 sticky top-0 safe-area-top bg-violet-600">
       <div className="bg-gradient-to-r from-violet-600 via-purple-500 to-pink-500 shadow-lg shadow-purple-200/50">
         <div className="container flex h-16 items-center justify-between px-4">
 
