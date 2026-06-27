@@ -7,7 +7,7 @@ The file `public/.well-known/assetlinks.json` contains a placeholder: `"REPLACE_
 
 You need to replace this with your actual **App Bundle Signature** from the Google Play Console:
 1. Go to **Google Play Console**.
-2. Select your app (`com.giftovate.sweatsmart`).
+2. Select your app (`guru.sweatsmart.twa`).
 3. Go to **Setup** -> **App integrity**.
 4. Go to the **App signing** tab.
 5. Copy the **SHA-256 certificate fingerprint**.
@@ -19,7 +19,7 @@ When you generate your APK/AAB on [pwabuilder.com](https://www.pwabuilder.com):
 2. Click **Package for Store** -> **Android**.
 3. Click **Options**.
 4. Ensure **Notification Delegation** is enabled.
-5. Ensure the **Package ID** matches `com.giftovate.sweatsmart`.
+5. Ensure the **Package ID** matches `guru.sweatsmart.twa`.
 6. Ensure the **SHA-256 fingerprint** matches the one from Google Play Console.
 
 ## Why this is necessary

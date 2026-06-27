@@ -1,7 +1,7 @@
 {
   "name": "SweatSmart",
   "short_name": "SweatSmart",
-  "id": "com.giftovate.sweatsmart",
+  "id": "guru.sweatsmart.twa",
   "description": "Turning sweat into strength: AI-powered ecosystem to restore dignity to Hyperhidrosis Warriors.",
   "lang": "en",
   "dir": "ltr",
@@ -65,8 +65,8 @@
   "related_applications": [
     {
       "platform": "play",
-      "id": "com.giftovate.sweatsmart",
-      "url": "https://play.google.com/store/apps/details?id=com.giftovate.sweatsmart"
+      "id": "guru.sweatsmart.twa",
+      "url": "https://play.google.com/store/apps/details?id=guru.sweatsmart.twa"
     }
   ],
   "age_rating": "3+",
