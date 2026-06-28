@@ -96,59 +96,6 @@ const TESTING_MODE = false;
 const LOG_CHECK_INTERVAL = 30000;
 const WEATHER_REFRESH_INTERVAL = 15 * 60 * 1000;
 
-type PermissionStatus = 'prompt' | 'granted' | 'denied';
-
-const PermissionsWizard: React.FC<{
-  locationStatus: PermissionStatus;
-  notificationStatus: PermissionStatus;
-  onRequestLocation: () => void;
-  onRequestNotification: () => void;
-  onCheckPermissions: () => void;
-}> = ({ locationStatus, notificationStatus, onRequestLocation, onRequestNotification, onCheckPermissions }) => {
-  const isBlocked = locationStatus === 'denied' || notificationStatus === 'denied';
-  return (
-    <div className="bg-white/10 backdrop-blur-xl border border-white/20 text-white p-6 rounded-xl space-y-4">
-      <h3 className="text-2xl font-bold text-white">Setup Required</h3>
-      <p className="text-purple-200">SweatSmart needs location and notification permissions for real-time alerts.</p>
-      <div className="space-y-3 pt-4">
-        <div className="flex items-center justify-between bg-black/20 p-4 rounded-lg">
-          <div className="flex items-center space-x-3">
-            <MapPinIcon className={`w-6 h-6 ${locationStatus === 'granted' ? 'text-green-400' : 'text-blue-400'}`} />
-            <span className="font-semibold">Local Weather</span>
-          </div>
-          {locationStatus === 'granted' && <span className="text-sm font-bold text-green-400">Enabled</span>}
-          {locationStatus === 'prompt' && (
-            <button onClick={onRequestLocation} className="bg-blue-500 text-white text-sm font-bold px-4 py-2 rounded-md hover:bg-blue-400 transition">Enable Location</button>
-          )}
-          {locationStatus === 'denied' && <span className="text-sm font-bold text-red-400">Blocked</span>}
-        </div>
-        <div className="flex items-center justify-between bg-black/20 p-4 rounded-lg">
-          <div className="flex items-center space-x-3">
-            <BellIcon className={`w-6 h-6 ${notificationStatus === 'granted' ? 'text-green-400' : 'text-yellow-400'}`} />
-            <span className="font-semibold">Climate Alerts</span>
-          </div>
-          {notificationStatus === 'granted' && <span className="text-sm font-bold text-green-400">Enabled</span>}
-          {notificationStatus === 'prompt' && (
-            <button onClick={onRequestNotification} disabled={locationStatus !== 'granted'}
-              className="bg-yellow-500 text-black text-sm font-bold px-4 py-2 rounded-md hover:bg-yellow-400 transition disabled:bg-gray-600">
-              Enable Notifications
-            </button>
-          )}
-          {notificationStatus === 'denied' && <span className="text-sm font-bold text-red-400">Blocked</span>}
-        </div>
-      </div>
-      {isBlocked && (
-        <div className="bg-red-900/50 border border-red-700 p-4 rounded-lg">
-          <p className="text-sm text-red-200 mb-3">Permissions blocked. Update them in your browser site settings.</p>
-          <button onClick={onCheckPermissions} className="flex items-center gap-2 bg-gray-200 text-black font-bold px-4 py-2 rounded-md hover:bg-white transition text-sm">
-            <RefreshIcon className="w-4 h-4" /> Check Permissions
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};
-
 const WeatherErrorCard: React.FC<{ error: string; onRetry: () => void; isFetching: boolean }> = ({ error, onRetry, isFetching }) => (
   <div className="bg-white/10 backdrop-blur-xl border border-red-400/40 rounded-xl p-6 text-center space-y-3">
     <p className="text-red-300 font-semibold">⚠️ Could not fetch real weather data</p>
@@ -554,15 +501,7 @@ const ClimateMonitor = () => {
             )}
           </div>
 
-          {!arePermissionsGranted && (
-            <PermissionsWizard
-              locationStatus={locationPermission} notificationStatus={notificationPermission}
-              onRequestLocation={handleRequestLocation} onRequestNotification={requestNotificationPermission}
-              onCheckPermissions={checkPermissions}
-            />
-          )}
-
-          <div className={`space-y-6 transition-opacity duration-500 ${arePermissionsGranted ? 'opacity-100' : 'opacity-40 blur-sm pointer-events-none'}`}>
+          <div className={`space-y-6 transition-opacity duration-500 ${arePermissionsGranted ? 'opacity-100' : 'opacity-40 blur-sm'}`}>
             {weatherError && (
               <WeatherErrorCard error={weatherError} onRetry={() => location && fetchWeatherData(location)} isFetching={isFetchingWeather} />
             )}
