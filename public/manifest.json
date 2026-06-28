@@ -5,7 +5,7 @@
   "description": "Turning sweat into strength: AI-powered ecosystem to restore dignity to Hyperhidrosis Warriors.",
   "lang": "en",
   "dir": "ltr",
-  "start_url": "/",
+  "start_url": "https://www.sweatsmart.guru",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
@@ -99,6 +99,7 @@
   },
   "note": "Android Notification Fix: Added scope, proper service worker path, and screenshot. Manifest now tells Android to expect notifications.",
   "display_override": [
+    "window-controls-overlay",
     "standalone",
     "fullscreen"
   ]
