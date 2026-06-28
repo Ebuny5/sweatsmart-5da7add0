@@ -25,10 +25,10 @@ When you generate your APK/AAB on [pwabuilder.com](https://www.pwabuilder.com):
 ## Why this is necessary
 Android's Trusted Web Activity (TWA) requires a "Digital Asset Link" to verify that the website and the Android app are owned by the same person. Without this verification, Android will not allow the website to trigger native permission prompts or display notifications on the app's behalf.
 
-Note: Your Play Console deep link must use `https://www.sweatsmart.guru`, not `https://sweatsmart.guru`, unless you disable the apex-to-www redirect in your domain host. Google Play's Android App Links verifier rejects redirects, and `https://sweatsmart.guru/.well-known/assetlinks.json` currently redirects to `https://www.sweatsmart.guru/.well-known/assetlinks.json`.
+Note: Both `https://sweatsmart.guru` and `https://www.sweatsmart.guru` are now configured to serve `assetlinks.json` directly without redirects, ensuring compatibility with Google Play's Android App Links verifier.
 
 For the current setup, regenerate the Android package with:
 - Launch URL: `https://www.sweatsmart.guru/`
-- Host name / web link: `www.sweatsmart.guru`
+- Host name / web link: `www.sweatsmart.guru` (or `sweatsmart.guru`)
 - Package ID: `guru.sweatsmart.twa`
 - SHA-256 fingerprint matching Play Console → App integrity → App signing key certificate
