@@ -65,8 +65,8 @@ const ForgotPassword = () => {
   if (emailSent) {
     return (
       <AppLayout isAuthenticated={false}>
-        <div className="flex justify-center items-center min-h-[80vh]">
-          <Card className="w-full max-w-md">
+        <div className="flex justify-center items-center min-h-screen bg-[#E9E4FA]">
+          <Card className="w-full max-w-md bg-[#E9E4FA]">
             <CardHeader className="text-center">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
                 <Mail className="h-6 w-6 text-green-600" />
@@ -124,8 +124,8 @@ const ForgotPassword = () => {
 
   return (
     <AppLayout isAuthenticated={false}>
-      <div className="flex justify-center items-center min-h-[80vh]">
-        <Card className="w-full max-w-md">
+      <div className="flex justify-center items-center min-h-screen bg-[#E9E4FA]">
+        <Card className="w-full max-w-md bg-[#E9E4FA]">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-bold">Reset password</CardTitle>
             <CardDescription>
