@@ -237,31 +237,33 @@ const SweatSmartLanding = () => {
       gap: 10px;
     }
     .btn-ghost {
-      padding: 10px 22px;
+      padding: 11px 22px;
       border-radius: 8px;
       font-size: 15px;
-      font-weight: 500;
-      color: #c4b5fd;
-      background: transparent;
-      border: none;
+      font-weight: 600;
+      color: #e9d5ff;
+      background: rgba(167,139,250,0.08);
+      border: 1.5px solid rgba(167,139,250,0.45);
       cursor: pointer;
       text-decoration: none;
-      transition: color 0.2s, background 0.2s;
+      transition: all 0.2s;
+      white-space: nowrap;
     }
-    .btn-ghost:hover { background: rgba(167,139,250,0.1); color: #f5f3ff; }
+    .btn-ghost:hover { background: rgba(167,139,250,0.18); color: #f5f3ff; border-color: rgba(167,139,250,0.7); }
 
     .btn-primary {
-      padding: 11px 26px;
+      padding: 11px 22px;
       border-radius: 8px;
       font-size: 15px;
       font-weight: 600;
       color: white;
       background: linear-gradient(135deg, #7c3aed, #a855f7);
-      border: none;
+      border: 1.5px solid transparent;
       cursor: pointer;
       text-decoration: none;
       box-shadow: 0 0 24px rgba(124,58,237,0.5);
       transition: all 0.2s;
+      white-space: nowrap;
     }
     .btn-primary:hover {
       transform: translateY(-1px);
