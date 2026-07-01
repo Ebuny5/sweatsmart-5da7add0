@@ -1005,12 +1005,12 @@ const SweatSmartLanding = () => {
       }
 
       .btn-ghost {
-        padding: 8px 16px;
+        padding: 9px 16px;
         font-size: 14px;
       }
 
       .btn-primary {
-        padding: 9px 20px;
+        padding: 9px 16px;
         font-size: 14px;
       }
 
