@@ -194,8 +194,8 @@ const CurrentStatusCard: React.FC<{
 };
 
 const DiagnosticsPanel: React.FC<{
-  locationPermission: PermissionStatus;
-  notificationPermission: PermissionStatus;
+  locationPermission: 'prompt' | 'granted' | 'denied';
+  notificationPermission: 'prompt' | 'granted' | 'denied';
   lastWeatherFetch: number | null;
   edaIsWearableAndFresh: boolean;
 }> = ({ locationPermission, notificationPermission, lastWeatherFetch, edaIsWearableAndFresh }) => {
@@ -223,8 +223,8 @@ const DiagnosticsPanel: React.FC<{
 const ClimateMonitor = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [notificationPermission, setNotificationPermission] = useState<PermissionStatus>('prompt');
-  const [locationPermission, setLocationPermission] = useState<PermissionStatus>('prompt');
+  const [notificationPermission, setNotificationPermission] = useState<'prompt' | 'granted' | 'denied'>('prompt');
+  const [locationPermission, setLocationPermission] = useState<'prompt' | 'granted' | 'denied'>('prompt');
   const [location, setLocation] = useState<GeolocationCoordinates | null>(null);
   const [isFetchingWeather, setIsFetchingWeather] = useState(false);
   const [weatherError, setWeatherError] = useState<string | null>(null);
