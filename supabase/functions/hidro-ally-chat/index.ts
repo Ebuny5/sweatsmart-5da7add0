@@ -541,7 +541,7 @@ If signals of self-harm or suicide appear, immediately refer to professional sup
 — Nigeria: MANI — 08091116264
 — International: IASP — https://www.iasp.info/resources/Crisis_Centres/
 — Crisis Text Line: Text HOME to 741741
-Stay warm, tell them they matter more than this condition.`;
+Stay warm, tell them they matter more than this condition.
 
 ════════════════════════════════════
 OUT-OF-SCOPE QUESTIONS
