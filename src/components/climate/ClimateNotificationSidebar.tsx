@@ -91,8 +91,8 @@ const SettingsPanel: React.FC<{ thresholds: Thresholds; onThresholdChange: (k: k
 interface ClimateNotificationSidebarProps { isOpen: boolean; onClose?: () => void; }
 
 const ClimateNotificationSidebar: React.FC<ClimateNotificationSidebarProps> = ({ isOpen, onClose }) => {
-  const [notificationPermission, setNotificationPermission] = useState<PermissionStatus>('prompt');
-  const [locationPermission, setLocationPermission] = useState<PermissionStatus>('prompt');
+  const [notificationPermission, setNotificationPermission] = useState<'prompt' | 'granted' | 'denied'>('prompt');
+  const [locationPermission, setLocationPermission] = useState<'prompt' | 'granted' | 'denied'>('prompt');
   const [location, setLocation] = useState<GeolocationCoordinates | null>(null);
   const [isFetchingWeather, setIsFetchingWeather] = useState(false);
   const [weatherError, setWeatherError] = useState<string | null>(null);
@@ -193,7 +193,7 @@ const ClimateNotificationSidebar: React.FC<ClimateNotificationSidebarProps> = ({
   const requestNotificationPermission = async () => {
     if (locationPermission !== 'granted') return;
     const p = await Notification.requestPermission();
-    setNotificationPermission(p === 'default' ? 'prompt' : p as PermissionStatus);
+    setNotificationPermission(p === 'default' ? 'prompt' : p as 'prompt' | 'granted' | 'denied');
   };
 
   const handleRequestLocation = () => {
