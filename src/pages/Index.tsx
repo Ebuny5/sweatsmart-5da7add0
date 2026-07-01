@@ -1091,7 +1091,7 @@ const SweatSmartLanding = () => {
               <span className="gradient-text">hyperhidrosis</span>
             </h1>
             <p className="hero-subtitle">
-              Track episodes, uncover triggers, and get AI-powered insights — all in one clinical-grade app designed for real life.
+              The smart hyperhidrosis tracker. Log episodes, discover sweating triggers, and get AI-powered answers.
             </p>
             <div className="hero-ctas">
               <a href="/register" className="btn-primary-lg">Start for free</a>
