@@ -221,10 +221,14 @@ const SweatSmartLanding = () => {
     }
     .logo-text {
       font-family: 'Syne', sans-serif;
-      font-weight: 700;
-      font-size: 20px;
-      color: #f5f3ff;
-      letter-spacing: -0.3px;
+      font-weight: 800;
+      font-size: 22px;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #a78bfa 0%, #f0abfc 50%, #7c3aed 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: 0 0 24px rgba(167,139,250,0.35);
     }
 
     .nav-links {
