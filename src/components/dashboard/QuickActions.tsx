@@ -4,8 +4,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { useEpisodes } from "@/hooks/useEpisodes";
 import { useClimateData } from "@/hooks/useClimateData";
+import { loggingReminderService, PRODUCTION_INTERVAL_MS } from "@/services/LoggingReminderService";
 import { gaugeHDSS } from "@/utils/hdssGauger";
-import { Thermometer, Droplets, Sun, Wind, RefreshCw, ChevronRight, AlertTriangle, Shield, Loader2 } from "lucide-react";
+import { Thermometer, Droplets, Sun, Wind, RefreshCw, ChevronRight, AlertTriangle, Shield, Loader2, Clock } from "lucide-react";
 import WarriorBadge from "@/components/dashboard/WarriorBadge";
 import { getWarriorInsight } from "@/utils/warriorLogic";
 import {
@@ -199,6 +200,34 @@ const WarriorLaunchpad = () => {
     weekday: "long", day: "numeric", month: "long",
   });
 
+  const lastLogDate = useMemo(() => {
+    return episodes.length > 0 ? episodes[0].datetime : null;
+  }, [episodes]);
+
+  const nextLogDate = useMemo(() => {
+    const LoggingReminderServiceClass = (loggingReminderService.constructor as any);
+    // Use last log date if available, otherwise fallback to the service's current scheduled time minus one interval to get a baseline
+    const baseline = lastLogDate
+      ? lastLogDate.getTime()
+      : (loggingReminderService.getNextScheduledTime() - PRODUCTION_INTERVAL_MS);
+
+    const nextTime = LoggingReminderServiceClass.calculateNextLogTime(baseline);
+    return new Date(nextTime);
+  }, [lastLogDate]);
+
+  const formatLogTime = (date: Date | null) => {
+    if (!date) return "Never";
+    const day = date.toLocaleDateString("en-GB", { weekday: "long" });
+    const time = date.toLocaleTimeString("en-GB", {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+    // The user specifically asked for "pm" even with 24h format in the example "20:15 pm"
+    const ampm = date.getHours() >= 12 ? 'pm' : 'am';
+    return `${day} ${time} ${ampm}`;
+  };
+
   const dynamicInsight = useMemo(() => {
     if (sweatRisk === "extreme") return "⚠️ Extreme sweat risk today — consider rescheduling outdoor plans";
     if (sweatRisk === "high") return "🌡️ High humidity today — carry cooling wipes and stay hydrated";
@@ -267,6 +296,17 @@ const WarriorLaunchpad = () => {
           {greeting.text}, {firstName}!
         </h1>
         <p className="text-purple-100 text-xs mt-1">{today}</p>
+
+        <div className="mt-4 space-y-1">
+          <div className="flex items-center gap-2 text-white/90 text-[11px] font-medium">
+            <Clock className="h-3 w-3" />
+            <span>Last Log: {formatLogTime(lastLogDate)}</span>
+          </div>
+          <div className="flex items-center gap-2 text-white/90 text-[11px] font-medium">
+            <Clock className="h-3 w-3" />
+            <span>Next Log: {formatLogTime(nextLogDate)}</span>
+          </div>
+        </div>
 
         {/* Warrior Status Banner */}
         <div className="mt-4 bg-white/15 backdrop-blur-sm rounded-2xl px-4 py-3 border border-white/20">

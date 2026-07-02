@@ -1,6 +1,6 @@
 import { notificationManager } from './NotificationManager';
 
-const PRODUCTION_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
+export const PRODUCTION_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
 const LAST_LOG_TIME_KEY = 'sweatsmart_last_log_time';
 const ONBOARDING_TIME_KEY = 'sweatsmart_onboarding_time';
 
@@ -52,6 +52,22 @@ class LoggingReminderService {
   }
 
   /**
+   * Calculates when the next log is due based on a baseline.
+   */
+  static calculateNextLogTime(baselineMs: number): number {
+    let nextTime = baselineMs + PRODUCTION_INTERVAL_MS;
+    const now = Date.now();
+
+    if (nextTime < now) {
+      const diff = now - baselineMs;
+      const cycles = Math.ceil(diff / PRODUCTION_INTERVAL_MS);
+      nextTime = baselineMs + (cycles * PRODUCTION_INTERVAL_MS);
+    }
+
+    return nextTime;
+  }
+
+  /**
    * Calculates when the next log is due (6 hours after last log or onboarding).
    */
   getNextScheduledTime(): number {
@@ -60,17 +76,7 @@ class LoggingReminderService {
 
     // Prioritize lastLog. If neither exists, use now as baseline.
     const baseline = lastLog || onboarding || Date.now();
-    let nextTime = baseline + PRODUCTION_INTERVAL_MS;
-
-    // If nextTime is in the past, find the next 6-hour slot from now
-    const now = Date.now();
-    if (nextTime < now) {
-      const diff = now - baseline;
-      const cycles = Math.ceil(diff / PRODUCTION_INTERVAL_MS);
-      nextTime = baseline + (cycles * PRODUCTION_INTERVAL_MS);
-    }
-
-    return nextTime;
+    return LoggingReminderService.calculateNextLogTime(baseline);
   }
 
   async checkForDueLog(): Promise<void> {
