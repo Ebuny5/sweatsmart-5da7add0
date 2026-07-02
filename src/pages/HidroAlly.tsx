@@ -1239,7 +1239,16 @@ const HidroAlly = () => {
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to get response');
+      if (!response.ok) {
+        let errorMsg = 'Failed to get response';
+        try {
+          const errData = await response.json();
+          errorMsg = errData.error || errorMsg;
+        } catch {
+          errorMsg = `Server error: ${response.status}`;
+        }
+        throw new Error(errorMsg);
+      }
 
       // Streaming response — fix: only add bubble when first real token arrives
       if (!response.body) throw new Error('No response body');

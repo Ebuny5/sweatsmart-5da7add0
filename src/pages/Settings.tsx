@@ -2,15 +2,20 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Bell, Save, Info, CloudSun, Database, TestTube } from 'lucide-react';
+import { Bell, Save, Info, CloudSun, Database, TestTube, RefreshCw, ExternalLink, ShieldAlert, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { notificationManager, isBackgroundNotificationsEnabled, setBackgroundNotificationsEnabled } from '@/services/NotificationManager';
 import { audioAlertPlayer } from '@/utils/audioAlertPlayer';
 import { SettingsPanel } from '@/components/climate/SettingsPanel';
 import { WebPushSettings } from '@/components/climate/WebPushSettings';
+import { webPushService } from '@/services/WebPushService';
+import { useAuth } from '@/contexts/AuthContext';
+
+const ANDROID_SETTINGS_INTENT = 'intent:#Intent;action=android.settings.APPLICATION_DETAILS_SETTINGS;data=package:guru.sweatsmart.twa;end';
 import type { Thresholds } from '@/types';
 
 const Settings = () => {
+  const { user } = useAuth();
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [soundAlerts, setSoundAlerts] = useState(true);
   const [bgNotifications, setBgNotifications] = useState(isBackgroundNotificationsEnabled());
@@ -216,23 +221,82 @@ const Settings = () => {
           </p>
         </Card>
 
-        {/* Test Notifications */}
-        <Card className="p-6 border-amber-900/30 bg-amber-900/10">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-amber-500/10 rounded-lg">
-              <TestTube className="w-6 h-6 text-amber-500" />
-            </div>
-            <h2 className="text-xl font-black text-white uppercase tracking-wider">Diagnostics</h2>
+        {/* Notification Repair & Android Settings */}
+        <Card className="p-6 border-zinc-800 bg-zinc-900 shadow-xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-4 opacity-5">
+            <ShieldAlert className="w-24 h-24 text-primary" />
           </div>
-          <p className="text-sm text-zinc-400 mb-4 leading-relaxed">
-            Verify alert delivery, sound synchronization, and notification reliability.
+
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <RefreshCw className="w-6 h-6 text-primary" />
+            </div>
+            <h2 className="text-xl font-black text-white uppercase tracking-wider">Notification Repair</h2>
+          </div>
+
+          <p className="text-sm text-zinc-400 mb-6 leading-relaxed">
+            If you are not receiving alerts when the app is closed, use these tools to re‑sync your device with the SweatSmart Clinical Engine.
           </p>
+
+          <div className="space-y-4">
+            <div className="p-4 rounded-2xl bg-zinc-800/50 border border-zinc-700/50">
+              <h4 className="text-sm font-bold text-white mb-2">Android System Settings</h4>
+              <p className="text-xs text-zinc-500 mb-4">
+                Verify that notifications are enabled and not restricted by Android's battery optimizer.
+              </p>
+              <Button
+                onClick={() => window.location.href = ANDROID_SETTINGS_INTENT}
+                className="w-full bg-zinc-700 hover:bg-zinc-600 text-white text-xs font-bold uppercase tracking-widest py-6 rounded-xl"
+              >
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Open Android Settings
+              </Button>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-zinc-800/50 border border-zinc-700/50">
+              <h4 className="text-sm font-bold text-white mb-2">Force Re‑Sync</h4>
+              <p className="text-xs text-zinc-500 mb-4">
+                Clears and recreates your background notification keys. Use this if alerts stop completely.
+              </p>
+              <Button
+                variant="outline"
+                className="w-full border-primary/30 hover:bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest py-6 rounded-xl"
+                onClick={async () => {
+                  const id = toast.loading("Repairing connection...");
+                  try {
+                    const res = await webPushService.refreshSubscription(user?.id);
+                    if (res) {
+                      toast.success("Connection Repaired!", { id });
+                    } else {
+                      toast.error("Repair failed. Check internet connection.", { id });
+                    }
+                  } catch (e) {
+                    toast.error("An error occurred during repair.", { id });
+                  }
+                }}
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Repair Background Sync
+              </Button>
+            </div>
+          </div>
+        </Card>
+
+        {/* Test Notifications */}
+        <Card className="p-6 border-zinc-800 bg-zinc-900 shadow-lg">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-zinc-800 rounded-lg">
+              <TestTube className="w-6 h-6 text-zinc-400" />
+            </div>
+            <h2 className="text-xl font-black text-white uppercase tracking-wider">Clinical Diagnostics</h2>
+          </div>
+
           <div className="grid grid-cols-1 gap-3">
             <Button
-              variant="outline"
-              className="w-full border-blue-500/30 hover:bg-blue-500/20 text-blue-400 font-bold"
+              variant="secondary"
+              className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold justify-between px-6 py-7 rounded-2xl"
               onClick={async () => {
-                toast.info("Testing Log Reminder...");
+                toast.info("Testing Voice Alert...");
                 await notificationManager.send({
                   channel: 'system',
                   kind: 'reminder',
@@ -242,42 +306,45 @@ const Settings = () => {
                 });
               }}
             >
-              Test Log Reminder Voice
+              <div className="flex items-center gap-3">
+                <Bell className="w-5 h-5 text-primary" />
+                <div className="text-left">
+                  <div className="text-sm font-black">Test Check-In Voice</div>
+                  <div className="text-[10px] text-zinc-500 uppercase tracking-wider">Foreground Test</div>
+                </div>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-zinc-900 flex items-center justify-center">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              </div>
             </Button>
 
             <Button
-              variant="outline"
-              className="w-full border-amber-500/30 hover:bg-amber-500/20 text-amber-500 font-bold"
+              variant="secondary"
+              className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold justify-between px-6 py-7 rounded-2xl"
               onClick={async () => {
-                toast.info("Testing Climate Alert...");
-                await notificationManager.send({
-                  channel: 'system',
-                  kind: 'high',
-                  title: "🔥 High Risk Alert Test",
-                  body: "Heat and humidity are rising. Hydrate and find shade! 💧",
-                  dedupKey: `test-cli-${Date.now()}`
-                });
+                const id = toast.loading("Sending background test...");
+                try {
+                  const res = await webPushService.sendTestNotification();
+                  if (res.success) {
+                    toast.success("Background alert sent! Close the app now to see it.", { id });
+                  } else {
+                    toast.error(`Background test failed: ${res.error}`, { id });
+                  }
+                } catch (e) {
+                  toast.error("Background test failed.", { id });
+                }
               }}
             >
-              Test Climate Alert Voice
-            </Button>
-
-            <Button
-              variant="outline"
-              className="w-full border-green-500/30 hover:bg-green-500/20 text-green-400 font-bold"
-              onClick={async () => {
-                toast.info("Testing Full Notification...");
-                const delivered = await notificationManager.send({
-                  channel: 'system',
-                  kind: 'extreme',
-                  title: "🚨 Full Notification Test",
-                  body: "Water sound + voice + system notification firing now.",
-                  dedupKey: `test-full-${Date.now()}`
-                });
-                if (!delivered) toast.error("Notification suppressed (cooldown).");
-              }}
-            >
-              Test Full Notification
+              <div className="flex items-center gap-3">
+                <Send className="w-5 h-5 text-green-400" />
+                <div className="text-left">
+                  <div className="text-sm font-black">Test Background Notification</div>
+                  <div className="text-[10px] text-zinc-500 uppercase tracking-wider">Closed-App Test</div>
+                </div>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-zinc-900 flex items-center justify-center">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+              </div>
             </Button>
           </div>
         </Card>
