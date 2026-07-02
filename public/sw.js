@@ -1,7 +1,7 @@
 // Professional Service Worker for SweatSmart App - FIXED FOR ANDROID
 // NOW INCLUDES: High-priority push notifications + Android support
 // Version control for cache busting
-const CACHE_VERSION = 'v2.5.4-reminder-audio-fix';
+const CACHE_VERSION = 'v2.6.0-android-notification-repair';
 const CACHE_NAME = `sweatsmart-${CACHE_VERSION}`;
 
 const OFFLINE_FALLBACK_URL = '/offline.html';
@@ -140,7 +140,11 @@ self.addEventListener('push', (event) => {
         const tag = data.tag || 'sweatsmart-push';
         const url = data.url || '/';
 
-        // ANDROID FIX: Set proper notification options for Android
+        // ANDROID FIX: Set proper notification options and channels
+        const channelId = (data.channel === 'climate' || data.type === 'climate')
+          ? 'climate-alerts'
+          : 'check-in-reminders';
+
         const notificationOptions = {
           body: data.body || '',
           icon: '/favicon.ico',
@@ -148,27 +152,22 @@ self.addEventListener('push', (event) => {
           tag: tag,
           data: { url, timestamp: Date.now() },
           // CRITICAL FOR ANDROID:
-          silent: false,  // Don't mute on Android
-          requireInteraction: true, // Keep notification visible
-          vibrate: [200, 100, 200], // Vibration pattern for Android
+          silent: false,
+          requireInteraction: true,
+          vibrate: [200, 100, 200],
+          // ANDROID CHANNEL SUPPORT
+          channelId: channelId,
           actions: [
             {
               action: 'open',
-              title: 'Open',
-              icon: '/favicon.ico'
-            },
-            {
-              action: 'close',
-              title: 'Dismiss',
+              title: 'Open App',
               icon: '/favicon.ico'
             }
           ]
         };
 
-        // If it's a climate alert, set higher priority
-        if (data.channel === 'climate' || data.type === 'climate') {
+        if (channelId === 'climate-alerts') {
           notificationOptions.tag = 'sweatsmart-climate-alert';
-          notificationOptions.requireInteraction = true;
           console.log('🌡️ High-priority climate alert');
         }
 

@@ -10,6 +10,7 @@
  */
 
 import { audioAlertPlayer, type AlertKind } from '@/utils/audioAlertPlayer';
+import { webPushService } from './WebPushService';
 
 export type NotificationChannel = 'climate' | 'reminder' | 'system';
 
@@ -119,56 +120,29 @@ class NotificationManager {
       // Mark as registered for Android settings
       localStorage.setItem(SW_REGISTERED_KEY, 'true');
 
-      // Subscribe to push notifications immediately
-      await this.subscribeToPush();
-
       // Listen for updates
       registration.addEventListener('updatefound', () => {
         console.log('📦 Service Worker update found');
       });
 
+      // AUTOMATIC PUSH SYNC: If permission is already granted, ensure subscription is active and fresh
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        console.log('🔔 Permission already granted, ensuring push subscription...');
+        try {
+          const isSubscribed = await webPushService.isSubscribed();
+          if (isSubscribed) {
+            await webPushService.ensureFreshSubscription();
+          } else {
+            await webPushService.subscribe();
+          }
+        } catch (pushErr) {
+          console.error('⚠️ Auto-push sync failed:', pushErr);
+        }
+      }
+
     } catch (error) {
       console.error('❌ Service Worker registration failed:', error);
       localStorage.setItem(SW_REGISTERED_KEY, 'false');
-    }
-  }
-
-  /**
-   * CRITICAL FIX #2: Push Subscription
-   * This subscribes to the push service so closed-app notifications can arrive
-   */
-  private async subscribeToPush(): Promise<void> {
-    try {
-      if (!this.swRegistration) {
-        console.warn('⚠️ No SW registration available for push subscription');
-        return;
-      }
-
-      if (!('pushManager' in this.swRegistration)) {
-        console.warn('⚠️ Push not supported on this device');
-        return;
-      }
-
-      // Check if already subscribed
-      let subscription = await this.swRegistration.pushManager.getSubscription();
-
-      if (!subscription) {
-        console.log('📡 Subscribing to push notifications...');
-        
-        subscription = await this.swRegistration.pushManager.subscribe({
-          userVisibleOnly: true, // Always show notification to user
-          applicationServerKey: undefined, // Will use default for testing
-        });
-
-        console.log('✅ Push subscription created:', subscription.endpoint);
-        localStorage.setItem('sweatsmart_push_subscribed', 'true');
-      } else {
-        console.log('✅ Already subscribed to push');
-      }
-
-    } catch (error) {
-      console.error('❌ Push subscription failed:', error);
-      localStorage.setItem('sweatsmart_push_subscribed', 'false');
     }
   }
 

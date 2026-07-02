@@ -3,6 +3,7 @@ import { toast } from '@/components/ui/use-toast';
 import { loggingReminderService } from '@/services/LoggingReminderService';
 import { notificationManager } from '@/services/NotificationManager';
 import { climateAlertService } from '@/services/ClimateAlertService';
+import { audioAlertPlayer, type AlertKind } from '@/utils/audioAlertPlayer';
 
 type InAppNotificationDetail = {
   title: string;
@@ -12,23 +13,36 @@ type InAppNotificationDetail = {
 
 const NotificationListener = () => {
   useEffect(() => {
-    // Initialize the unified notification and reminder services
     console.log('🔔 NotificationListener: Initializing global notification services...');
 
-    // Accessing notificationManager.getInstance() ensures listeners are attached
     notificationManager;
-
-    // Initialize background services
     loggingReminderService.forceCheck();
     climateAlertService.initialize();
+
+    // Listen for Service Worker messages (Background PUSH wake-ups)
+    const handleSWMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'PLAY_NOTIFICATION_SOUND') {
+        const kind = (event.data.kind || 'reminder') as AlertKind;
+        console.log(`📱 Background Trigger: Playing voice alert for "${kind}"`);
+        audioAlertPlayer.playAlert(kind).catch(err => {
+          console.warn('📱 Background audio trigger failed (user interaction required?):', err);
+        });
+      }
+    };
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', handleSWMessage);
+    }
 
     return () => {
       loggingReminderService.cleanup();
       climateAlertService.cleanup();
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('message', handleSWMessage);
+      }
     };
   }, []);
 
-  // Render in-app toasts for notifications
   useEffect(() => {
     const handleInAppNotification = (event: Event) => {
       const detail = (event as CustomEvent<InAppNotificationDetail>).detail;

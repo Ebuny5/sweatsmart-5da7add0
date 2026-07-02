@@ -153,13 +153,20 @@ serve(async (req) => {
     const supabaseUrl        = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey    = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const LOVABLE_API_KEY    = Deno.env.get('LOVABLE_API_KEY');
+    const LOVABLE_API_KEY    = Deno.env.get('LOVABLE_API_KEY') || Deno.env.get('OPENAI_API_KEY');
     const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY');
     const GEMINI_API_KEY     = Deno.env.get('GOOGLE_AI_STUDIO_API_KEY')
       || Deno.env.get('GOOGLE_AI_STUDIO_API_KEY_WEB')
-      || Deno.env.get('GOOGLE_AI_STUDIO_API_KEY_ANDROID');
+      || Deno.env.get('GOOGLE_AI_STUDIO_API_KEY_ANDROID')
+      || Deno.env.get('GEMINI_API_KEY');
 
-    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
+    if (!LOVABLE_API_KEY) {
+      console.error('Missing LOVABLE_API_KEY or OPENAI_API_KEY');
+      return new Response(
+        JSON.stringify({ error: 'AI Gateway key not configured. Please check Supabase secrets.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
@@ -661,6 +668,7 @@ CURRENT MESSAGE TYPE: ${isCasualGreeting ? 'CASUAL GREETING — respond warmly a
     }
 
     // ── Call AI gateway ───────────────────────────────────────────────────────
+    console.log('Sending request to AI Gateway...');
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -680,12 +688,15 @@ CURRENT MESSAGE TYPE: ${isCasualGreeting ? 'CASUAL GREETING — respond warmly a
     });
 
     if (!response.ok) {
+      const errText = await response.text();
+      console.error('AI Gateway error:', response.status, errText);
+
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }), {
           status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      return new Response(JSON.stringify({ error: 'AI service error' }), {
+      return new Response(JSON.stringify({ error: `AI service error (${response.status})` }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
