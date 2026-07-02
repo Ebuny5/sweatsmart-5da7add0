@@ -208,6 +208,7 @@ class WebPushService {
       }
 
       // Store subscription in database
+      console.log('📱 Storing subscription in DB for user:', userId);
       const { error } = await supabase
         .from('push_subscriptions')
         .upsert({
@@ -229,6 +230,8 @@ class WebPushService {
         console.error('Failed to store subscription:', error);
         throw error;
       }
+
+      console.log('📱 Push subscription stored in database successfully');
 
       console.log('📱 Push subscription stored in database');
       this.setStoredVapidPublicKey(vapidPublicKey);

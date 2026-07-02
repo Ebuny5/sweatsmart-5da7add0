@@ -245,7 +245,14 @@ const Settings = () => {
                 Verify that notifications are enabled and not restricted by Android's battery optimizer.
               </p>
               <Button
-                onClick={() => window.location.href = ANDROID_SETTINGS_INTENT}
+                onClick={() => {
+                  try {
+                    window.location.href = ANDROID_SETTINGS_INTENT;
+                  } catch (e) {
+                    console.error("Failed to open settings intent:", e);
+                    toast.error("Could not open system settings. Please open manually.");
+                  }
+                }}
                 className="w-full bg-zinc-700 hover:bg-zinc-600 text-white text-xs font-bold uppercase tracking-widest py-6 rounded-xl"
               >
                 <ExternalLink className="w-4 h-4 mr-2" />

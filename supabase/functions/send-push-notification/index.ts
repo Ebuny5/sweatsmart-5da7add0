@@ -422,7 +422,18 @@ serve(async (req) => {
 
     // send_logging_reminders
     if (action === 'send_logging_reminders') {
-      const { data: subs } = await supabase.from('push_subscriptions').select('*').eq('is_active', true);
+      console.log('🔔 Processing logging reminders...');
+      const { data: subs, error: subsError } = await supabase.from('push_subscriptions').select('*').eq('is_active', true);
+
+      if (subsError) {
+        console.error('❌ Error fetching subscriptions:', subsError);
+        return new Response(JSON.stringify({ error: 'Failed to fetch subscriptions' }), {
+          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      console.log(`🔔 Found ${subs?.length || 0} active subscriptions`);
+
       const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
       const now = Date.now();
       let sent = 0, skipped = 0, failed = 0;
@@ -430,11 +441,19 @@ serve(async (req) => {
       for (const sub of subs || []) {
         try {
           const todayCount = await getNotificationCountToday(supabase, sub.id, 'logging_reminder');
-          if (todayCount >= 4) { skipped++; continue; } // Max 4 times a day for 6-hour intervals
+          if (todayCount >= 4) {
+            console.log(`⏭️ Sub ${sub.id}: Max today (${todayCount})`);
+            skipped++;
+            continue;
+          }
 
           if (sub.last_reminder_sent_at) {
             const lastSent = new Date(sub.last_reminder_sent_at).getTime();
-            if (now - lastSent < SIX_HOURS_MS) { skipped++; continue; }
+            if (now - lastSent < SIX_HOURS_MS) {
+              console.log(`⏭️ Sub ${sub.id}: Sent recently (${Math.round((now - lastSent)/1000/60)}m ago)`);
+              skipped++;
+              continue;
+            }
           }
 
           if (sub.user_id) {
@@ -444,13 +463,23 @@ serve(async (req) => {
               .eq('user_id', sub.user_id)
               .order('created_at', { ascending: false })
               .limit(1)
-              .single();
+              .maybeSingle(); // maybeSingle instead of single to avoid error if no episodes
+
             if (lastEpisode) {
               const lastLogTime = new Date(lastEpisode.created_at).getTime();
-              if (now - lastLogTime < SIX_HOURS_MS) { skipped++; continue; }
+              if (now - lastLogTime < SIX_HOURS_MS) {
+                console.log(`⏭️ Sub ${sub.id}: User logged recently (${Math.round((now - lastLogTime)/1000/60)}m ago)`);
+                skipped++;
+                continue;
+              }
+            } else {
+              console.log(`ℹ️ Sub ${sub.id}: No previous episodes found for user ${sub.user_id}`);
             }
+          } else {
+            console.log(`ℹ️ Sub ${sub.id}: No user_id attached to subscription`);
           }
 
+          console.log(`📤 Sub ${sub.id}: Sending reminder...`);
           const result = await sendWebPush(
             { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
             {
@@ -465,12 +494,14 @@ serve(async (req) => {
           );
 
           if (result.success) {
+            console.log(`✅ Sub ${sub.id}: Reminder sent successfully`);
             sent++;
             await logNotification(supabase, sub.id, sub.user_id, 'logging_reminder');
             await supabase.from('push_subscriptions')
               .update({ last_reminder_sent_at: new Date().toISOString() })
               .eq('id', sub.id);
           } else {
+            console.error(`❌ Sub ${sub.id}: Send failed:`, result.error);
             failed++;
             if (result.error === 'subscription_expired') {
               await supabase.from('push_subscriptions').delete().eq('id', sub.id);
