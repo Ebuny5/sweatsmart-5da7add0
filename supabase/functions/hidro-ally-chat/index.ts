@@ -15,7 +15,7 @@ async function generateEmbedding(text: string, apiKey: string): Promise<number[]
     const res = await fetch('https://ai.gateway.lovable.dev/v1/embeddings', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'text-embedding-3-small', input: text }),
+      body: JSON.stringify({ model: 'openai/text-embedding-3-small', input: text }),
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -676,7 +676,7 @@ CURRENT MESSAGE TYPE: ${isCasualGreeting ? 'CASUAL GREETING — respond warmly a
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.0-flash',
+        model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: systemPrompt },
           ...apiMessages,
