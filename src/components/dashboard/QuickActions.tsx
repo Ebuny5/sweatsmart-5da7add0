@@ -68,7 +68,27 @@ const ClimateCard = ({ onNavigate }: { onNavigate: () => void }) => {
     return `${Math.floor(diff / 3600)}h ago`;
   };
 
-  if (loading) {
+  // If we don't have weather data yet, show either error or loading state
+  if (!weather) {
+    if (error) {
+      return (
+        <div className="rounded-2xl bg-gray-50 border border-gray-200 p-4 flex items-center gap-3">
+          <AlertTriangle className="h-5 w-5 text-gray-400 shrink-0" />
+          <div className="flex-1">
+            <p className="text-xs font-semibold text-gray-600">Climate unavailable</p>
+            <p className="text-[10px] text-gray-400">{error || "Enable location for real-time sweat risk"}</p>
+          </div>
+          <button
+            onClick={() => { refresh(); }}
+            disabled={loading}
+            className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition-all disabled:opacity-50"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      );
+    }
+
     return (
       <div className="rounded-2xl bg-white border border-gray-100 p-4 shadow-sm animate-pulse">
         <div className="h-3 w-28 bg-gray-100 rounded mb-3" />
@@ -76,21 +96,6 @@ const ClimateCard = ({ onNavigate }: { onNavigate: () => void }) => {
           {[1, 2, 3, 4].map(i => <div key={i} className="h-14 bg-gray-100 rounded-xl" />)}
         </div>
         <div className="h-3 w-48 bg-gray-100 rounded mt-3" />
-      </div>
-    );
-  }
-
-  if (error || !weather) {
-    return (
-      <div className="rounded-2xl bg-gray-50 border border-gray-200 p-4 flex items-center gap-3">
-        <AlertTriangle className="h-5 w-5 text-gray-400 shrink-0" />
-        <div className="flex-1">
-          <p className="text-xs font-semibold text-gray-600">Climate unavailable</p>
-          <p className="text-[10px] text-gray-400">{error || "Enable location for real-time sweat risk"}</p>
-        </div>
-        <button onClick={() => { refresh(); }} className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition-all">
-          <RefreshCw className="h-3.5 w-3.5 text-gray-500" />
-        </button>
       </div>
     );
   }
@@ -124,10 +129,11 @@ const ClimateCard = ({ onNavigate }: { onNavigate: () => void }) => {
         <div className="flex items-center gap-2">
           <button
             onClick={refresh}
-            className={`p-2 rounded-xl ${cfg.badge} hover:opacity-80 transition-all`}
+            disabled={loading}
+            className={`p-2 rounded-xl ${cfg.badge} hover:opacity-80 transition-all disabled:opacity-50`}
             title="Refresh"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${cfg.text}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${cfg.text} ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
