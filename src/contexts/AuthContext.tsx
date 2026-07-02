@@ -31,6 +31,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+
+    const finishLoading = () => {
+      if (mounted) setLoading(false);
+    };
+
+    const authSafetyTimer = window.setTimeout(() => {
+      console.warn('Auth initialization timed out; showing login/app shell instead of blocking.');
+      finishLoading();
+    }, 6000);
+
     // Clear any old project storage keys on initialization
     const clearOldProjectData = () => {
       const oldProjectKeys = [
@@ -39,9 +50,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ];
       
       oldProjectKeys.forEach(key => {
-        if (localStorage.getItem(key)) {
-          localStorage.removeItem(key);
-          console.log('Cleared old project storage:', key);
+        try {
+          if (localStorage.getItem(key)) {
+            localStorage.removeItem(key);
+            console.log('Cleared old project storage:', key);
+          }
+        } catch (error) {
+          console.warn('Unable to clear legacy auth storage:', error);
         }
       });
     };
@@ -51,7 +66,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // CRITICAL: Set up auth state listener FIRST before getting session
     // This ensures OAuth callback tokens in URL hash are processed correctly
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
+        if (!mounted) return;
+
         console.log('Auth state changed:', event, session?.user?.id);
         
         // For OAuth callbacks (SIGNED_IN with session), ensure we update state
@@ -59,7 +76,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log('OAuth/Login detected, setting session');
           setSession(session);
           setUser(session.user);
-          setLoading(false);
+          finishLoading();
           return;
         }
         
@@ -67,7 +84,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log('User signed out');
           setSession(null);
           setUser(null);
-          setLoading(false);
+          finishLoading();
           return;
         }
         
@@ -82,13 +99,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (event === 'INITIAL_SESSION') {
           setSession(session);
           setUser(session?.user ?? null);
-          setLoading(false);
+          finishLoading();
         }
       }
     );
 
-    // Get initial session - but don't set loading to false here
-    // Let the auth state listener handle the final state
     const getInitialSession = async () => {
       try {
         // Check if there's a hash fragment (OAuth callback)
@@ -96,38 +111,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                             window.location.hash.includes('refresh_token');
         
         if (hasOAuthHash) {
-          // Let onAuthStateChange handle OAuth callback
           console.log('OAuth hash detected, waiting for auth state change...');
+          window.setTimeout(async () => {
+            if (!mounted) return;
+            try {
+              const { data: { session } } = await supabase.auth.getSession();
+              if (!mounted) return;
+              setSession(session);
+              setUser(session?.user ?? null);
+            } catch (error) {
+              console.error('OAuth fallback session check failed:', error);
+            } finally {
+              finishLoading();
+            }
+          }, 1500);
           return;
         }
         
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          window.setTimeout(() => reject(new Error('Session restore timed out')), 5000);
+        });
+
+        const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]);
+
+        if (!mounted) return;
         
         if (error) {
           console.error('Error getting initial session:', error);
           setSession(null);
           setUser(null);
-          setLoading(false);
+          finishLoading();
         } else if (session) {
           console.log('Initial session found:', session.user.id);
           setSession(session);
           setUser(session.user);
-          setLoading(false);
+          finishLoading();
         } else {
           console.log('No initial session');
-          setLoading(false);
+          finishLoading();
         }
       } catch (error) {
         console.error('Error in getInitialSession:', error);
+        if (!mounted) return;
         setSession(null);
         setUser(null);
-        setLoading(false);
+        finishLoading();
       }
     };
 
     getInitialSession();
 
     return () => {
+      mounted = false;
+      window.clearTimeout(authSafetyTimer);
       subscription.unsubscribe();
     };
   }, []);

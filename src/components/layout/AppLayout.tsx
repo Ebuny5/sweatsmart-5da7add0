@@ -16,7 +16,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, isAuthenticated }) => {
   const isMobile = useIsMobile();
   const authenticated = isAuthenticated ?? !!user;
 
-  if (loading) {
+  if (loading && isAuthenticated !== false) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-violet-50 to-pink-50">
         <div className="relative">

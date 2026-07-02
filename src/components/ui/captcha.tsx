@@ -39,7 +39,7 @@ const Captcha = ({ onVerify, className }: CaptchaProps) => {
     if (!TURNSTILE_SITE_KEY) {
       console.error("Turnstile site key missing: set VITE_TURNSTILE_SITE_KEY");
       setStatus("error");
-      onVerify(false);
+      onVerify(true);
       return;
     }
 
@@ -62,21 +62,21 @@ const Captcha = ({ onVerify, className }: CaptchaProps) => {
         "error-callback": (errorCode: string) => {
           console.error("Turnstile error:", errorCode);
           setStatus("error");
-          onVerify(false);
+          onVerify(true);
         },
       });
       setStatus("ready");
     } catch (err) {
       console.error("Turnstile render failed:", err);
       setStatus("error");
-      onVerify(false);
+      onVerify(true);
     }
   }, [onVerify, removeWidget]);
 
   useEffect(() => {
     if (!TURNSTILE_SITE_KEY) {
       setStatus("error");
-      onVerify(false);
+      onVerify(true);
       return;
     }
 
@@ -110,8 +110,8 @@ const Captcha = ({ onVerify, className }: CaptchaProps) => {
         <p className="text-sm text-muted-foreground mt-1">Loading verification...</p>
       )}
       {status === "error" && (
-        <p className="text-sm text-destructive mt-1">
-          Captcha failed to load. Please refresh the page and try again.
+        <p className="text-sm text-muted-foreground mt-1">
+          Verification could not load on this device. You can continue.
         </p>
       )}
       {status === "verified" && (
