@@ -1,9 +1,11 @@
 import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
 import { loggingReminderService } from '@/services/LoggingReminderService';
 import { notificationManager } from '@/services/NotificationManager';
 import { climateAlertService } from '@/services/ClimateAlertService';
 import { audioAlertPlayer, type AlertKind } from '@/utils/audioAlertPlayer';
+import { attachNativeTapHandler } from '@/services/NativeNotificationBridge';
 
 type InAppNotificationDetail = {
   title: string;
@@ -12,12 +14,16 @@ type InAppNotificationDetail = {
 };
 
 const NotificationListener = () => {
+  const navigate = useNavigate();
   useEffect(() => {
     console.log('🔔 NotificationListener: Initializing global notification services...');
 
     notificationManager;
     loggingReminderService.forceCheck();
     climateAlertService.initialize();
+    // On Android/iOS: request OS-level notification permission and wire taps
+    void notificationManager.requestNativePermissionsIfAvailable();
+    void attachNativeTapHandler((url) => navigate(url));
 
     // Listen for Service Worker messages (Background PUSH wake-ups)
     const handleSWMessage = (event: MessageEvent) => {
