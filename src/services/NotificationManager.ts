@@ -235,6 +235,8 @@ class NotificationManager {
 
     audioAlertPlayer.playAlert(req.kind).catch(() => {});
     void this.showSystemNotification(req);
+    // Native (Android/iOS) local notification for background delivery
+    void showNativeNotification({ title: req.title, body: req.body, url: req.url });
 
     try {
       window.dispatchEvent(
