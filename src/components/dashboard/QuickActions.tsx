@@ -222,7 +222,7 @@ const WarriorLaunchpad = () => {
   }, [lastLogDate]);
 
   const formatLogTime = (date: Date | null) => {
-    if (!date) return "Never";
+    if (!date || isNaN(date.getTime())) return "Never";
     const day = date.toLocaleDateString("en-GB", { weekday: "long" });
     const time = date.toLocaleTimeString("en-GB", {
       hour: '2-digit',
