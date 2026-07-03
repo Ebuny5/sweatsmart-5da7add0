@@ -11,6 +11,12 @@
 
 import { audioAlertPlayer, type AlertKind } from '@/utils/audioAlertPlayer';
 import { webPushService } from './WebPushService';
+import {
+  isNativeApp,
+  requestNativePermissions,
+  scheduleNativeReminder,
+  showNativeNotification,
+} from './NativeNotificationBridge';
 
 export type NotificationChannel = 'climate' | 'reminder' | 'system';
 
@@ -229,6 +235,8 @@ class NotificationManager {
 
     audioAlertPlayer.playAlert(req.kind).catch(() => {});
     void this.showSystemNotification(req);
+    // Native (Android/iOS) local notification for background delivery
+    void showNativeNotification({ title: req.title, body: req.body, url: req.url });
 
     try {
       window.dispatchEvent(
@@ -254,6 +262,18 @@ class NotificationManager {
       return;
     }
     console.log('📅 Reminder scheduled:', at.toLocaleString(), title);
+    // Native (Android/iOS): schedule an OS-level local notification.
+    // Uses a stable id derived from the target timestamp so re-scheduling
+    // the same time replaces rather than duplicates.
+    const id = Math.floor((at.getTime() / 60000) % 2147483647);
+    await scheduleNativeReminder({ id, at, title, body, url });
+  }
+
+  async requestNativePermissionsIfAvailable(): Promise<boolean> {
+    if (await isNativeApp()) {
+      return requestNativePermissions();
+    }
+    return false;
   }
 
   private async showSystemNotification(req: NotificationRequest): Promise<void> {
