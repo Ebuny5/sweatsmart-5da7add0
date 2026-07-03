@@ -262,6 +262,18 @@ class NotificationManager {
       return;
     }
     console.log('📅 Reminder scheduled:', at.toLocaleString(), title);
+    // Native (Android/iOS): schedule an OS-level local notification.
+    // Uses a stable id derived from the target timestamp so re-scheduling
+    // the same time replaces rather than duplicates.
+    const id = Math.floor((at.getTime() / 60000) % 2147483647);
+    await scheduleNativeReminder({ id, at, title, body, url });
+  }
+
+  async requestNativePermissionsIfAvailable(): Promise<boolean> {
+    if (await isNativeApp()) {
+      return requestNativePermissions();
+    }
+    return false;
   }
 
   private async showSystemNotification(req: NotificationRequest): Promise<void> {
