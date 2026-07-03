@@ -11,6 +11,12 @@
 
 import { audioAlertPlayer, type AlertKind } from '@/utils/audioAlertPlayer';
 import { webPushService } from './WebPushService';
+import {
+  isNativeApp,
+  requestNativePermissions,
+  scheduleNativeReminder,
+  showNativeNotification,
+} from './NativeNotificationBridge';
 
 export type NotificationChannel = 'climate' | 'reminder' | 'system';
 
