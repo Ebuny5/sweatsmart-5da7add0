@@ -263,7 +263,7 @@ const ClimateMonitor = () => {
       setLocationPermission(geoStatus.state);
       notifStatus.onchange = () => setNotificationPermission(notifStatus.state);
       geoStatus.onchange = () => setLocationPermission(geoStatus.state);
-    } else {
+    } else if (typeof Notification !== 'undefined') {
       const perm = Notification.permission;
       setNotificationPermission(perm === 'default' ? 'prompt' : perm);
     }

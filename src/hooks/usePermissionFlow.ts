@@ -9,6 +9,13 @@ export const usePermissionFlow = () => {
 
   const startNotificationFlow = useCallback(async () => {
     setStep('notification-request');
+
+    if (typeof Notification === 'undefined') {
+      console.warn('Notification API not supported on this device');
+      setStep('complete');
+      return 'unsupported';
+    }
+
     const notifStatus = Notification.permission;
 
     if (notifStatus === 'default') {

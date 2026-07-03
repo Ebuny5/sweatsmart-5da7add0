@@ -101,7 +101,7 @@ class WebPushService {
    * Get current permission status
    */
   getPermissionStatus(): NotificationPermission {
-    if (!('Notification' in window)) {
+    if (typeof Notification === 'undefined') {
       return 'denied';
     }
     return Notification.permission;
@@ -111,7 +111,7 @@ class WebPushService {
    * Request notification permission
    */
   async requestPermission(): Promise<NotificationPermission> {
-    if (!('Notification' in window)) {
+    if (typeof Notification === 'undefined') {
       console.error('Notifications not supported');
       return 'denied';
     }
@@ -174,7 +174,7 @@ class WebPushService {
 
     try {
       // Request permission if needed
-      if (Notification.permission === 'default') {
+      if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
         const permission = await this.requestPermission();
         if (permission !== 'granted') {
           console.log('Push permission denied');
@@ -182,8 +182,8 @@ class WebPushService {
         }
       }
 
-      if (Notification.permission !== 'granted') {
-        console.log('Push permission not granted');
+      if (typeof Notification === 'undefined' || Notification.permission !== 'granted') {
+        console.log('Push permission not granted or unsupported');
         return null;
       }
 
@@ -343,7 +343,7 @@ class WebPushService {
     }
   ): Promise<{ refreshed: boolean; subscription: PushSubscription | null }> {
     const subscribed = await this.isSubscribed();
-    if (!subscribed || Notification.permission !== 'granted') {
+    if (!subscribed || typeof Notification === 'undefined' || Notification.permission !== 'granted') {
       return { refreshed: false, subscription: this.subscription };
     }
 
