@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Bell, Save, Info, CloudSun, Database, TestTube, RefreshCw, ExternalLink, ShieldAlert, Send } from 'lucide-react';
+import { Bell, Save, Info, CloudSun, Database, TestTube, RefreshCw, ExternalLink, ShieldAlert, Send, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { notificationManager, isBackgroundNotificationsEnabled, setBackgroundNotificationsEnabled } from '@/services/NotificationManager';
 import { loggingReminderService } from '@/services/LoggingReminderService';
