@@ -150,7 +150,7 @@ const ClimateCard = ({ onNavigate }: { onNavigate: () => void }) => {
             label: gauged.status,
             color: isStale ? "text-red-500" : "text-indigo-600",
             onClick: () => navigate("/log-episode"),
-            className: "cursor-pointer hover:bg-white/90 transition-colors"
+            className: "cursor-pointer hover:bg-white/90 transition-colors animate-pulse"
           },
         ].map(({ Icon, value, label, color, onClick, className }) => (
           <div
