@@ -8,6 +8,8 @@ const corsHeaders = {
 
 const LOG_REMINDER_TITLE = '⏰ Time for Your Six-Hour Check-In';
 const LOG_REMINDER_BODY = "It's time for your six-hour check-in 💧";
+const MISSED_REMINDER_TITLE = '⏰ Missed Check-In';
+const MISSED_REMINDER_BODY = "You missed your 6-hour check-in";
 
 const MIN_CRON_SECRET_LENGTH = 32;
 
@@ -25,10 +27,12 @@ function normalizeReminderNotification(notification: any) {
 
   if (!isLogReminder) return notification;
 
+  const isMissed = body.toLowerCase().includes('missed') || title.toLowerCase().includes('missed');
+
   return {
     ...notification,
-    title: LOG_REMINDER_TITLE,
-    body: LOG_REMINDER_BODY,
+    title: isMissed ? MISSED_REMINDER_TITLE : LOG_REMINDER_TITLE,
+    body: isMissed ? MISSED_REMINDER_BODY : LOG_REMINDER_BODY,
     tag: 'logging-reminder',
     type: 'reminder',
     kind: 'reminder',
@@ -480,11 +484,34 @@ serve(async (req) => {
           }
 
           console.log(`📤 Sub ${sub.id}: Sending reminder...`);
+
+          let reminderTitle = LOG_REMINDER_TITLE;
+          let reminderBody = LOG_REMINDER_BODY;
+
+          // If it's been more than 6.5 hours, it's a "missed" reminder
+          if (sub.user_id) {
+             const { data: lastEpisode } = await supabase
+              .from('episodes')
+              .select('created_at')
+              .eq('user_id', sub.user_id)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (lastEpisode) {
+              const lastLogTime = new Date(lastEpisode.created_at).getTime();
+              if (now - lastLogTime > (6 * 60 * 60 * 1000 + 30 * 60 * 1000)) {
+                reminderTitle = MISSED_REMINDER_TITLE;
+                reminderBody = MISSED_REMINDER_BODY;
+              }
+            }
+          }
+
           const result = await sendWebPush(
             { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
             {
-              title: LOG_REMINDER_TITLE,
-              body: LOG_REMINDER_BODY,
+              title: reminderTitle,
+              body: reminderBody,
               tag: 'logging-reminder',
               type: 'reminder',
               kind: 'reminder',
