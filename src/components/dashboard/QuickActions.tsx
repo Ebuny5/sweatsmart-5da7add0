@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { useEpisodes } from "@/hooks/useEpisodes";
 import { useClimateData } from "@/hooks/useClimateData";
-import { loggingReminderService, PRODUCTION_INTERVAL_MS } from "@/services/LoggingReminderService";
+import { loggingReminderService, PRODUCTION_INTERVAL_MS, LAST_LOG_TIME_KEY, CURRENT_HDSS_KEY } from "@/services/LoggingReminderService";
 import { gaugeHDSS } from "@/utils/hdssGauger";
 import { Thermometer, Droplets, Sun, Wind, RefreshCw, ChevronRight, AlertTriangle, Shield, Loader2, Clock } from "lucide-react";
 import WarriorBadge from "@/components/dashboard/WarriorBadge";
@@ -148,9 +148,9 @@ const ClimateCard = ({ onNavigate }: { onNavigate: () => void }) => {
             Icon: Shield,
             value: `HDSS ${gauged.level}`,
             label: gauged.status,
-            color: isStale ? "text-red-500 animate-pulse" : "text-indigo-600",
+            color: isStale ? "text-red-500" : "text-indigo-600",
             onClick: () => navigate("/log-episode"),
-            className: "cursor-pointer hover:bg-white/90 transition-colors"
+            className: "cursor-pointer hover:bg-white/90 transition-colors animate-pulse"
           },
         ].map(({ Icon, value, label, color, onClick, className }) => (
           <div
@@ -235,9 +235,17 @@ const WarriorLaunchpad = () => {
   };
 
   const dynamicInsight = useMemo(() => {
+    const insight = getWarriorInsight(episodes);
+
+    // Priority 0: Missed check-in takes precedence over weather alerts
+    if (insight.message.includes("missed your 6-hour check-in")) {
+      return insight.message;
+    }
+
     if (sweatRisk === "extreme") return "⚠️ Extreme sweat risk today — consider rescheduling outdoor plans";
     if (sweatRisk === "high") return "🌡️ High humidity today — carry cooling wipes and stay hydrated";
-    return getWarriorInsight(episodes).message;
+
+    return insight.message;
   }, [sweatRisk, episodes]);
 
   const tip = COMMUNITY_TIPS[tipIndex];
@@ -255,7 +263,7 @@ const WarriorLaunchpad = () => {
           user_id: user.id,
           date: isoDate,
           severity: quickHDSS,
-          body_areas: ['entire_body'], // Default for quick capture
+          body_areas: [], // HDSS-only capture, no default body areas
           triggers: [],
           notes: "Quick HDSS Capture"
         })
@@ -271,13 +279,13 @@ const WarriorLaunchpad = () => {
         id: data.id,
         datetime: isoDate,
         severityLevel: quickHDSS,
-        bodyAreas: ['entire_body'],
+        bodyAreas: [],
         triggers: [],
         notes: "Quick HDSS Capture"
       };
       localStorage.setItem('sweatSmartLogs', JSON.stringify([newLog, ...existingLogs]));
-      localStorage.setItem('sweatsmart_last_log_time', Date.now().toString());
-      localStorage.setItem('sweatsmart_current_hdss', quickHDSS.toString());
+      localStorage.setItem(LAST_LOG_TIME_KEY, Date.now().toString());
+      localStorage.setItem(CURRENT_HDSS_KEY, quickHDSS.toString());
 
       toast.success("HDSS Level logged successfully!");
       setQuickLogOpen(false);
