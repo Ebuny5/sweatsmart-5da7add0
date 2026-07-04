@@ -1,5 +1,6 @@
 
 import { ProcessedEpisode } from "@/types";
+import { LAST_LOG_TIME_KEY, ONBOARDING_TIME_KEY, CURRENT_HDSS_KEY } from "@/services/LoggingReminderService";
 
 // ── Message pools ───────────────────────────────────────────────────────────
 
@@ -92,6 +93,45 @@ export type WarriorVariant = "success" | "nudge" | "achievement" | "progress";
 
 export function getWarriorInsight(episodes: ProcessedEpisode[]): { message: string, variant: WarriorVariant } {
   const now = new Date();
+
+  // Priority 0: Missed Check-in (6h - 30h window)
+  const lastLogTimeStr = localStorage.getItem(LAST_LOG_TIME_KEY);
+  const onboardingTimeStr = localStorage.getItem(ONBOARDING_TIME_KEY);
+  const baseline = parseInt(lastLogTimeStr || onboardingTimeStr || '0', 10);
+
+  if (baseline > 0) {
+    const sixHours = 6 * 60 * 60 * 1000;
+    const thirtyHours = 30 * 60 * 60 * 1000; // 6h due + 24h persistence
+    const diff = now.getTime() - baseline;
+
+    // Priority 0: Post-Log Commendation (within 4 hours of last log)
+    const lastLogTime = parseInt(localStorage.getItem(LAST_LOG_TIME_KEY) || '0', 10);
+    const lastLogDiff = now.getTime() - lastLogTime;
+    const lastHDSS = parseInt(localStorage.getItem(CURRENT_HDSS_KEY) || '0', 10);
+
+    if (lastLogTime > 0 && lastLogDiff < 4 * 60 * 60 * 1000 && lastHDSS > 0) {
+      if (lastHDSS <= 2) {
+        return {
+          message: `Awesome work! You managed to keep your sweat level at HDSS ${lastHDSS} today. Your consistency is paying off.`,
+          variant: "success"
+        };
+      } else {
+        return {
+          message: `I'm sorry you had a tough time today with HDSS ${lastHDSS}. Remember, logging it is the first step to mastering your triggers.`,
+          variant: "nudge"
+        };
+      }
+    }
+
+    // Priority 0.5: Missed Check-in
+    if (diff >= sixHours && diff < thirtyHours) {
+      return {
+        message: "You missed your 6-hour check-in. Consistent logging helps spot triggers elevating your sweat.",
+        variant: "nudge"
+      };
+    }
+  }
+
   const todayStart = startOfDay(now);
   const weekStart = startOfWeek(now);
   const monthStart = startOfMonth(now);

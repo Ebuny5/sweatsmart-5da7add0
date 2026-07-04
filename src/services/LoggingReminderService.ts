@@ -1,8 +1,9 @@
 import { notificationManager } from './NotificationManager';
 
 export const PRODUCTION_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
-const LAST_LOG_TIME_KEY = 'sweatsmart_last_log_time';
-const ONBOARDING_TIME_KEY = 'sweatsmart_onboarding_time';
+export const LAST_LOG_TIME_KEY = 'sweatsmart_last_log_time';
+export const ONBOARDING_TIME_KEY = 'sweatsmart_onboarding_time';
+export const CURRENT_HDSS_KEY = 'sweatsmart_current_hdss';
 
 class LoggingReminderService {
   private static instance: LoggingReminderService;
@@ -82,10 +83,13 @@ class LoggingReminderService {
   async checkForDueLog(): Promise<void> {
     const nextTime = this.getNextScheduledTime();
     const now = Date.now();
+    const lastLog = parseInt(localStorage.getItem(LAST_LOG_TIME_KEY) || '0', 10);
+    const onboarding = parseInt(localStorage.getItem(ONBOARDING_TIME_KEY) || '0', 10);
+    const lastInteraction = lastLog || onboarding;
 
     console.log(`📅 Next log due at: ${new Date(nextTime).toLocaleString()}`);
 
-    // Schedule native reminder (Capacitor handles backgrounding)
+    // 1. Schedule/Send the upcoming/current reminder
     await notificationManager.scheduleReminder(
       new Date(nextTime),
       '⏰ Time for Your Six-Hour Check-In',
@@ -93,9 +97,7 @@ class LoggingReminderService {
       '/log-episode'
     );
 
-    // If we are currently in the window (within 5 mins of due time),
-    // we also try to send an immediate alert if it hasn't been sent yet.
-    if (now >= nextTime && now - nextTime < 5 * 60 * 1000) {
+    if (now >= nextTime && now - nextTime < 15 * 60 * 1000) {
       await notificationManager.send({
         channel: 'reminder',
         kind: 'reminder',
@@ -104,6 +106,42 @@ class LoggingReminderService {
         dedupKey: `log-reminder-${nextTime}`,
         url: '/log-episode',
       });
+    }
+
+    // 2. Handle missed check-in logic for the PREVIOUS window
+    // If the next due time is 14:00, the one we might have missed was 08:00.
+    const previousDueTime = nextTime - PRODUCTION_INTERVAL_MS;
+
+    // We missed it if our last log was before that previous due time
+    const missedWindow = lastInteraction < previousDueTime;
+
+    if (missedWindow) {
+      const missed30m = previousDueTime + (30 * 60 * 1000);
+      const missed2h = previousDueTime + (2 * 60 * 60 * 1000);
+
+      // +30m Reminder
+      if (now >= missed30m && now - missed30m < 15 * 60 * 1000) {
+        await notificationManager.send({
+          channel: 'reminder',
+          kind: 'reminder',
+          title: '⏰ Missed Check-In',
+          body: "You missed your 6-hour check-in",
+          dedupKey: `log-missed-30m-${previousDueTime}`,
+          url: '/log-episode',
+        });
+      }
+
+      // +2h Reminder
+      if (now >= missed2h && now - missed2h < 15 * 60 * 1000) {
+        await notificationManager.send({
+          channel: 'reminder',
+          kind: 'reminder',
+          title: '⏰ Missed Check-In',
+          body: "You missed your 6-hour check-in",
+          dedupKey: `log-missed-2h-${previousDueTime}`,
+          url: '/log-episode',
+        });
+      }
     }
   }
 
@@ -117,6 +155,16 @@ class LoggingReminderService {
 
   forceCheck(): void {
     this.checkForDueLog();
+  }
+
+  async scheduleTestReminder(delayMs: number): Promise<void> {
+    const at = new Date(Date.now() + delayMs);
+    await notificationManager.scheduleReminder(
+      at,
+      '🧪 SweatSmart Test Reminder',
+      `This is your ${Math.round(delayMs / 60000)}-minute test reminder 💧`,
+      '/log-episode'
+    );
   }
 
   cleanup(): void {

@@ -5,6 +5,7 @@ import { Switch } from '@/components/ui/switch';
 import { Bell, Save, Info, CloudSun, Database, TestTube, RefreshCw, ExternalLink, ShieldAlert, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { notificationManager, isBackgroundNotificationsEnabled, setBackgroundNotificationsEnabled } from '@/services/NotificationManager';
+import { loggingReminderService } from '@/services/LoggingReminderService';
 import { audioAlertPlayer } from '@/utils/audioAlertPlayer';
 import { SettingsPanel } from '@/components/climate/SettingsPanel';
 import { WebPushSettings } from '@/components/climate/WebPushSettings';
@@ -299,6 +300,31 @@ const Settings = () => {
           </div>
 
           <div className="grid grid-cols-1 gap-3">
+            <Button
+              variant="secondary"
+              className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold justify-between px-6 py-7 rounded-2xl"
+              onClick={async () => {
+                const id = toast.loading("Scheduling 5-minute test...");
+                try {
+                  await loggingReminderService.scheduleTestReminder(5 * 60 * 1000);
+                  toast.success("5-minute test reminder scheduled! You can close the app now.", { id });
+                } catch (e) {
+                  toast.error("Failed to schedule test reminder.", { id });
+                }
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <Clock className="w-5 h-5 text-blue-400" />
+                <div className="text-left">
+                  <div className="text-sm font-black">5-Minute Test Reminder</div>
+                  <div className="text-[10px] text-zinc-500 uppercase tracking-wider">Scheduled Test</div>
+                </div>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-zinc-900 flex items-center justify-center">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+              </div>
+            </Button>
+
             <Button
               variant="secondary"
               className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold justify-between px-6 py-7 rounded-2xl"

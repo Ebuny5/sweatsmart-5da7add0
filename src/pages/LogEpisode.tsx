@@ -20,7 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEpisodes } from "@/hooks/useEpisodes";
 import { generateFallbackInsights } from "@/engine/recommendationEngine";
-import { loggingReminderService } from "@/services/LoggingReminderService";
+import { loggingReminderService, LAST_LOG_TIME_KEY, CURRENT_HDSS_KEY } from "@/services/LoggingReminderService";
 import { useVoiceLogging } from "@/hooks/useVoiceLogging";
 import VoiceVisualizer from "@/components/episode/VoiceVisualizer";
 
@@ -81,7 +81,7 @@ const LogEpisode = () => {
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    const lastLogTime = localStorage.getItem("sweatsmart_last_log_time");
+    const lastLogTime = localStorage.getItem(LAST_LOG_TIME_KEY);
     if (lastLogTime) {
       setLastLoggedDisplay(format(new Date(parseInt(lastLogTime)), "MMM d, h:mm a"));
     } else {
@@ -156,6 +156,7 @@ const LogEpisode = () => {
 
       if (data && data[0]) {
         setLastSavedEpisodeId(data[0].id);
+        localStorage.setItem(CURRENT_HDSS_KEY, finalSeverity.toString());
       }
 
       // Reschedule the next reminder 6 hours from now
