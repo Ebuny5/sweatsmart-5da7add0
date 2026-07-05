@@ -39,14 +39,12 @@ export async function isNativeApp(): Promise<boolean> {
   return c.isNative;
 }
 
-export async function requestNativePermissions(): Promise<boolean> {
+export async function ensureNativeChannels(): Promise<void> {
   const c = await loadCapacitor();
-  if (!c.isNative || !c.LocalNotifications || !c.Capacitor) return false;
-  try {
-    const local = await c.LocalNotifications.requestPermissions();
+  if (!c.isNative || !c.LocalNotifications || !c.Capacitor) return;
 
-    // Ensure high-priority channels exist on Android
-    if (c.Capacitor.getPlatform() === 'android') {
+  if (c.Capacitor.getPlatform() === 'android') {
+    try {
       await c.LocalNotifications.createChannel({
         id: 'reminder',
         name: 'Check-in Reminders',
@@ -63,7 +61,21 @@ export async function requestNativePermissions(): Promise<boolean> {
         visibility: 1,
         vibration: true,
       });
+      console.log('✅ Native notification channels ensured');
+    } catch (e) {
+      console.warn('Failed to create native channels:', e);
     }
+  }
+}
+
+export async function requestNativePermissions(): Promise<boolean> {
+  const c = await loadCapacitor();
+  if (!c.isNative || !c.LocalNotifications || !c.Capacitor) return false;
+  try {
+    const local = await c.LocalNotifications.requestPermissions();
+
+    // Ensure high-priority channels exist on Android
+    await ensureNativeChannels();
 
     if (c.PushNotifications) {
       const push = await c.PushNotifications.requestPermissions();

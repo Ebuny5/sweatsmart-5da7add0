@@ -163,13 +163,22 @@ class LoggingReminderService {
     const testId = 999999;
 
     // Pass the unique testId to scheduleNativeReminder via the bridge
-    const { scheduleNativeReminder } = await import('./NativeNotificationBridge');
+    const { scheduleNativeReminder, showNativeNotification } = await import('./NativeNotificationBridge');
+
+    // Also trigger an immediate "Scheduled" confirmation notification for the user
+    await showNativeNotification({
+      title: "🧪 Test Scheduled",
+      body: `Your ${Math.round(delayMs / 60000)}-minute test is set for ${at.toLocaleTimeString()}`,
+      channelId: 'reminder'
+    });
+
     await scheduleNativeReminder({
       id: testId,
       at,
       title: '🧪 SweatSmart Test Reminder',
       body: `This is your ${Math.round(delayMs / 60000)}-minute test reminder 💧`,
-      url: '/log-episode'
+      url: '/log-episode',
+      channelId: 'reminder'
     });
 
     console.log(`🧪 Test reminder scheduled for ${at.toLocaleString()} (delay: ${delayMs}ms) with ID ${testId}`);
