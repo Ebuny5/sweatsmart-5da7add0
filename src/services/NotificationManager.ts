@@ -16,6 +16,7 @@ import {
   requestNativePermissions,
   scheduleNativeReminder,
   showNativeNotification,
+  ensureNativeChannels,
 } from './NativeNotificationBridge';
 
 export type NotificationChannel = 'climate' | 'reminder' | 'system';
@@ -98,6 +99,8 @@ class NotificationManager {
     this.initClickListeners();
     // CRITICAL: Initialize Service Worker on construction
     this.initServiceWorker();
+    // Ensure native channels on Android immediately
+    void ensureNativeChannels();
   }
 
   /**

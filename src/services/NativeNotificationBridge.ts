@@ -11,6 +11,7 @@ let capCache: {
   isNative: boolean;
   LocalNotifications?: typeof import('@capacitor/local-notifications').LocalNotifications;
   PushNotifications?: typeof import('@capacitor/push-notifications').PushNotifications;
+  Capacitor?: any;
 } | null = null;
 
 async function loadCapacitor() {
@@ -26,7 +27,7 @@ async function loadCapacitor() {
       import('@capacitor/local-notifications'),
       import('@capacitor/push-notifications'),
     ]);
-    capCache = { isNative: true, LocalNotifications, PushNotifications };
+    capCache = { isNative: true, LocalNotifications, PushNotifications, Capacitor };
   } catch {
     capCache = { isNative: false };
   }
@@ -38,11 +39,44 @@ export async function isNativeApp(): Promise<boolean> {
   return c.isNative;
 }
 
+export async function ensureNativeChannels(): Promise<void> {
+  const c = await loadCapacitor();
+  if (!c.isNative || !c.LocalNotifications || !c.Capacitor) return;
+
+  if (c.Capacitor.getPlatform() === 'android') {
+    try {
+      await c.LocalNotifications.createChannel({
+        id: 'reminder',
+        name: 'Check-in Reminders',
+        description: 'Daily sweat tracking reminders',
+        importance: 5,
+        visibility: 1,
+        vibration: true,
+      });
+      await c.LocalNotifications.createChannel({
+        id: 'climate',
+        name: 'Climate Alerts',
+        description: 'Real-time sweat risk alerts',
+        importance: 5,
+        visibility: 1,
+        vibration: true,
+      });
+      console.log('✅ Native notification channels ensured');
+    } catch (e) {
+      console.warn('Failed to create native channels:', e);
+    }
+  }
+}
+
 export async function requestNativePermissions(): Promise<boolean> {
   const c = await loadCapacitor();
-  if (!c.isNative || !c.LocalNotifications) return false;
+  if (!c.isNative || !c.LocalNotifications || !c.Capacitor) return false;
   try {
     const local = await c.LocalNotifications.requestPermissions();
+
+    // Ensure high-priority channels exist on Android
+    await ensureNativeChannels();
+
     if (c.PushNotifications) {
       const push = await c.PushNotifications.requestPermissions();
       if (push.receive === 'granted') {
@@ -63,11 +97,18 @@ export async function scheduleNativeReminder(opts: {
   title: string;
   body: string;
   url?: string;
+  channelId?: string;
 }): Promise<boolean> {
   const c = await loadCapacitor();
   if (!c.isNative || !c.LocalNotifications) return false;
+
+  // Guard: Don't schedule in the past
+  if (opts.at.getTime() <= Date.now()) {
+    console.warn('scheduleNativeReminder: Target time is in the past, skipping.');
+    return false;
+  }
+
   try {
-    // Cancel any prior with same id to avoid duplicates
     await c.LocalNotifications.cancel({ notifications: [{ id: opts.id }] });
     await c.LocalNotifications.schedule({
       notifications: [
@@ -77,10 +118,12 @@ export async function scheduleNativeReminder(opts: {
           body: opts.body,
           schedule: { at: opts.at, allowWhileIdle: true },
           smallIcon: 'ic_stat_icon_config_sample',
+          channelId: opts.channelId || 'reminder',
           extra: { url: opts.url ?? '/' },
         },
       ],
     });
+    console.log(`✅ Native reminder ${opts.id} scheduled for ${opts.at.toLocaleString()}`);
     return true;
   } catch (e) {
     console.warn('scheduleNativeReminder failed:', e);
@@ -94,6 +137,7 @@ export async function showNativeNotification(opts: {
   title: string;
   body: string;
   url?: string;
+  channelId?: string;
 }): Promise<boolean> {
   const c = await loadCapacitor();
   if (!c.isNative || !c.LocalNotifications) return false;
@@ -106,6 +150,7 @@ export async function showNativeNotification(opts: {
           body: opts.body,
           schedule: { at: new Date(Date.now() + 500), allowWhileIdle: true },
           smallIcon: 'ic_stat_icon_config_sample',
+          channelId: opts.channelId || 'climate',
           extra: { url: opts.url ?? '/' },
         },
       ],
