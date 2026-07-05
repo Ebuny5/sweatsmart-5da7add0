@@ -159,12 +159,20 @@ class LoggingReminderService {
 
   async scheduleTestReminder(delayMs: number): Promise<void> {
     const at = new Date(Date.now() + delayMs);
-    await notificationManager.scheduleReminder(
+    // Use a unique ID for test reminders to avoid colliding with production ones
+    const testId = 999999;
+
+    // Pass the unique testId to scheduleNativeReminder via the bridge
+    const { scheduleNativeReminder } = await import('./NativeNotificationBridge');
+    await scheduleNativeReminder({
+      id: testId,
       at,
-      '🧪 SweatSmart Test Reminder',
-      `This is your ${Math.round(delayMs / 60000)}-minute test reminder 💧`,
-      '/log-episode'
-    );
+      title: '🧪 SweatSmart Test Reminder',
+      body: `This is your ${Math.round(delayMs / 60000)}-minute test reminder 💧`,
+      url: '/log-episode'
+    });
+
+    console.log(`🧪 Test reminder scheduled for ${at.toLocaleString()} (delay: ${delayMs}ms) with ID ${testId}`);
   }
 
   cleanup(): void {
