@@ -163,25 +163,73 @@ class LoggingReminderService {
     const testId = 999999;
 
     // Pass the unique testId to scheduleNativeReminder via the bridge
-    const { scheduleNativeReminder, showNativeNotification } = await import('./NativeNotificationBridge');
+    const { scheduleNativeReminder, showNativeNotification, isNativeApp } = await import('./NativeNotificationBridge');
+    const isNative = await isNativeApp();
 
-    // Also trigger an immediate "Scheduled" confirmation notification for the user
-    await showNativeNotification({
-      title: "🧪 Test Scheduled",
-      body: `Your ${Math.round(delayMs / 60000)}-minute test is set for ${at.toLocaleTimeString()}`,
-      channelId: 'reminder'
-    });
+    if (isNative) {
+      // Also trigger an immediate "Scheduled" confirmation notification for the user
+      await showNativeNotification({
+        title: "🧪 Test Scheduled",
+        body: `Your ${Math.round(delayMs / 60000)}-minute test is set for ${at.toLocaleTimeString()}`,
+        channelId: 'reminder'
+      });
 
-    await scheduleNativeReminder({
-      id: testId,
-      at,
-      title: '🧪 SweatSmart Test Reminder',
-      body: `This is your ${Math.round(delayMs / 60000)}-minute test reminder 💧`,
-      url: '/log-episode',
-      channelId: 'reminder'
-    });
+      await scheduleNativeReminder({
+        id: testId,
+        at,
+        title: '🧪 SweatSmart Test Reminder',
+        body: `This is your ${Math.round(delayMs / 60000)}-minute test reminder 💧`,
+        url: '/log-episode',
+        channelId: 'reminder'
+      });
+      console.log(`🧪 Test reminder scheduled for ${at.toLocaleString()} (delay: ${delayMs}ms) with ID ${testId}`);
+    } else {
+      let scheduledViaSW = false;
+      if ('serviceWorker' in navigator) {
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          if ('showTrigger' in Notification.prototype) {
+            // @ts-ignore
+            await reg.showNotification('🧪 SweatSmart Test Reminder', {
+              body: `This is your ${Math.round(delayMs / 60000)}-minute test reminder 💧`,
+              icon: '/favicon.ico',
+              badge: '/favicon.ico',
+              tag: 'logging-reminder-test',
+              data: { url: '/log-episode' },
+              requireInteraction: true,
+              // @ts-ignore
+              showTrigger: new TimestampTrigger(at.getTime())
+            });
+            scheduledViaSW = true;
+          }
+        } catch (e) {
+          console.warn('Failed to schedule via SW showTrigger', e);
+        }
+      }
 
-    console.log(`🧪 Test reminder scheduled for ${at.toLocaleString()} (delay: ${delayMs}ms) with ID ${testId}`);
+      await notificationManager.send({
+        channel: 'system',
+        kind: 'reminder',
+        title: "🧪 Test Scheduled",
+        body: scheduledViaSW
+          ? `Your ${Math.round(delayMs / 60000)}-minute test is set for ${at.toLocaleTimeString()} (Web)`
+          : `App must remain open! Web scheduling not supported. Your ${Math.round(delayMs / 60000)}-minute test is set.`,
+        dedupKey: `test-sched-${Date.now()}`
+      });
+
+      if (!scheduledViaSW) {
+        setTimeout(() => {
+          notificationManager.send({
+            channel: 'system',
+            kind: 'reminder',
+            title: '🧪 SweatSmart Test Reminder',
+            body: `This is your ${Math.round(delayMs / 60000)}-minute test reminder 💧`,
+            dedupKey: `test-rem-${Date.now()}`,
+            url: '/log-episode',
+          });
+        }, delayMs);
+      }
+    }
   }
 
   cleanup(): void {

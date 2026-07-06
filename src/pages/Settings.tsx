@@ -237,11 +237,12 @@ const Settings = () => {
 
           <div className="grid grid-cols-1 gap-4">
             <Button
-              className="w-full bg-[#1A1F2C] hover:bg-[#2A2F3C] text-blue-400 font-bold py-7 rounded-xl"
+              className="w-full bg-[#E9E4FA] hover:bg-[#d8d2f2] text-blue-500 font-bold py-7 rounded-xl"
               onClick={async () => {
                 toast.info("Testing Log Reminder Voice...");
+                notificationManager.resetCooldowns();
                 await notificationManager.send({
-                  channel: 'reminder',
+                  channel: 'system',
                   kind: 'reminder',
                   title: "⏰ Time for Your Six-Hour Check-In",
                   body: "It's time for your six-hour check-in 💧",
@@ -253,12 +254,13 @@ const Settings = () => {
             </Button>
 
             <Button
-              className="w-full bg-white hover:bg-zinc-100 text-zinc-900 font-bold py-7 rounded-xl"
+              className="w-full bg-[#E9E4FA] hover:bg-[#d8d2f2] text-orange-500 font-bold py-7 rounded-xl"
               onClick={async () => {
                 toast.info("Testing Climate Alert Voice...");
+                notificationManager.resetCooldowns();
                 await notificationManager.send({
-                  channel: 'climate',
-                  kind: 'climate',
+                  channel: 'system',
+                  kind: 'extreme',
                   title: "SweatSmart Climate Alert",
                   body: "High sweat risk! Temperature is exceeding your threshold.",
                   dedupKey: `test-climate-${Date.now()}`
@@ -269,7 +271,7 @@ const Settings = () => {
             </Button>
 
             <Button
-              className="w-full bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 font-bold py-7 rounded-xl border border-sky-500/20"
+              className="w-full bg-[#E9E4FA] hover:bg-[#d8d2f2] text-emerald-500 font-bold py-7 rounded-xl"
               onClick={async () => {
                 const id = toast.loading("Scheduling 5-minute test...");
                 try {
