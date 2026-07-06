@@ -45,6 +45,7 @@ function playSound(src: string): Promise<void> {
   return new Promise((resolve) => {
     try {
       const a = new Audio(src);
+      a.crossOrigin = "anonymous";
       a.onended = () => resolve();
       a.onerror = () => resolve();
       a.play().catch(() => resolve());

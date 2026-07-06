@@ -144,6 +144,7 @@ class AudioAlertPlayer {
     return new Promise((resolve) => {
       try {
         const audio = new Audio(src);
+        audio.crossOrigin = 'anonymous';
         audio.preload = 'auto';
         audio.volume = 1;
         this.current = audio;
