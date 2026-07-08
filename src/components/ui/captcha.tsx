@@ -114,9 +114,6 @@ const Captcha = ({ onVerify, className }: CaptchaProps) => {
           Verification could not load on this device. You can continue.
         </p>
       )}
-      {status === "verified" && (
-        <p className="text-sm text-green-600 mt-1">✓ Verified</p>
-      )}
     </div>
   );
 };
