@@ -165,18 +165,6 @@ const PalmScannerApp: React.FC = () => {
 
         <div className="max-w-4xl mx-auto relative z-10">
           <header className="text-center mb-8 relative">
-            <button
-              onClick={() => {
-                if (window.history.length > 2) {
-                  navigate(-1);
-                } else {
-                  navigate('/home');
-                }
-              }}
-              className="absolute left-0 top-1 p-2 rounded-xl text-white/70 hover:bg-white/10 hover:text-white transition-colors"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-            </button>
             <h1 className="text-4xl sm:text-5xl font-extrabold text-[#22c55e] mb-2 drop-shadow-lg tracking-tight">
               Wearable Sensor Simulator
             </h1>

@@ -484,35 +484,24 @@ const ClimateMonitor = () => {
 
         <div className="relative z-10 space-y-6 max-w-4xl mx-auto">
           {/* Header */}
-          <div className="flex items-start gap-3 relative">
-            <button
-              onClick={() => {
-                if (window.history.length > 2) {
-                  navigate(-1);
-                } else {
-                  navigate('/home');
-                }
-              }}
-              className="mt-1 p-2 bg-white/20 hover:bg-white/30 border border-white/30 backdrop-blur-md rounded-xl text-white transition-colors flex-shrink-0"
-              style={{ zIndex: 20 }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-            </button>
-            <div className="bg-white rounded-2xl px-4 py-3 flex-1 flex flex-row items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-[#1d4ed8]">SweatSmart Climate Alerts</h1>
-                <p className="text-[#1e40af] mt-0.5 text-sm font-medium">Real-time weather monitoring and personalized alerts</p>
+          <div className="flex flex-col relative w-full overflow-hidden">
+            <div className="bg-white rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
+              <div className="flex-1 min-w-0">
+                <h1 className="text-xl sm:text-2xl font-bold text-[#1d4ed8] truncate">SweatSmart Climate Alerts</h1>
+                <p className="text-[#1e40af] mt-0.5 text-xs sm:text-sm font-medium leading-snug">
+                  Real-time weather monitoring and personalized alerts
+                </p>
               </div>
-            {location && (
-              <Button
-                className="bg-[#1d4ed8]/10 border border-[#1d4ed8]/20 text-[#1d4ed8] hover:bg-[#1d4ed8]/20 hover:text-[#1d4ed8] transition-colors shadow-none"
-                onClick={() => fetchWeatherData(location)}
-                disabled={isFetchingWeather}
-              >
-                <RefreshIcon className={`h-4 w-4 mr-2 ${isFetchingWeather ? 'animate-spin' : ''}`} />
-                {isFetchingWeather ? 'Refreshing...' : 'Refresh'}
-              </Button>
-            )}
+              {location && (
+                <Button
+                  className="bg-[#1d4ed8]/10 border border-[#1d4ed8]/20 text-[#1d4ed8] hover:bg-[#1d4ed8]/20 hover:text-[#1d4ed8] transition-colors shadow-none shrink-0"
+                  onClick={() => fetchWeatherData(location)}
+                  disabled={isFetchingWeather}
+                >
+                  <RefreshIcon className={`h-4 w-4 mr-2 ${isFetchingWeather ? 'animate-spin' : ''}`} />
+                  {isFetchingWeather ? 'Refreshing...' : 'Refresh'}
+                </Button>
+              )}
             </div>
           </div>
 

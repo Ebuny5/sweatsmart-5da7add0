@@ -34,16 +34,6 @@ interface Conversation {
 const MAX_MESSAGES_PER_CONV = 40;
 const DAILY_VOICE_LIMIT     = 4;
 
-// ── ElevenLabs voices ────────────────────────────────────────────────────────
-const VOICES = [
-  { id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel', desc: 'Warm & calm' },
-  { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam',   desc: 'Deep & clear' },
-  { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Bella',  desc: 'Soft & gentle' },
-  { id: 'ErXwobaYiN019PkySvjV', name: 'Antoni', desc: 'Smooth & warm' },
-  { id: 'TxGEqnHWrfWFTfGW9XjX', name: 'Josh',   desc: 'Natural & friendly' },
-  { id: 'AZnzlk1XvdvUeBnXmlld', name: 'Domi',   desc: 'Strong & direct' },
-];
-
 // ── Neural Glow animation (CSS injected once) ─────────────────────────────────
 const NEURAL_GLOW_STYLE = `
 @keyframes neuralPulse {
@@ -114,88 +104,6 @@ const EdaPill = ({ value, phase }: { value: number; phase: string }) => {
       <div className={`w-1.5 h-1.5 rounded-full ${cfg.dot} animate-pulse`} />
       <Zap className={`h-3 w-3 ${cfg.text}`} />
       <span className={`text-[10px] font-bold ${cfg.text}`}>{value.toFixed(1)} µS</span>
-    </div>
-  );
-};
-
-// ── Voice settings modal ──────────────────────────────────────────────────────
-const VoiceSettingsModal = ({
-  open, selectedVoiceId, voiceSpeed,
-  onVoiceSelect, onSpeedChange, onClose,
-}: {
-  open: boolean; selectedVoiceId: string; voiceSpeed: number;
-  onVoiceSelect: (id: string) => void; onSpeedChange: (s: number) => void; onClose: () => void;
-}) => {
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-      <div
-        className="relative w-full max-w-sm mx-auto rounded-t-3xl p-6 pb-10"
-        style={{ background: 'rgba(15,15,35,0.98)', border: '1px solid rgba(255,255,255,0.1)' }}
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Handle */}
-        <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mb-5" />
-
-        <p className="text-center text-[11px] font-bold tracking-widest text-white/40 uppercase mb-4">
-          Voice Settings
-        </p>
-
-        {/* Voice grid */}
-        <div className="grid grid-cols-2 gap-2 mb-6">
-          {VOICES.map(v => (
-            <button
-              key={v.id}
-              onClick={() => onVoiceSelect(v.id)}
-              className="py-4 rounded-2xl transition-all text-center"
-              style={{
-                background: selectedVoiceId === v.id
-                  ? 'rgba(0,188,212,0.15)'
-                  : 'rgba(255,255,255,0.04)',
-                border: selectedVoiceId === v.id
-                  ? '1px solid rgba(0,188,212,0.5)'
-                  : '1px solid rgba(255,255,255,0.08)',
-              }}
-            >
-              <p className={`text-sm font-bold ${selectedVoiceId === v.id ? 'text-teal-300' : 'text-white/70'}`}>
-                {v.name}
-              </p>
-              <p className="text-[10px] text-white/30 mt-0.5">{v.desc}</p>
-            </button>
-          ))}
-        </div>
-
-        {/* Divider */}
-        <div className="border-t border-white/08 mb-4" />
-
-        {/* Speed control */}
-        <p className="text-center text-[11px] font-bold tracking-widest text-white/40 uppercase mb-4">
-          Voice Speed
-        </p>
-        <div className="flex items-center justify-center gap-8">
-          <button
-            onClick={() => onSpeedChange(Math.max(0.75, voiceSpeed - 0.25))}
-            className="w-10 h-10 rounded-full text-white/60 hover:text-white text-xl font-light flex items-center justify-center"
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
-          >−</button>
-          <span className="text-white font-bold text-base w-10 text-center">{voiceSpeed}x</span>
-          <button
-            onClick={() => onSpeedChange(Math.min(1.25, voiceSpeed + 0.25))}
-            className="w-10 h-10 rounded-full text-white/60 hover:text-white text-xl font-light flex items-center justify-center"
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
-          >+</button>
-        </div>
-
-        {/* Close */}
-        <button
-          onClick={onClose}
-          className="mt-6 w-full py-3 rounded-2xl text-sm font-semibold text-white/60 hover:text-white transition-colors"
-          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
-        >
-          Done
-        </button>
-      </div>
     </div>
   );
 };
@@ -407,14 +315,6 @@ const HidroAlly = () => {
   const { weather, sweatRisk } = useClimateData();
   const navigate = useNavigate();
 
-  const handleBack = () => {
-    if (window.history.length > 2) {
-      navigate(-1);
-    } else {
-      navigate('/home');
-    }
-  };
-
   // ── Core state ────────────────────────────────────────────────────────────
   const [messages, setMessages]           = useState<Message[]>([]);
   const [input, setInput]                 = useState('');
@@ -432,14 +332,7 @@ const HidroAlly = () => {
   const [speakingIndex, setSpeakingIndex]     = useState<number | null>(null);
   const [isRecording, setIsRecording]         = useState(false);
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
-  const [voiceSettingsOpen, setVoiceSettingsOpen] = useState(false);
   const [voiceMenuOpen, setVoiceMenuOpen]     = useState(false);
-  const [selectedVoiceId, setSelectedVoiceId] = useState(
-    () => localStorage.getItem('hidro_voice_id') || '21m00Tcm4TlvDq8ikWAM'
-  );
-  const [voiceSpeed, setVoiceSpeed] = useState(
-    () => parseFloat(localStorage.getItem('hidro_voice_speed') || '1')
-  );
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const messagesEndRef   = useRef<HTMLDivElement>(null);
@@ -975,32 +868,21 @@ const HidroAlly = () => {
 
     try {
       setSpeakingIndex(msgIndex);
-      await speakProfessionally(text.replace(/[*_#]/g, '').slice(0, 3000), { rate: voiceSpeed });
+      await speakProfessionally(text.replace(/[*_#]/g, '').slice(0, 3000), { rate: 1 });
       setSpeakingIndex(null);
     } catch (err) {
       console.error('TTS error:', err);
       setSpeakingIndex(null);
       toast.error('Speech is unavailable on this device');
     }
-  }, [speakingIndex, voiceSpeed]);
-
-  // ── Voice settings persistence ─────────────────────────────────────────────
-  const handleVoiceSelect = (id: string) => {
-    setSelectedVoiceId(id);
-    localStorage.setItem('hidro_voice_id', id);
-  };
-
-  const handleSpeedChange = (s: number) => {
-    setVoiceSpeed(s);
-    localStorage.setItem('hidro_voice_speed', String(s));
-  };
+  }, [speakingIndex]);
 
   // ── Helper: play browser-speech greeting before recording ─────────────────
   const playVoiceGreeting = useCallback(async (): Promise<void> => {
     try {
-      await speakProfessionally("I'm listening. Speak now.", { rate: voiceSpeed });
+      await speakProfessionally("I'm listening. Speak now.", { rate: 1 });
     } catch { /* greeting failing silently is fine */ }
-  }, [voiceSpeed]);
+  }, []);
 
   // ── Gemini STT → Chat → browser speech readout (full voice chat) ──────────
   const startVoiceChat = async () => {
@@ -1369,13 +1251,6 @@ const HidroAlly = () => {
           }}
         >
           <div className="flex items-center gap-3">
-            <button
-              onClick={handleBack}
-              className="w-10 h-10 rounded-2xl flex items-center justify-center transition-all hover:bg-white/10"
-              style={{ border: '1px solid rgba(255,255,255,0.1)' }}
-            >
-              <ChevronLeft className="h-5 w-5 text-white" />
-            </button>
             <div
               className="w-10 h-10 rounded-2xl flex items-center justify-center neural-idle"
               style={{ background: 'linear-gradient(135deg, #00BCD4, #0097A7)', boxShadow: '0 0 20px rgba(0,188,212,0.4)' }}
@@ -1398,15 +1273,6 @@ const HidroAlly = () => {
                 </span>
               </div>
             )}
-            {/* Voice settings */}
-            <button
-              onClick={() => setVoiceSettingsOpen(true)}
-              title="Voice settings"
-              className="p-2 rounded-xl hover:bg-white/10 text-white/40 hover:text-white/80 transition-all"
-              style={{ border: '1px solid rgba(255,255,255,0.08)' }}
-            >
-              <Settings2 className="h-3.5 w-3.5" />
-            </button>
             <button
               onClick={handleNewChat}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:bg-white/10 text-white/50 hover:text-white/90 transition-all border border-white/10"
@@ -1709,14 +1575,6 @@ const HidroAlly = () => {
         />
 
         {/* Voice settings modal */}
-        <VoiceSettingsModal
-          open={voiceSettingsOpen}
-          selectedVoiceId={selectedVoiceId}
-          voiceSpeed={voiceSpeed}
-          onVoiceSelect={handleVoiceSelect}
-          onSpeedChange={handleSpeedChange}
-          onClose={() => setVoiceSettingsOpen(false)}
-        />
       </div>
     </PageTransition>
   );
