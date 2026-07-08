@@ -1251,12 +1251,6 @@ const HidroAlly = () => {
           }}
         >
           <div className="flex items-center gap-3">
-            <div
-              className="w-10 h-10 rounded-2xl flex items-center justify-center neural-idle"
-              style={{ background: 'linear-gradient(135deg, #00BCD4, #0097A7)', boxShadow: '0 0 20px rgba(0,188,212,0.4)' }}
-            >
-              <Sparkles className="h-5 w-5 text-white" />
-            </div>
             <div>
               <h1 className="text-white font-black text-base leading-tight">HidroAlly</h1>
               <p className="text-white/40 text-[10px]">World's first hyperhidrosis clinical companion</p>
@@ -1278,14 +1272,14 @@ const HidroAlly = () => {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:bg-white/10 text-white/50 hover:text-white/90 transition-all border border-white/10"
             >
               <PenSquare className="h-3.5 w-3.5" />
-              <span className="text-[11px] font-semibold">New chat</span>
+              <span className="text-[10px] font-semibold">New chat</span>
             </button>
             <button
               onClick={() => setHistoryOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:bg-white/10 text-white/50 hover:text-white/90 transition-all border border-white/10"
             >
               <History className="h-3.5 w-3.5" />
-              <span className="text-[11px] font-semibold">History</span>
+              <span className="text-[10px] font-semibold">History</span>
             </button>
           </div>
         </div>
