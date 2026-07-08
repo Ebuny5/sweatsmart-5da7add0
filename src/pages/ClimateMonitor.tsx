@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import AppLayout from "@/components/layout/AppLayout";
+import PageTransition from "@/components/layout/PageTransition";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { supabase } from '@/integrations/supabase/client';
@@ -472,9 +472,9 @@ const ClimateMonitor = () => {
   };
 
   return (
-    <AppLayout>
+    <PageTransition>
       {/* Warrior Glass background — matches Wearable Simulator */}
-      <div className="min-h-full bg-gradient-to-br from-[#2d1b69] via-[#6d28d9] to-[#be185d] p-6 rounded-xl space-y-6 relative overflow-hidden">
+      <div className="min-h-[100dvh] bg-gradient-to-br from-[#2d1b69] via-[#6d28d9] to-[#be185d] p-6 space-y-6 relative overflow-hidden">
 
         {/* Ambient glow overlays */}
         <div className="absolute inset-0 pointer-events-none">
@@ -482,16 +482,30 @@ const ClimateMonitor = () => {
           <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-pink-500/20 rounded-full blur-3xl" />
         </div>
 
-        <div className="relative z-10 space-y-6">
+        <div className="relative z-10 space-y-6 max-w-4xl mx-auto">
           {/* Header */}
-          <div className="flex items-start justify-between gap-3">
-            <div className="bg-white rounded-2xl px-4 py-3 flex-1">
-              <h1 className="text-2xl font-bold text-[#1d4ed8]">SweatSmart Climate Alerts</h1>
-              <p className="text-[#1e40af] mt-0.5 text-sm font-medium">Real-time weather monitoring and personalized alerts</p>
-            </div>
+          <div className="flex items-start gap-3 relative">
+            <button
+              onClick={() => {
+                if (window.history.length > 2) {
+                  navigate(-1);
+                } else {
+                  navigate('/home');
+                }
+              }}
+              className="mt-1 p-2 bg-white/20 hover:bg-white/30 border border-white/30 backdrop-blur-md rounded-xl text-white transition-colors flex-shrink-0"
+              style={{ zIndex: 20 }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <div className="bg-white rounded-2xl px-4 py-3 flex-1 flex flex-row items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-[#1d4ed8]">SweatSmart Climate Alerts</h1>
+                <p className="text-[#1e40af] mt-0.5 text-sm font-medium">Real-time weather monitoring and personalized alerts</p>
+              </div>
             {location && (
               <Button
-                className="bg-white/20 border border-white/30 text-white hover:bg-white/30 backdrop-blur-md"
+                className="bg-[#1d4ed8]/10 border border-[#1d4ed8]/20 text-[#1d4ed8] hover:bg-[#1d4ed8]/20 hover:text-[#1d4ed8] transition-colors shadow-none"
                 onClick={() => fetchWeatherData(location)}
                 disabled={isFetchingWeather}
               >
@@ -499,6 +513,7 @@ const ClimateMonitor = () => {
                 {isFetchingWeather ? 'Refreshing...' : 'Refresh'}
               </Button>
             )}
+            </div>
           </div>
 
           <div className={`space-y-6 transition-opacity duration-500 ${arePermissionsGranted ? 'opacity-100' : 'opacity-40 blur-sm'}`}>
@@ -561,7 +576,7 @@ const ClimateMonitor = () => {
           </div>
         </div>
       </div>
-    </AppLayout>
+    </PageTransition>
   );
 };
 

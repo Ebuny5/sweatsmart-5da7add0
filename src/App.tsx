@@ -6,6 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { AnimatePresence } from "framer-motion";
+import { useLocation } from "react-router-dom";
 import NotificationListener from "@/components/notifications/NotificationListener";
 import Index from "./pages/Index";
 import NewIndex from "./pages/NewIndex";
@@ -89,8 +91,11 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   return <ErrorBoundary>{children}</ErrorBoundary>;
 };
 
-const AppRoutes = () => (
-  <Routes>
+const AppRoutes = () => {
+  const location = useLocation();
+  return (
+  <AnimatePresence mode="wait">
+  <Routes location={location} key={location.pathname}>
     <Route path="/" element={<Index />} />
     <Route path="/old-blue" element={<PublicRoute><NewIndex /></PublicRoute>} />
     <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
@@ -199,7 +204,9 @@ const AppRoutes = () => (
     <Route path="/legal" element={<Legal />} />
     <Route path="*" element={<NotFound />} />
   </Routes>
-);
+  </AnimatePresence>
+  );
+};
 
 const App = () => {
   return (
