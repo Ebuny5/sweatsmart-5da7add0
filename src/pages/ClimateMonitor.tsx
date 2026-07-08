@@ -116,12 +116,8 @@ const CurrentStatusCard: React.FC<{
   edaIsWearableAndFresh: boolean;
 }> = ({ weather, physiological, alertStatus, isFetching, edaIsWearableAndFresh }) => {
   const statusColor = useMemo(() => {
-    if (alertStatus.includes("Extreme Risk")) return "text-red-400";
-    if (alertStatus.includes("High Risk")) return "text-red-300";
-    if (alertStatus.includes("Moderate Risk")) return "text-yellow-300";
-    if (alertStatus.includes("Low Risk")) return "text-yellow-200";
-    return "text-green-400";
-  }, [alertStatus]);
+    return "text-[#d4ff00]";
+  }, []);
 
   const getLastUpdatedText = () => {
     if (!weather.lastUpdated) return null;
@@ -179,8 +175,8 @@ const CurrentStatusCard: React.FC<{
       </div>
 
       {!edaIsWearableAndFresh && (
-        <div className="bg-yellow-500/10 border border-yellow-400/30 rounded-lg px-4 py-2 text-center">
-          <p className="text-xs text-yellow-300">⚠️ EDA stale or simulated — climate data only used for alert severity</p>
+        <div className="bg-blue-500/10 border border-blue-400/30 rounded-lg px-4 py-2 text-center">
+          <p className="text-xs text-blue-400">⚠️ EDA stale or simulated — climate data only used for alert severity</p>
         </div>
       )}
       {weather.description && (
@@ -484,17 +480,17 @@ const ClimateMonitor = () => {
 
         <div className="relative z-10 space-y-6 max-w-4xl mx-auto">
           {/* Header */}
-          <div className="flex flex-col relative w-full overflow-hidden">
-            <div className="bg-white rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
+          <div className="flex flex-col relative w-full overflow-hidden mb-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
               <div className="flex-1 min-w-0">
-                <h1 className="text-xl sm:text-2xl font-bold text-[#1d4ed8] truncate">SweatSmart Climate Alerts</h1>
-                <p className="text-[#1e40af] mt-0.5 text-xs sm:text-sm font-medium leading-snug">
+                <h1 className="text-[20px] leading-tight font-extrabold text-[#22c55e] tracking-tight">SweatSmart Climate Alerts</h1>
+                <p className="text-[13px] leading-snug font-medium text-[#4ade80] mt-0.5">
                   Real-time weather monitoring and personalized alerts
                 </p>
               </div>
               {location && (
                 <Button
-                  className="bg-[#1d4ed8]/10 border border-[#1d4ed8]/20 text-[#1d4ed8] hover:bg-[#1d4ed8]/20 hover:text-[#1d4ed8] transition-colors shadow-none shrink-0"
+                  className="bg-white/20 border border-white/30 text-white hover:bg-white/30 transition-colors shadow-none shrink-0"
                   onClick={() => fetchWeatherData(location)}
                   disabled={isFetchingWeather}
                 >
@@ -533,10 +529,10 @@ const ClimateMonitor = () => {
                       <span className="text-xs bg-green-500/20 text-green-300 px-3 py-1 rounded-full border border-green-400/40">Fresh • {storedEDA.source}</span>
                     );
                     if (storedEDA && isFresh && !edaIsWearableAndFresh) return (
-                      <span className="text-xs bg-yellow-500/20 text-yellow-300 px-3 py-1 rounded-full border border-yellow-400/40">Simulated — not used for alerts</span>
+                      <span className="text-xs bg-[#d4ff00]/10 text-[#d4ff00] px-3 py-1 rounded-full border border-[#d4ff00]/30">Simulated — not used for alerts</span>
                     );
                     if (storedEDA && !isFresh) return (
-                      <span className="text-xs bg-yellow-500/20 text-yellow-300 px-3 py-1 rounded-full border border-yellow-400/40">Stale • Generate new</span>
+                      <span className="text-xs bg-[#d4ff00]/10 text-[#d4ff00] px-3 py-1 rounded-full border border-[#d4ff00]/30">Stale • Generate new</span>
                     );
                     return <span className="text-xs bg-white/10 text-purple-200 px-3 py-1 rounded-full border border-white/20">No data</span>;
                   })()}

@@ -130,25 +130,25 @@ const LEVEL_META: Record<
   low: {
     message: 'Low Risk',
     description:
-      'Low Risk: Mild sweat risk — stay hydrated and monitor your body closely.',
+      'Mild sweat risk — stay hydrated and monitor your body closely.',
     color: 'text-yellow-300',
   },
   moderate: {
     message: 'Moderate Risk',
     description:
-      'Moderate sweat risk — reduce outdoor exposure and use cooling strategies.',
+      'Reduce outdoor exposure and use cooling strategies.',
     color: 'text-yellow-400',
   },
   high: {
     message: 'High Risk',
     description:
-      'High sweat risk — stay in AC, reduce outdoor exposure, and use cooling support.',
+      'Stay in AC, reduce outdoor exposure, and use cooling support.',
     color: 'text-red-400',
   },
   extreme: {
     message: 'Extreme Risk',
     description:
-      'Extreme sweat risk — avoid heat, stay indoors, and take immediate cooling action.',
+      'Avoid heat, stay indoors, and take immediate cooling action.',
     color: 'text-red-500',
   },
 };
