@@ -177,8 +177,8 @@ class LoggingReminderService {
       await scheduleNativeReminder({
         id: testId,
         at,
-        title: '🧪 SweatSmart Test Reminder',
-        body: `This is your ${Math.round(delayMs / 60000)}-minute test reminder 💧`,
+        title: '⏰ Time for Your Six-Hour Check-In',
+        body: "It's time for your six-hour check-in 💧",
         url: '/log-episode',
         channelId: 'reminder'
       });
@@ -190,8 +190,8 @@ class LoggingReminderService {
           const reg = await navigator.serviceWorker.ready;
           if ('showTrigger' in Notification.prototype) {
             // @ts-ignore
-            await reg.showNotification('🧪 SweatSmart Test Reminder', {
-              body: `This is your ${Math.round(delayMs / 60000)}-minute test reminder 💧`,
+            await reg.showNotification('⏰ Time for Your Six-Hour Check-In', {
+              body: "It's time for your six-hour check-in 💧",
               icon: '/favicon.ico',
               badge: '/favicon.ico',
               tag: 'logging-reminder-test',
@@ -222,8 +222,8 @@ class LoggingReminderService {
           notificationManager.send({
             channel: 'system',
             kind: 'reminder',
-            title: '🧪 SweatSmart Test Reminder',
-            body: `This is your ${Math.round(delayMs / 60000)}-minute test reminder 💧`,
+            title: '⏰ Time for Your Six-Hour Check-In',
+            body: "It's time for your six-hour check-in 💧",
             dedupKey: `test-rem-${Date.now()}`,
             url: '/log-episode',
           });
