@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import AppLayout from '@/components/layout/AppLayout';
+import PageTransition from '@/components/layout/PageTransition';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useEpisodes } from '@/hooks/useEpisodes';
@@ -9,7 +10,7 @@ import {
   MapPin, Navigation, Star, Phone, Globe, ExternalLink,
   Filter, X, Zap, Award, Share2, RefreshCw,
   Loader2, Sparkles, ChevronRight, Heart, Shield,
-  Video, AlertCircle, Wifi
+  Video, AlertCircle, Wifi, ChevronLeft
 } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -359,9 +360,18 @@ const DoctorModal = ({ doctor, onClose, onShare }: { doctor: Doctor; onClose: ()
 
 // ── Main ───────────────────────────────────────────────────────────────────
 const SpecialistRadar = () => {
+  const navigate = useNavigate();
   const { user }     = useAuth();
   const { profile }  = useProfile();
   const { episodes } = useEpisodes();
+
+  const handleBack = () => {
+    if (window.history.length > 2) {
+      navigate(-1);
+    } else {
+      navigate('/home');
+    }
+  };
 
   const [doctors, setDoctors]         = useState<Doctor[]>([]);
   const [meta, setMeta]               = useState<SearchMeta | null>(null);
@@ -574,7 +584,7 @@ const SpecialistRadar = () => {
 
   // ── Render ──────────────────────────────────────────────────────────────
   return (
-    <AppLayout>
+    <PageTransition>
       <style>{`
         .leaflet-container { background:#07091a !important; }
         .radar-popup .leaflet-popup-content-wrapper,.radar-popup .leaflet-popup-tip-container { display:none; }
@@ -585,16 +595,23 @@ const SpecialistRadar = () => {
         .no-scrollbar::-webkit-scrollbar { display:none; }
       `}</style>
 
-      <div className="flex flex-col" style={{ minHeight: '100vh', background: 'linear-gradient(180deg,#070b1a 0%,#0a0e24 100%)' }}>
+      <div className="flex flex-col" style={{ minHeight: '100dvh', background: 'linear-gradient(180deg,#070b1a 0%,#0a0e24 100%)' }}>
 
         {/* Header */}
         <div className="px-4 pt-4 pb-3 shrink-0" style={{ background: 'rgba(7,11,26,0.92)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-          <div className="flex items-center justify-between mb-3">
-            <div>
+          <div className="flex items-center gap-3 mb-3">
+            <button
+              onClick={handleBack}
+              className="w-10 h-10 rounded-2xl flex items-center justify-center transition-all hover:bg-white/10 shrink-0"
+              style={{ border: '1px solid rgba(255,255,255,0.1)' }}
+            >
+              <ChevronLeft className="h-5 w-5 text-white" />
+            </button>
+            <div className="flex-1">
               <h1 className="text-lg font-bold text-white">Specialist Radar</h1>
               <p className="text-[11px] text-white/35">AI-matched dermatologists · Hyperhidrosis experts</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <button onClick={() => setShowFilters(s => !s)}
                 className="w-10 h-10 rounded-xl flex items-center justify-center transition-all"
                 style={{ background: showFilters ? 'rgba(0,188,212,0.18)' : 'rgba(255,255,255,0.06)', border: `1px solid ${showFilters ? 'rgba(0,188,212,0.38)' : 'rgba(255,255,255,0.1)'}` }}>
@@ -774,7 +791,7 @@ const SpecialistRadar = () => {
       {selectedDoctor && (
         <DoctorModal doctor={selectedDoctor} onClose={() => { setSelectedDoctor(null); setActivePin(null); }} onShare={handleShare} />
       )}
-    </AppLayout>
+    </PageTransition>
   );
 };
 

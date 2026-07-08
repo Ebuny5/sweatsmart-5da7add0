@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import AppLayout from '@/components/layout/AppLayout';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import PageTransition from '@/components/layout/PageTransition';
 import { Send, Sparkles, Loader2, Copy, Check, Mic, MicOff,
-  Trash2, Volume2, VolumeX, FileText, ChevronRight,
+  Trash2, Volume2, VolumeX, FileText, ChevronRight, ChevronLeft,
   Zap, AlertTriangle, PenSquare, History, ImagePlus, X,
   Square, Settings2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -405,6 +405,15 @@ const HidroAlly = () => {
   const { profile } = useProfile();
   const { episodes: rawEpisodes } = useEpisodes();
   const { weather, sweatRisk } = useClimateData();
+  const navigate = useNavigate();
+
+  const handleBack = () => {
+    if (window.history.length > 2) {
+      navigate(-1);
+    } else {
+      navigate('/home');
+    }
+  };
 
   // ── Core state ────────────────────────────────────────────────────────────
   const [messages, setMessages]           = useState<Message[]>([]);
@@ -1339,9 +1348,9 @@ const HidroAlly = () => {
   const climateAlert = sweatRisk === 'extreme' || sweatRisk === 'high';
 
   return (
-    <AppLayout>
+    <PageTransition>
       <div
-        className="h-[calc(100vh-4rem)] flex flex-col relative overflow-hidden"
+        className="h-[100dvh] flex flex-col relative overflow-hidden"
         style={{ background: 'linear-gradient(160deg, #0a0a1e 0%, #0d1030 40%, #0a1520 100%)' }}
       >
         {/* Ambient glow */}
@@ -1360,6 +1369,13 @@ const HidroAlly = () => {
           }}
         >
           <div className="flex items-center gap-3">
+            <button
+              onClick={handleBack}
+              className="w-10 h-10 rounded-2xl flex items-center justify-center transition-all hover:bg-white/10"
+              style={{ border: '1px solid rgba(255,255,255,0.1)' }}
+            >
+              <ChevronLeft className="h-5 w-5 text-white" />
+            </button>
             <div
               className="w-10 h-10 rounded-2xl flex items-center justify-center neural-idle"
               style={{ background: 'linear-gradient(135deg, #00BCD4, #0097A7)', boxShadow: '0 0 20px rgba(0,188,212,0.4)' }}
@@ -1702,7 +1718,7 @@ const HidroAlly = () => {
           onClose={() => setVoiceSettingsOpen(false)}
         />
       </div>
-    </AppLayout>
+    </PageTransition>
   );
 };
 
