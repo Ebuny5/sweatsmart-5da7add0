@@ -76,11 +76,7 @@ const Register = () => {
           variant: "destructive",
         });
       } else {
-        toast({
-          title: "Registration successful",
-          description: "Please check your email to verify your account.",
-        });
-        navigate("/login");
+        navigate("/verify-email", { state: { email } });
       }
     } catch (error) {
       toast({
