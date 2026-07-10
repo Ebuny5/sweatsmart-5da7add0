@@ -109,15 +109,20 @@ export function getWarriorInsight(episodes: ProcessedEpisode[]): { message: stri
     const lastLogDiff = now.getTime() - lastLogTime;
     const lastHDSS = parseInt(localStorage.getItem(CURRENT_HDSS_KEY) || '0', 10);
 
-    if (lastLogTime > 0 && lastLogDiff < 4 * 60 * 60 * 1000 && lastHDSS > 0) {
+    if (episodes.length > 0 && lastLogTime > 0 && lastLogDiff < 4 * 60 * 60 * 1000 && lastHDSS > 0) {
       if (lastHDSS <= 2) {
         return {
-          message: `Awesome work! You managed to keep your sweat level at HDSS ${lastHDSS} today. Your consistency is paying off.`,
+          message: `Awesome work! You kept your sweat level at HDSS ${lastHDSS} today. Your consistency is paying off.`,
           variant: "success"
+        };
+      } else if (lastHDSS === 3) {
+        return {
+          message: `Tough day with HDSS 3, but you showed up and logged it — that's the first step to mastering your triggers. Keep going, warrior. 💪`,
+          variant: "nudge"
         };
       } else {
         return {
-          message: `I'm sorry you had a tough time today with HDSS ${lastHDSS}. Remember, logging it is the first step to mastering your triggers.`,
+          message: `HDSS 4 is a heavy day, but your strength shows in tracking it. Every log sharpens your pattern map — you're taking back control. 🔥`,
           variant: "nudge"
         };
       }
