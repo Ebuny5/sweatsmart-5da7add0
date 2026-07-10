@@ -94,7 +94,6 @@ const Profile = () => {
         country: profileData.country as string,
         avatar: selectedAvatar,
         avatar_type: avatarType,
-        gender: selectedGender,
       } as any);
 
       if (success) {
