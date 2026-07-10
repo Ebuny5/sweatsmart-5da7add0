@@ -59,11 +59,16 @@ const queryClient = new QueryClient({
   },
 });
 
+import MandatoryOnboarding from "./pages/MandatoryOnboarding";
+import { useProfile } from "@/hooks/useProfile";
+
 // Protected Route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const { profile, loading: profileLoading } = useProfile();
+  const location = useLocation();
   
-  if (loading) {
+  if (authLoading || profileLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center space-y-4">
@@ -78,6 +83,11 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/login" replace />;
   }
   
+  // Enforce mandatory onboarding
+  if (profile && !profile.is_profile_complete && location.pathname !== '/mandatory-onboarding' && location.pathname !== '/setup-profile') {
+    return <Navigate to="/mandatory-onboarding" replace />;
+  }
+
   return <ErrorBoundary>{children}</ErrorBoundary>;
 };
 
@@ -120,6 +130,11 @@ const AppRoutes = () => {
     <Route path="/setup-profile" element={
       <ProtectedRoute>
         <SetupProfile />
+      </ProtectedRoute>
+    } />
+    <Route path="/mandatory-onboarding" element={
+      <ProtectedRoute>
+        <MandatoryOnboarding />
       </ProtectedRoute>
     } />
     <Route path="/home" element={
