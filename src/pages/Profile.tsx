@@ -233,11 +233,8 @@ const Profile = () => {
               <Calendar className="h-3 w-3 text-blue-100" />
               <span className="text-xs text-blue-100 font-medium">Joined {joinDate}</span>
             </div>
-            {currentGenderOption && !isEditing && (
-              <div className="mt-2 bg-white/15 px-3 py-1 rounded-full">
-                <span className="text-xs text-blue-100">{currentGenderOption.emoji} {currentGenderOption.label}</span>
-              </div>
-            )}
+          </div>
+
           </div>
         </div>
 
