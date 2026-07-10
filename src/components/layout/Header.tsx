@@ -64,9 +64,10 @@ const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
         </div>
       );
     } else {
+      // Default avatar (no picture/emoji selected yet)
       return (
-        <div className={`rounded-full bg-gradient-to-br ${avatarGradient} flex items-center justify-center shadow-inner border border-white/60 ${sizeClasses}`}>
-          <span className="text-white text-sm font-black">{userInitials}</span>
+        <div className={`rounded-full bg-white flex items-center justify-center ${sizeClasses}`}>
+          <span className="text-xl leading-none">🧑</span>
         </div>
       );
     }
