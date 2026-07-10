@@ -144,13 +144,13 @@ const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => navigate("/login")}
-                  className="text-white/90 hover:text-white text-sm font-medium px-3 py-1.5 rounded-lg hover:bg-white/10 transition-all"
+                  className="bg-[#D6CEFA]/20 text-white hover:bg-[#D6CEFA]/40 text-sm font-medium px-4 py-1.5 rounded-lg transition-all border border-[#D6CEFA]/50"
                 >
                   Login
                 </button>
                 <button
                   onClick={() => navigate("/register")}
-                  className="bg-white text-purple-600 text-sm font-bold px-4 py-1.5 rounded-lg hover:bg-purple-50 transition-all shadow-sm"
+                  className="bg-[#D6CEFA] text-violet-800 text-sm font-bold px-4 py-1.5 rounded-lg hover:brightness-105 transition-all shadow-sm"
                 >
                   Sign Up
                 </button>

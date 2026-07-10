@@ -10,8 +10,9 @@ import AppLayout from "@/components/layout/AppLayout";
 import { useToast } from "@/hooks/use-toast";
 import { useGoogleAuth } from "@/hooks/useGoogleAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Chrome } from "lucide-react";
+import { Chrome, Mail } from "lucide-react";
 import Captcha from "@/components/ui/captcha";
+import { PasswordStrengthIndicator } from "@/components/ui/password-strength-indicator";
 
 const Register = () => {
   const [name, setName] = useState("");
@@ -89,10 +90,12 @@ const Register = () => {
     }
   };
 
+
+
   return (
     <AppLayout isAuthenticated={false}>
-      <div className="flex justify-center items-center min-h-screen bg-[#E9E4FA]">
-        <Card className="w-full max-w-md bg-[#E9E4FA]">
+      <div className="flex justify-center items-center min-h-[calc(100vh-100px)] bg-[#E9E4FA] p-4">
+        <Card className="w-full max-w-md bg-white border-0 shadow-lg relative pb-6">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
             <CardDescription>
@@ -100,22 +103,32 @@ const Register = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={signInWithGoogle}
-              disabled={googleLoading}
-            >
-              <Chrome className="mr-2 h-4 w-4" />
-              {googleLoading ? "Connecting..." : "Continue with Google"}
-            </Button>
             
+              <div className="space-y-3">
+                <Button
+                  className="w-full bg-black text-white hover:bg-black/90 py-5 rounded-lg flex justify-center items-center font-semibold"
+                  onClick={signInWithGoogle}
+                  disabled={googleLoading}
+                >
+                  <Chrome className="mr-2 h-5 w-5" />
+                  {googleLoading ? "Connecting..." : "Continue with Google"}
+                </Button>
+
+                <Button
+                  className="w-full bg-blue-600 text-white hover:bg-blue-700 py-5 rounded-lg flex justify-center items-center font-semibold"
+                  onClick={(e) => { e.preventDefault(); document.getElementById("name")?.focus(); }}
+                >
+                  <Mail className="mr-2 h-5 w-5" />
+                  Continue with email
+                </Button>
+              </div>
+
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <Separator className="w-full" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
+                <span className="bg-white px-2 text-muted-foreground">
                   Or continue with email
                 </span>
               </div>
@@ -123,11 +136,11 @@ const Register = () => {
 
             <form onSubmit={handleRegister} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
+                <Label htmlFor="name">Display Name</Label>
                 <Input
                   id="name"
                   type="text"
-                  placeholder="John Doe"
+                  placeholder="Enter display name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
@@ -153,6 +166,7 @@ const Register = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
+                <PasswordStrengthIndicator password={password} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
@@ -169,18 +183,28 @@ const Register = () => {
 
               <Button 
                 type="submit" 
-                className="w-full" 
+                className="w-full bg-[#D6CEFA] text-violet-800 hover:brightness-105 font-bold py-5 rounded-lg text-base"
                 disabled={isLoading || !captchaVerified}
               >
                 {isLoading ? "Creating account..." : "Sign Up"}
               </Button>
             </form>
           </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <div className="text-center text-sm">
+          <CardFooter className="flex flex-col space-y-4 mt-auto">
+            <div className="text-center text-sm w-full">
               Already have an account?{" "}
-              <Link to="/login" className="text-primary hover:underline">
+              <Link to="/login" className="text-primary hover:underline font-semibold">
                 Login
+              </Link>
+            </div>
+            <div className="text-center text-xs text-muted-foreground pt-4 border-t w-full">
+              BY SIGNING UP, YOU AGREE TO OUR{" "}
+              <Link to="/terms" className="underline hover:text-primary transition-colors">
+                TERMS OF SERVICE
+              </Link>{" "}
+              AND{" "}
+              <Link to="/privacy" className="underline hover:text-primary transition-colors">
+                PRIVACY POLICY
               </Link>
             </div>
           </CardFooter>
