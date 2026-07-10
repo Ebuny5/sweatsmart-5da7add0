@@ -1232,7 +1232,7 @@ const HidroAlly = () => {
   return (
     <PageTransition>
       <div
-        className="h-[100dvh] flex flex-col relative overflow-hidden"
+        className="h-[100dvh] w-full max-w-[100vw] overflow-x-hidden flex flex-col relative"
         style={{ background: 'linear-gradient(160deg, #0a0a1e 0%, #0d1030 40%, #0a1520 100%)' }}
       >
         {/* Ambient glow */}
