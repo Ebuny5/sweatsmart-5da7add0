@@ -455,10 +455,6 @@ const Profile = () => {
                   {[
                     { label: "Display Name", value: profileData.display_name || "Not set" },
                     { label: "Email", value: user.email },
-                    {
-                      label: "Gender",
-                      value: `${currentGenderOption?.emoji ?? ""} ${currentGenderOption?.label ?? "Not set"}`,
-                    },
                     { label: "Age", value: profileData.age || "Not set" },
                     { label: "Biological Sex", value: profileData.biological_sex || "Not set" },
                     { label: "Gender Identity", value: profileData.gender_identity || "Not set" },
