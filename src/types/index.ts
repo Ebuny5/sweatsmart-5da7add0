@@ -125,6 +125,7 @@ export interface Profile {
   avatar?: string;
   avatar_type?: 'emoji' | 'image';
   gender?: string;
+  gender_description?: string;
   created_at: string;
   updated_at: string;
 }
