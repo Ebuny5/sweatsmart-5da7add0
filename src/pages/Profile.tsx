@@ -340,42 +340,8 @@ const Profile = () => {
                     <p className="text-[11px] text-gray-400">Email cannot be changed here</p>
                   </div>
 
-                  {/* Gender Selector */}
-                  <div className="space-y-1.5">
-                    <Label className="text-sm font-semibold text-gray-700">
-                      Gender
-                      <span className="ml-1 text-[11px] font-normal text-blue-500">
-                        — personalises your trigger insights
-                      </span>
-                    </Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {GENDER_OPTIONS.map((option) => {
-                        const isSelected = selectedGender === option.value;
-                        return (
-                          <button
-                            key={option.value}
-                            type="button"
-                            onClick={() => setSelectedGender(option.value)}
-                            className={`relative flex items-center gap-2 px-3 py-3 rounded-xl border-2 transition-all min-h-[48px]
-                              ${isSelected
-                                ? "bg-blue-50 border-blue-400 shadow-sm"
-                                : "bg-gray-50 border-gray-200 hover:border-gray-300"
-                              }`}
-                          >
-                            {isSelected && (
-                              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center shadow-sm">
-                                <Check className="h-3 w-3 text-white" />
-                              </span>
-                            )}
-                            <span className="text-xl">{option.emoji}</span>
-                            <span className={`text-xs font-semibold ${isSelected ? "text-blue-700" : "text-gray-600"}`}>
-                              {option.label}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
+                  {/* (Legacy Gender selector removed — replaced by Biological Sex + Gender Identity below) */}
+
 
                   {/* Age */}
                   <div className="space-y-1.5">
