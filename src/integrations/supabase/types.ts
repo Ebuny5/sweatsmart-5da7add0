@@ -287,23 +287,41 @@ export type Database = {
       }
       profiles: {
         Row: {
+          age: number | null
+          biological_sex: string | null
+          country: string | null
           created_at: string
+          diagnosis_type: string | null
           display_name: string | null
+          gender_identity: string | null
           id: string
+          is_profile_complete: boolean
           updated_at: string
           user_id: string
         }
         Insert: {
+          age?: number | null
+          biological_sex?: string | null
+          country?: string | null
           created_at?: string
+          diagnosis_type?: string | null
           display_name?: string | null
+          gender_identity?: string | null
           id?: string
+          is_profile_complete?: boolean
           updated_at?: string
           user_id: string
         }
         Update: {
+          age?: number | null
+          biological_sex?: string | null
+          country?: string | null
           created_at?: string
+          diagnosis_type?: string | null
           display_name?: string | null
+          gender_identity?: string | null
           id?: string
+          is_profile_complete?: boolean
           updated_at?: string
           user_id?: string
         }
