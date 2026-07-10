@@ -595,7 +595,7 @@ const SpecialistRadar = () => {
         .no-scrollbar::-webkit-scrollbar { display:none; }
       `}</style>
 
-      <div className="flex flex-col" style={{ minHeight: '100dvh', background: 'linear-gradient(180deg,#070b1a 0%,#0a0e24 100%)' }}>
+      <div className="flex flex-col w-full max-w-[100vw] overflow-x-hidden" style={{ minHeight: '100dvh', background: 'linear-gradient(180deg,#070b1a 0%,#0a0e24 100%)' }}>
 
         {/* Header */}
         <div className="px-4 pt-4 pb-3 shrink-0" style={{ background: 'rgba(7,11,26,0.92)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>

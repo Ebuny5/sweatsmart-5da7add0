@@ -37,11 +37,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, isAuthenticated }) => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full flex-col">
+      <div className="min-h-screen flex w-full max-w-[100vw] overflow-x-hidden flex-col">
         <Header isAuthenticated={authenticated} />
-        <div className="flex flex-1 safe-area-left safe-area-right">
+        <div className="flex flex-1 w-full max-w-[100vw] overflow-x-hidden safe-area-left safe-area-right">
           {authenticated && !isMobile && <Sidebar />}
-          <main className={`flex-1 ${isMobile ? "px-0 py-0 pb-20" : "container py-6"}`}>
+          <main className={`flex-1 w-full max-w-[100vw] overflow-x-hidden ${isMobile ? "px-0 py-0 pb-20" : "container py-6"}`}>
             {children}
           </main>
         </div>

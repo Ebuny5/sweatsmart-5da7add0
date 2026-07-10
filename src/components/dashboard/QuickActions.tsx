@@ -443,22 +443,22 @@ const WarriorLaunchpad = () => {
 
         {/* ── QUICK LOG MODAL ─────────────────────────────────────────── */}
         <Dialog open={quickLogOpen} onOpenChange={setQuickLogOpen}>
-          <DialogContent className="max-w-[90vw] sm:max-w-md rounded-3xl p-6">
-            <DialogHeader>
+          <DialogContent className="max-w-[90vw] sm:max-w-md rounded-3xl p-6 max-h-[85vh] overflow-y-auto flex flex-col">
+            <DialogHeader className="shrink-0">
               <DialogTitle className="text-xl font-black text-gray-800">Quick HDSS Log</DialogTitle>
               <DialogDescription className="text-sm text-gray-500">
                 Log your current sweating severity level immediately.
               </DialogDescription>
             </DialogHeader>
 
-            <div className="py-4">
+            <div className="py-4 flex-1 overflow-y-auto">
               <SeveritySelector
                 value={quickHDSS}
                 onChange={setQuickHDSS}
               />
             </div>
 
-            <DialogFooter className="flex flex-col gap-2 sm:flex-row">
+            <DialogFooter className="flex flex-col gap-2 sm:flex-row shrink-0 mt-4">
               <Button
                 variant="outline"
                 onClick={() => setQuickLogOpen(false)}
