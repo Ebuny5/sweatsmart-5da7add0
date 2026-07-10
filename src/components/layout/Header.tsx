@@ -117,18 +117,6 @@ const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
                   align="end"
                   className="w-56 rounded-2xl shadow-xl border border-purple-100 p-1 mt-2"
                 >
-                  <div className="px-3 py-3 mb-1">
-                    <div className="flex items-center gap-3">
-                      {renderAvatar("w-10 h-10")}
-                      <div className="overflow-hidden">
-                        <p className="font-bold text-sm text-gray-800 truncate">{userName || "User"}</p>
-                        <p className="text-xs text-gray-400 truncate">{user?.email}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <DropdownMenuSeparator className="bg-purple-50" />
-
                   <DropdownMenuItem
                     onClick={() => navigate("/profile")}
                     className="rounded-xl gap-2.5 cursor-pointer py-2.5 focus:bg-purple-50"
@@ -137,6 +125,18 @@ const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
                       <User className="h-3.5 w-3.5 text-violet-600" />
                     </div>
                     <span className="font-medium text-sm">Profile</span>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuSeparator className="bg-purple-50" />
+
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="rounded-xl gap-2.5 cursor-pointer py-2.5 focus:bg-red-50"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-red-100 flex items-center justify-center">
+                      <LogOut className="h-3.5 w-3.5 text-red-600" />
+                    </div>
+                    <span className="font-medium text-sm text-red-600">Log out</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
