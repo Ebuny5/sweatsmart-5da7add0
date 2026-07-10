@@ -51,7 +51,7 @@ const Profile = () => {
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
   // Avatar: emoji string OR base64 image URL
-  const [selectedAvatar, setSelectedAvatar] = useState<string>("🧑");
+  const [selectedAvatar, setSelectedAvatar] = useState<string>(AVATAR_EMOJIS[4]);
   const [avatarType, setAvatarType] = useState<"emoji" | "image">("emoji");
   const [selectedGender, setSelectedGender] = useState<Gender>("prefer-not-to-say");
 
@@ -60,6 +60,7 @@ const Profile = () => {
     age: profile?.age || "",
     biological_sex: profile?.biological_sex || "",
     gender_identity: profile?.gender_identity || "",
+    gender_description: profile?.gender_description || "",
     diagnosis_type: profile?.diagnosis_type || "",
     country: profile?.country || "",
   });
@@ -71,6 +72,7 @@ const Profile = () => {
         age: profile.age || "",
         biological_sex: profile.biological_sex || "",
         gender_identity: profile.gender_identity || "",
+        gender_description: profile.gender_description || "",
         diagnosis_type: profile.diagnosis_type || "",
         country: profile.country || "",
       });
@@ -90,10 +92,12 @@ const Profile = () => {
         age: profileData.age ? parseInt(profileData.age as string) : undefined,
         biological_sex: profileData.biological_sex as string,
         gender_identity: profileData.gender_identity as string,
+        gender_description: profileData.gender_identity === "Self-describe" ? profileData.gender_description : undefined,
         diagnosis_type: profileData.diagnosis_type as string,
         country: profileData.country as string,
         avatar: selectedAvatar,
         avatar_type: avatarType,
+        gender: selectedGender,
       } as any);
 
       if (success) {
@@ -389,6 +393,22 @@ const Profile = () => {
                       <option value="Self-describe">Self-describe</option>
                     </select>
                   </div>
+
+                  {profileData.gender_identity === "Self-describe" && (
+                    <div className="space-y-1.5 mt-3">
+                      <Label htmlFor="gender_description" className="text-sm font-semibold text-gray-700">
+                        Please describe your gender
+                      </Label>
+                      <Input
+                        id="gender_description"
+                        type="text"
+                        value={profileData.gender_description}
+                        onChange={(e) => setProfileData({ ...profileData, gender_description: e.target.value })}
+                        placeholder="E.g. Agender, Genderfluid, etc."
+                        className="rounded-xl min-h-[48px] border-gray-200 focus:border-blue-400 focus:ring-blue-100"
+                      />
+                    </div>
+                  )}
 
                   {/* Primary Diagnosis Type */}
                   <div className="space-y-1.5">
