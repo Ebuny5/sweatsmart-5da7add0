@@ -116,6 +116,15 @@ export interface Profile {
   id: string;
   user_id: string;
   display_name: string | null;
+  age?: number;
+  biological_sex?: string;
+  gender_identity?: string;
+  diagnosis_type?: string;
+  country?: string;
+  is_profile_complete?: boolean;
+  avatar?: string;
+  avatar_type?: 'emoji' | 'image';
+  gender?: string;
   created_at: string;
   updated_at: string;
 }

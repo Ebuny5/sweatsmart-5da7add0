@@ -40,7 +40,7 @@ const StatCard = ({
 // ── Main Component ──────────────────────────────────────────────────────────
 const Profile = () => {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { profile, loading: profileLoading, updateProfile } = useProfile();
   const { episodes } = useEpisodes();
@@ -57,11 +57,23 @@ const Profile = () => {
 
   const [profileData, setProfileData] = useState({
     display_name: profile?.display_name || "",
+    age: profile?.age || "",
+    biological_sex: profile?.biological_sex || "",
+    gender_identity: profile?.gender_identity || "",
+    diagnosis_type: profile?.diagnosis_type || "",
+    country: profile?.country || "",
   });
 
   useEffect(() => {
     if (profile) {
-      setProfileData({ display_name: profile.display_name || "" });
+      setProfileData({
+        display_name: profile.display_name || "",
+        age: profile.age || "",
+        biological_sex: profile.biological_sex || "",
+        gender_identity: profile.gender_identity || "",
+        diagnosis_type: profile.diagnosis_type || "",
+        country: profile.country || "",
+      });
       if ((profile as any).avatar) setSelectedAvatar((profile as any).avatar);
       if ((profile as any).avatar_type) setAvatarType((profile as any).avatar_type);
       if ((profile as any).gender) setSelectedGender((profile as any).gender);
@@ -75,6 +87,11 @@ const Profile = () => {
     try {
       const success = await updateProfile({
         display_name: profileData.display_name,
+        age: profileData.age ? parseInt(profileData.age as string) : undefined,
+        biological_sex: profileData.biological_sex as string,
+        gender_identity: profileData.gender_identity as string,
+        diagnosis_type: profileData.diagnosis_type as string,
+        country: profileData.country as string,
         avatar: selectedAvatar,
         avatar_type: avatarType,
         gender: selectedGender,
@@ -97,7 +114,14 @@ const Profile = () => {
   const handleCancel = () => {
     setIsEditing(false);
     setShowAvatarPicker(false);
-    setProfileData({ display_name: profile?.display_name || "" });
+    setProfileData({
+      display_name: profile?.display_name || "",
+      age: profile?.age || "",
+      biological_sex: profile?.biological_sex || "",
+      gender_identity: profile?.gender_identity || "",
+      diagnosis_type: profile?.diagnosis_type || "",
+      country: profile?.country || "",
+    });
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -353,6 +377,91 @@ const Profile = () => {
                     </div>
                   </div>
 
+                  {/* Age */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="age" className="text-sm font-semibold text-gray-700">
+                      Age
+                    </Label>
+                    <Input
+                      id="age"
+                      type="number"
+                      value={profileData.age}
+                      onChange={(e) => setProfileData({ ...profileData, age: e.target.value })}
+                      placeholder="Enter your age"
+                      className="rounded-xl min-h-[48px] border-gray-200 focus:border-blue-400 focus:ring-blue-100"
+                    />
+                  </div>
+
+                  {/* Biological Sex */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="biological_sex" className="text-sm font-semibold text-gray-700">
+                      Biological Sex
+                    </Label>
+                    <select
+                      id="biological_sex"
+                      value={profileData.biological_sex}
+                      onChange={(e) => setProfileData({ ...profileData, biological_sex: e.target.value })}
+                      className="flex h-12 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-100 focus-visible:border-blue-400"
+                    >
+                      <option value="" disabled>Select option</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Intersex">Intersex</option>
+                    </select>
+                  </div>
+
+                  {/* Gender Identity */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="gender_identity" className="text-sm font-semibold text-gray-700">
+                      Gender Identity
+                    </Label>
+                    <select
+                      id="gender_identity"
+                      value={profileData.gender_identity}
+                      onChange={(e) => setProfileData({ ...profileData, gender_identity: e.target.value })}
+                      className="flex h-12 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-100 focus-visible:border-blue-400"
+                    >
+                      <option value="" disabled>Select option</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Non-binary">Non-binary</option>
+                      <option value="Self-describe">Self-describe</option>
+                    </select>
+                  </div>
+
+                  {/* Primary Diagnosis Type */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="diagnosis_type" className="text-sm font-semibold text-gray-700">
+                      Primary Diagnosis Type
+                    </Label>
+                    <select
+                      id="diagnosis_type"
+                      value={profileData.diagnosis_type}
+                      onChange={(e) => setProfileData({ ...profileData, diagnosis_type: e.target.value })}
+                      className="flex h-12 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-100 focus-visible:border-blue-400"
+                    >
+                      <option value="" disabled>Select option</option>
+                      <option value="Primary Focal">Primary Focal</option>
+                      <option value="Secondary General">Secondary General</option>
+                      <option value="Unsure">Unsure</option>
+                    </select>
+                  </div>
+
+                  {/* Country */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="country" className="text-sm font-semibold text-gray-700">
+                      Country
+                    </Label>
+                    <Input
+                      id="country"
+                      type="text"
+                      value={profileData.country}
+                      onChange={(e) => setProfileData({ ...profileData, country: e.target.value })}
+                      placeholder="Enter your country"
+                      className="rounded-xl min-h-[48px] border-gray-200 focus:border-blue-400 focus:ring-blue-100"
+                    />
+                  </div>
+
                   {/* Action buttons */}
                   <div className="flex gap-2 pt-2">
                     <Button
@@ -388,6 +497,11 @@ const Profile = () => {
                       label: "Gender",
                       value: `${currentGenderOption?.emoji ?? ""} ${currentGenderOption?.label ?? "Not set"}`,
                     },
+                    { label: "Age", value: profileData.age || "Not set" },
+                    { label: "Biological Sex", value: profileData.biological_sex || "Not set" },
+                    { label: "Gender Identity", value: profileData.gender_identity || "Not set" },
+                    { label: "Diagnosis", value: profileData.diagnosis_type || "Not set" },
+                    { label: "Country", value: profileData.country || "Not set" },
                   ].map((item) => (
                     <div key={item.label} className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
                       <span className="text-sm text-gray-400">{item.label}</span>
@@ -437,6 +551,20 @@ const Profile = () => {
                   : "Start logging your episodes to build your warrior profile."}
               </p>
             </div>
+          </div>
+
+          {/* ── LOGOUT BUTTON ────────────────────────────────────────────── */}
+          <div className="pt-4 pb-8">
+            <Button
+              variant="destructive"
+              className="w-full rounded-xl min-h-[56px] text-base font-bold shadow-sm"
+              onClick={async () => {
+                await signOut();
+                navigate("/login");
+              }}
+            >
+              Logout
+            </Button>
           </div>
 
         </div>

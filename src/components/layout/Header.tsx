@@ -47,6 +47,31 @@ const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
 
   const avatarGradient = getAvatarGradient(userInitials);
 
+  // Custom Avatar rendering logic
+  const renderAvatar = (sizeClasses: string) => {
+    if (profile?.avatar_type === 'image' && profile.avatar) {
+      return (
+        <img
+          src={profile.avatar}
+          alt="Avatar"
+          className={`rounded-full object-cover ${sizeClasses}`}
+        />
+      );
+    } else if (profile?.avatar_type === 'emoji' && profile.avatar) {
+      return (
+        <div className={`rounded-full bg-white flex items-center justify-center ${sizeClasses}`}>
+          <span className="text-xl leading-none">{profile.avatar}</span>
+        </div>
+      );
+    } else {
+      return (
+        <div className={`rounded-full bg-gradient-to-br ${avatarGradient} flex items-center justify-center shadow-inner border border-white/60 ${sizeClasses}`}>
+          <span className="text-white text-sm font-black">{userInitials}</span>
+        </div>
+      );
+    }
+  };
+
   return (
     <header className="w-full z-50 sticky top-0 safe-area-top bg-violet-600">
       <div className="bg-gradient-to-r from-violet-600 via-purple-500 to-pink-500 shadow-lg shadow-purple-200/50">
@@ -79,10 +104,10 @@ const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
                   <button className="relative flex items-center gap-2 focus:outline-none group">
                     <div className="relative">
                       <div className="absolute inset-0 rounded-full bg-gradient-to-br from-amber-300 to-orange-400 scale-[1.15] shadow-md" />
-                      <div className={`relative w-9 h-9 rounded-full bg-gradient-to-br ${avatarGradient} flex items-center justify-center shadow-inner border-2 border-white/60`}>
-                        <span className="text-white text-sm font-black">{userInitials}</span>
+                      <div className="relative w-9 h-9 rounded-full overflow-hidden border-2 border-white/60">
+                        {renderAvatar("w-full h-full")}
                       </div>
-                      <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-white shadow-sm" />
+                      <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-white shadow-sm z-10" />
                     </div>
                   </button>
                 </DropdownMenuTrigger>
@@ -93,9 +118,7 @@ const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
                 >
                   <div className="px-3 py-3 mb-1">
                     <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${avatarGradient} flex items-center justify-center shadow-sm`}>
-                        <span className="text-white text-sm font-black">{userInitials}</span>
-                      </div>
+                      {renderAvatar("w-10 h-10")}
                       <div className="overflow-hidden">
                         <p className="font-bold text-sm text-gray-800 truncate">{userName || "User"}</p>
                         <p className="text-xs text-gray-400 truncate">{user?.email}</p>
@@ -113,38 +136,6 @@ const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
                       <User className="h-3.5 w-3.5 text-violet-600" />
                     </div>
                     <span className="font-medium text-sm">Profile</span>
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    onClick={() => navigate("/settings")}
-                    className="rounded-xl gap-2.5 cursor-pointer py-2.5 focus:bg-purple-50"
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-pink-100 flex items-center justify-center">
-                      <Settings className="h-3.5 w-3.5 text-pink-600" />
-                    </div>
-                    <span className="font-medium text-sm">Settings</span>
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    onClick={() => window.open("https://docs.google.com/forms/d/e/1FAIpQLSfHBkUOMxFhB03UyfpnrEQk5VlszVUFN2n-TqjRwJ1ehqSeTw/viewform", "_blank", "noopener,noreferrer")}
-                    className="rounded-xl gap-2.5 cursor-pointer py-2.5 focus:bg-purple-50"
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center">
-                      <MessageSquare className="h-3.5 w-3.5 text-amber-600" />
-                    </div>
-                    <span className="font-medium text-sm">Feedback</span>
-                  </DropdownMenuItem>
-
-                  <DropdownMenuSeparator className="bg-purple-50" />
-
-                  <DropdownMenuItem
-                    onClick={handleLogout}
-                    className="rounded-xl gap-2.5 cursor-pointer py-2.5 focus:bg-red-50 text-red-500 focus:text-red-600"
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-red-100 flex items-center justify-center">
-                      <LogOut className="h-3.5 w-3.5 text-red-500" />
-                    </div>
-                    <span className="font-medium text-sm">Logout</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
