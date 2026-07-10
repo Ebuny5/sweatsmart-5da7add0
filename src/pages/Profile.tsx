@@ -234,9 +234,8 @@ const Profile = () => {
               <span className="text-xs text-blue-100 font-medium">Joined {joinDate}</span>
             </div>
           </div>
-
-          </div>
         </div>
+
 
         {/* ── AVATAR PICKER SHEET ──────────────────────────────────────── */}
         {showAvatarPicker && (
