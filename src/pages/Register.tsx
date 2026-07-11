@@ -96,10 +96,10 @@ const Register = () => {
     <AppLayout isAuthenticated={false}>
       <div className="flex justify-center items-center min-h-[calc(100vh-100px)] bg-[#E9E4FA] p-4">
         <Card className="w-full max-w-md bg-white border-0 shadow-lg relative pb-6">
-          <CardHeader className="space-y-1">
+          <CardHeader className="space-y-1 text-center">
             <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
             <CardDescription>
-              Sign up to start tracking and managing your symptoms
+              Sign up to start tracking triggers.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
