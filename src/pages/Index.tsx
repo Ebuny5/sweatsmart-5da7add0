@@ -1024,16 +1024,18 @@ const SweatSmartLanding = () => {
       nav {
         height: 64px;
         padding: 0 20px;
+
+        flex-wrap: nowrap;
       }
 
       .nav-links {
         gap: 6px;
-        margin-bottom: 20px;
+
       }
 
       .logo {
         gap: 6px;
-        margin-top: 20px;
+
       }
       
       .logo-img {
@@ -1071,7 +1073,9 @@ const SweatSmartLanding = () => {
       }
 
       .hero-title {
-        font-size: 36px;
+        font-size: clamp(2rem, 7vw, 3rem);
+        word-wrap: break-word;
+        overflow-wrap: break-word;
         line-height: 1.2;
       }
 
@@ -1106,6 +1110,14 @@ const SweatSmartLanding = () => {
 
       .cta-card {
         padding: 44px 28px;
+      }
+
+      .hero-subtitle {
+        white-space: normal;
+      }
+
+      .hero-grid > div:first-child {
+        padding: 0 16px;
       }
 
       .footer-top {
