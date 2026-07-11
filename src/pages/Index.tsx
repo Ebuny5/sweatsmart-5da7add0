@@ -252,9 +252,9 @@ const SweatSmartLanding = () => {
     .btn-ghost:hover { background: rgba(167,139,250,0.18); color: #f5f3ff; border-color: rgba(167,139,250,0.7); }
 
     .btn-primary {
-      padding: 11px 22px;
+      padding: 12px 24px;
       border-radius: 8px;
-      font-size: 15px;
+      font-size: 16px;
       font-weight: 600;
       color: white;
       background: linear-gradient(135deg, #7c3aed, #a855f7);
@@ -359,6 +359,7 @@ const SweatSmartLanding = () => {
       font-size: 16px;
       font-weight: 600;
       color: #e9d5ff;
+      margin-top: 40px;
       margin-bottom: 24px;
       letter-spacing: 0.5px;
     }
@@ -367,7 +368,7 @@ const SweatSmartLanding = () => {
       font-family: 'Syne', sans-serif;
       font-size: clamp(48px, 7vw, 68px);
       font-weight: 800;
-      line-height: 1.1;
+      line-height: 1.2;
       margin-bottom: 26px;
       color: #f5f3ff;
       overflow-wrap: break-word;
@@ -387,6 +388,7 @@ const SweatSmartLanding = () => {
       background-clip: text;
       display: inline-block;
       font-weight: 800;
+      white-space: nowrap;
     }
 
     .gradient-text {
@@ -1021,15 +1023,17 @@ const SweatSmartLanding = () => {
     @media (max-width: 640px) {
       nav {
         height: 64px;
-        padding: 0 3%;
+        padding: 0 20px;
       }
 
       .nav-links {
         gap: 6px;
+        margin-bottom: 20px;
       }
 
       .logo {
         gap: 6px;
+        margin-top: 20px;
       }
       
       .logo-img {
@@ -1038,7 +1042,7 @@ const SweatSmartLanding = () => {
       }
       
       .logo-text {
-        font-size: 15px;
+        font-size: 30px;
       }
 
       .btn-ghost {
@@ -1047,12 +1051,12 @@ const SweatSmartLanding = () => {
       }
 
       .btn-primary {
-        padding: 8px 12px;
-        font-size: 13px;
+        padding: 12px 24px;
+        font-size: 16px;
       }
 
       section {
-        padding: 40px 4%;
+        padding: 40px 20px;
       }
 
       .section-hero {
@@ -1067,7 +1071,7 @@ const SweatSmartLanding = () => {
 
       .hero-title {
         font-size: 36px;
-        line-height: 1.15;
+        line-height: 1.2;
       }
 
       .title-line-1, .title-line-2 {
@@ -1076,7 +1080,7 @@ const SweatSmartLanding = () => {
 
       .hero-ctas {
         flex-direction: column;
-        gap: 12px;
+        gap: 20px;
         width: 100%;
         max-width: 320px;
         margin-left: auto;
@@ -1144,8 +1148,8 @@ const SweatSmartLanding = () => {
               TRUSTED BY 12,000+ PEOPLE
             </div>
             <h1 className="hero-title">
-              <span className="title-line-1">Take Control</span><br />
-              <span className="title-line-2">of your hyperhidrosis</span>
+              <span className="title-line-1">Master your</span><br />
+              <span className="title-line-2">hyperhidrosis</span>
             </h1>
             <p className="hero-subtitle">
               The smart hyperhidrosis tracker. Log episodes, discover sweating triggers, and get AI-powered answers.
