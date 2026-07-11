@@ -1053,7 +1053,7 @@ const SweatSmartLanding = () => {
   `;
 
   return (
-    <>
+    <div className="w-full max-w-[100vw] overflow-x-hidden relative">
       <style>{styles}</style>
       <div className="noise-overlay" />
 
@@ -1303,7 +1303,7 @@ const SweatSmartLanding = () => {
         </div>
         <p className="footer-copy">© {new Date().getFullYear()} SweatSmart by Giftovate Therapeutics Ltd. All rights reserved.</p>
       </footer>
-    </>
+    </div>
   );
 };
 
