@@ -313,7 +313,7 @@ const SweatSmartLanding = () => {
       min-height: 90vh;
       display: flex;
       align-items: center;
-      padding-top: 100px;
+      padding-top: 70px;
       padding-bottom: 60px;
     }
 
@@ -330,22 +330,37 @@ const SweatSmartLanding = () => {
       .hero-grid {
         grid-template-columns: 1fr;
         gap: 50px;
+        text-align: center;
+      }
+      .hero-ctas {
+        justify-content: center;
+      }
+      .hero-social-proof {
+        justify-content: center;
+      }
+      .hero-subtitle {
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .trust-badge {
+        margin-left: auto;
+        margin-right: auto;
       }
     }
 
     .trust-badge {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       background: rgba(167,139,250,0.15);
       border: 1px solid rgba(167,139,250,0.3);
-      padding: 10px 20px;
-      border-radius: 24px;
-      font-size: 13px;
-      font-weight: 500;
-      color: #c4b5fd;
-      margin-bottom: 28px;
-      letter-spacing: 0.3px;
+      padding: 12px 24px;
+      border-radius: 30px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #e9d5ff;
+      margin-bottom: 24px;
+      letter-spacing: 0.5px;
     }
 
     .hero-title {
@@ -358,6 +373,20 @@ const SweatSmartLanding = () => {
       overflow-wrap: break-word;
       word-wrap: break-word;
       hyphens: auto;
+    }
+
+
+    .title-line-1 {
+      color: #ffffff;
+      font-weight: 800;
+    }
+    .title-line-2 {
+      background: linear-gradient(135deg, #a78bfa 0%, #d946ef 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      display: inline-block;
+      font-weight: 800;
     }
 
     .gradient-text {
@@ -992,26 +1021,34 @@ const SweatSmartLanding = () => {
     @media (max-width: 640px) {
       nav {
         height: 64px;
-        padding: 0 4%;
+        padding: 0 3%;
+      }
+
+      .nav-links {
+        gap: 6px;
+      }
+
+      .logo {
+        gap: 6px;
       }
       
       .logo-img {
-        width: 38px;
-        height: 38px;
+        width: 28px;
+        height: 28px;
       }
       
       .logo-text {
-        font-size: 18px;
+        font-size: 15px;
       }
 
       .btn-ghost {
-        padding: 9px 16px;
-        font-size: 14px;
+        padding: 8px 12px;
+        font-size: 13px;
       }
 
       .btn-primary {
-        padding: 9px 16px;
-        font-size: 14px;
+        padding: 8px 12px;
+        font-size: 13px;
       }
 
       section {
@@ -1019,18 +1056,39 @@ const SweatSmartLanding = () => {
       }
 
       .section-hero {
-        padding-top: 80px;
+        padding-top: 40px;
+      }
+
+      .trust-badge {
+        font-size: 14px;
+        padding: 10px 20px;
+        margin-bottom: 20px;
       }
 
       .hero-title {
-        font-size: 42px;
+        font-size: 36px;
+        line-height: 1.15;
       }
 
+      .title-line-1, .title-line-2 {
+        display: block;
+      }
+
+      .hero-ctas {
+        flex-direction: column;
+        gap: 12px;
+        width: 100%;
+        max-width: 320px;
+        margin-left: auto;
+        margin-right: auto;
+      }
       .btn-primary-lg,
       .btn-outline-lg {
         padding: 14px 32px;
         font-size: 15px;
         width: 100%;
+        box-sizing: border-box;
+        text-align: center;
       }
 
       .features-grid {
@@ -1072,7 +1130,7 @@ const SweatSmartLanding = () => {
           <span className="logo-text">SweatSmart</span>
         </a>
         <div className="nav-links">
-          <a href="/login" className="btn-ghost">Login</a>
+          <a href="/login" className="btn-primary" style={{ background: 'rgba(124, 58, 237, 0.8)', boxShadow: 'none' }}>Login</a>
           <a href="/register" className="btn-primary">Get Started</a>
         </div>
       </nav>
@@ -1086,9 +1144,8 @@ const SweatSmartLanding = () => {
               TRUSTED BY 12,000+ PEOPLE
             </div>
             <h1 className="hero-title">
-              Take control<br />
-              of your{' '}
-              <span className="gradient-text">hyperhidrosis</span>
+              <span className="title-line-1">Take Control</span><br />
+              <span className="title-line-2">of your hyperhidrosis</span>
             </h1>
             <p className="hero-subtitle">
               The smart hyperhidrosis tracker. Log episodes, discover sweating triggers, and get AI-powered answers.
