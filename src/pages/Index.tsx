@@ -1037,22 +1037,23 @@ const SweatSmartLanding = () => {
       }
       
       .logo-img {
-        width: 28px;
-        height: 28px;
+        width: 26px;
+        height: 26px;
       }
       
       .logo-text {
-        font-size: 30px;
+        font-size: 16px;
+        letter-spacing: -0.3px;
       }
 
       .btn-ghost {
-        padding: 8px 12px;
-        font-size: 13px;
+        padding: 7px 10px;
+        font-size: 12px;
       }
 
       .btn-primary {
-        padding: 12px 24px;
-        font-size: 16px;
+        padding: 8px 14px;
+        font-size: 13px;
       }
 
       section {
