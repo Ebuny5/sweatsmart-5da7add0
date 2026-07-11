@@ -1037,22 +1037,23 @@ const SweatSmartLanding = () => {
       }
       
       .logo-img {
-        width: 28px;
-        height: 28px;
+        width: 26px;
+        height: 26px;
       }
       
       .logo-text {
-        font-size: 30px;
+        font-size: 16px;
+        letter-spacing: -0.3px;
       }
 
       .btn-ghost {
-        padding: 8px 12px;
-        font-size: 13px;
+        padding: 7px 10px;
+        font-size: 12px;
       }
 
       .btn-primary {
-        padding: 12px 24px;
-        font-size: 16px;
+        padding: 8px 14px;
+        font-size: 13px;
       }
 
       section {
@@ -1134,7 +1135,6 @@ const SweatSmartLanding = () => {
           <span className="logo-text">SweatSmart</span>
         </a>
         <div className="nav-links">
-          <a href="/login" className="btn-primary" style={{ background: 'rgba(124, 58, 237, 0.8)', boxShadow: 'none' }}>Login</a>
           <a href="/register" className="btn-primary">Get Started</a>
         </div>
       </nav>

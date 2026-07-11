@@ -64,10 +64,10 @@ const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
         </div>
       );
     } else {
-      // Default avatar (no picture/emoji selected yet)
+      // Default avatar (no picture/emoji selected yet) — matches 5th option in Profile picker
       return (
         <div className={`rounded-full bg-white flex items-center justify-center ${sizeClasses}`}>
-          <span className="text-xl leading-none">🧑</span>
+          <span className="text-xl leading-none">👩</span>
         </div>
       );
     }

@@ -122,6 +122,7 @@ const Profile = () => {
       age: profile?.age || "",
       biological_sex: profile?.biological_sex || "",
       gender_identity: profile?.gender_identity || "",
+      gender_description: profile?.gender_description || "",
       diagnosis_type: profile?.diagnosis_type || "",
       country: profile?.country || "",
     });

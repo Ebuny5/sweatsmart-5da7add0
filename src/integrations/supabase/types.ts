@@ -288,11 +288,15 @@ export type Database = {
       profiles: {
         Row: {
           age: number | null
+          avatar: string | null
+          avatar_type: string | null
           biological_sex: string | null
           country: string | null
           created_at: string
           diagnosis_type: string | null
           display_name: string | null
+          gender: string | null
+          gender_description: string | null
           gender_identity: string | null
           id: string
           is_profile_complete: boolean
@@ -301,11 +305,15 @@ export type Database = {
         }
         Insert: {
           age?: number | null
+          avatar?: string | null
+          avatar_type?: string | null
           biological_sex?: string | null
           country?: string | null
           created_at?: string
           diagnosis_type?: string | null
           display_name?: string | null
+          gender?: string | null
+          gender_description?: string | null
           gender_identity?: string | null
           id?: string
           is_profile_complete?: boolean
@@ -314,11 +322,15 @@ export type Database = {
         }
         Update: {
           age?: number | null
+          avatar?: string | null
+          avatar_type?: string | null
           biological_sex?: string | null
           country?: string | null
           created_at?: string
           diagnosis_type?: string | null
           display_name?: string | null
+          gender?: string | null
+          gender_description?: string | null
           gender_identity?: string | null
           id?: string
           is_profile_complete?: boolean
