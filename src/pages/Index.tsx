@@ -1134,7 +1134,6 @@ const SweatSmartLanding = () => {
           <span className="logo-text">SweatSmart</span>
         </a>
         <div className="nav-links">
-          <a href="/login" className="btn-primary" style={{ background: 'rgba(124, 58, 237, 0.8)', boxShadow: 'none' }}>Login</a>
           <a href="/register" className="btn-primary">Get Started</a>
         </div>
       </nav>
