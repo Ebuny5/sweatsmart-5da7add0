@@ -368,7 +368,7 @@ const SweatSmartLanding = () => {
       font-family: 'Syne', sans-serif;
       font-size: clamp(48px, 7vw, 68px);
       font-weight: 800;
-      line-height: 1.2;
+      line-height: 1.05;
       margin-bottom: 26px;
       color: #f5f3ff;
       overflow-wrap: break-word;
@@ -1024,16 +1024,18 @@ const SweatSmartLanding = () => {
       nav {
         height: 64px;
         padding: 0 20px;
+
+        flex-wrap: nowrap;
       }
 
       .nav-links {
         gap: 6px;
-        margin-bottom: 20px;
+
       }
 
       .logo {
         gap: 6px;
-        margin-top: 20px;
+
       }
       
       .logo-img {
@@ -1071,13 +1073,15 @@ const SweatSmartLanding = () => {
       }
 
       .hero-title {
-        font-size: 36px;
-        line-height: 1.2;
+        font-size: clamp(2rem, 7vw, 3rem);
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        line-height: 1.05;
       }
 
-      .title-line-1, .title-line-2 {
+      /* .title-line-1, .title-line-2 {
         display: block;
-      }
+      } removed to prevent double line break with <br /> */
 
       .hero-ctas {
         flex-direction: column;
@@ -1106,6 +1110,14 @@ const SweatSmartLanding = () => {
 
       .cta-card {
         padding: 44px 28px;
+      }
+
+      .hero-subtitle {
+        white-space: normal;
+      }
+
+      .hero-grid > div:first-child {
+        padding: 0 16px;
       }
 
       .footer-top {
