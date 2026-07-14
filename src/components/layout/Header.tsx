@@ -91,7 +91,7 @@ const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
                 SweatSmart
               </h1>
               <p className="text-white/80 text-xs font-bold leading-none mt-0.5 drop-shadow-md">
-                Hyperhidrosis Tracker
+                Hyperhidrosis Warrior
               </p>
             </div>
           </div>
