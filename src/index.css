@@ -243,6 +243,21 @@ body {
   align-items: center;
   gap: 20px;
   padding-right: 20px;
+  flex-shrink: 0;
+}
+
+.marquee-set a {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+}
+
+.marquee-set img {
+  height: 54px !important;
+  width: auto !important;
+  max-width: none !important;
+  display: block;
+  flex-shrink: 0;
 }
 
 @keyframes marquee {
@@ -251,5 +266,18 @@ body {
   }
   100% {
     transform: translateX(-25%); /* Move exactly 1 out of 4 sets for a seamless loop */
+  }
+}
+
+@media (max-width: 640px) {
+  .marquee-content {
+    animation-duration: 25s;
+  }
+  .marquee-set {
+    gap: 16px;
+    padding-right: 16px;
+  }
+  .marquee-set img {
+    height: 42px !important;
   }
 }
