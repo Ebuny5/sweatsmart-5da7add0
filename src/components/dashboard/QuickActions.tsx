@@ -304,8 +304,8 @@ const WarriorLaunchpad = () => {
         notes: "Quick HDSS Capture"
       };
       localStorage.setItem('sweatSmartLogs', JSON.stringify([newLog, ...existingLogs]));
-      localStorage.setItem(LAST_LOG_TIME_KEY, Date.now().toString());
-      localStorage.setItem(CURRENT_HDSS_KEY, quickHDSS.toString());
+      localStorage.setItem('lastLogTime', Date.now().toString());
+      localStorage.setItem('currentHDSS', quickHDSS.toString());
 
       toast.success("HDSS Level logged successfully!");
       setQuickLogOpen(false);
