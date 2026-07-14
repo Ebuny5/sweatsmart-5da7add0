@@ -4,9 +4,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { useEpisodes } from "@/hooks/useEpisodes";
 import { useClimateData } from "@/hooks/useClimateData";
-import { loggingReminderService, PRODUCTION_INTERVAL_MS, LAST_LOG_TIME_KEY, CURRENT_HDSS_KEY } from "@/services/LoggingReminderService";
 import { gaugeHDSS } from "@/utils/hdssGauger";
-import { Thermometer, Droplets, Sun, Wind, RefreshCw, ChevronRight, AlertTriangle, Shield, Loader2, Clock } from "lucide-react";
+import { Thermometer, Droplets, Sun, Wind, RefreshCw, ChevronRight, AlertTriangle, Shield, Loader2 } from "lucide-react";
 import WarriorBadge from "@/components/dashboard/WarriorBadge";
 import { getWarriorInsight } from "@/utils/warriorLogic";
 import {
@@ -194,6 +193,55 @@ const WarriorLaunchpad = () => {
   const { episodes, refetch: refetchEpisodes } = useEpisodes();
   const { sweatRisk } = useClimateData();
 
+  const calculateStreak = () => {
+    if (!episodes || episodes.length === 0) return 0;
+
+    // Extract unique dates as YYYY-MM-DD
+    const uniqueDates = Array.from(new Set(episodes.map(ep => {
+      const d = new Date(ep.datetime);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }))).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+
+    if (uniqueDates.length === 0) return 0;
+
+    const todayStr = (() => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    })();
+
+    const yesterdayStr = (() => {
+      const d = new Date();
+      d.setDate(d.getDate() - 1);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    })();
+
+    // Streak is active only if there's a log today or yesterday
+    if (uniqueDates[0] !== todayStr && uniqueDates[0] !== yesterdayStr) {
+      return 0;
+    }
+
+    let streak = 0;
+    let currentDate = new Date(uniqueDates[0]);
+    currentDate.setHours(0,0,0,0);
+
+    for (let i = 0; i < uniqueDates.length; i++) {
+      const dateStr = uniqueDates[i];
+      const d = new Date(dateStr);
+      d.setHours(0,0,0,0);
+
+      const expectedDate = new Date(currentDate);
+      expectedDate.setDate(currentDate.getDate() - i);
+
+      if (d.getTime() === expectedDate.getTime()) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+    return streak;
+  };
+  const currentStreak = calculateStreak();
+
   const [tipIndex] = useState(() => Math.floor(Math.random() * COMMUNITY_TIPS.length));
   const [quickLogOpen, setQuickLogOpen] = useState(false);
   const [quickHDSS, setQuickHDSS] = useState<SeverityLevel>(3);
@@ -205,34 +253,6 @@ const WarriorLaunchpad = () => {
   const today       = new Date().toLocaleDateString("en-GB", {
     weekday: "long", day: "numeric", month: "long",
   });
-
-  const lastLogDate = useMemo(() => {
-    return episodes.length > 0 ? episodes[0].datetime : null;
-  }, [episodes]);
-
-  const nextLogDate = useMemo(() => {
-    const LoggingReminderServiceClass = (loggingReminderService.constructor as any);
-    // Use last log date if available, otherwise fallback to the service's current scheduled time minus one interval to get a baseline
-    const baseline = lastLogDate
-      ? lastLogDate.getTime()
-      : (loggingReminderService.getNextScheduledTime() - PRODUCTION_INTERVAL_MS);
-
-    const nextTime = LoggingReminderServiceClass.calculateNextLogTime(baseline);
-    return new Date(nextTime);
-  }, [lastLogDate]);
-
-  const formatLogTime = (date: Date | null) => {
-    if (!date || isNaN(date.getTime())) return "Never";
-    const day = date.toLocaleDateString("en-GB", { weekday: "long" });
-    const time = date.toLocaleTimeString("en-GB", {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
-    // The user specifically asked for "pm" even with 24h format in the example "20:15 pm"
-    const ampm = date.getHours() >= 12 ? 'pm' : 'am';
-    return `${day} ${time} ${ampm}`;
-  };
 
   const dynamicInsight = useMemo(() => {
     const insight = getWarriorInsight(episodes);
@@ -311,14 +331,17 @@ const WarriorLaunchpad = () => {
         </h1>
         <p className="text-purple-100 text-xs mt-1">{today}</p>
 
-        <div className="mt-4 space-y-1">
-          <div className="flex items-center gap-2 text-white/90 text-[11px] font-medium">
-            <Clock className="h-3 w-3" />
-            <span>Last Log: {formatLogTime(lastLogDate)}</span>
+        {/* ── STATS CARDS ──────────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 gap-3 mt-5">
+          <div className="bg-white rounded-2xl p-4 flex flex-col items-center gap-1 shadow-md border border-purple-100">
+            <span className="text-2xl">📋</span>
+            <span className="text-3xl font-black text-gray-800 leading-none">{episodes.length}</span>
+            <span className="text-[11px] font-semibold text-gray-500 text-center uppercase tracking-wide">Episodes Logged</span>
           </div>
-          <div className="flex items-center gap-2 text-white/90 text-[11px] font-medium">
-            <Clock className="h-3 w-3" />
-            <span>Next Log: {formatLogTime(nextLogDate)}</span>
+          <div className="bg-white rounded-2xl p-4 flex flex-col items-center gap-1 shadow-md border border-purple-100">
+            <span className="text-2xl">📅</span>
+            <span className="text-3xl font-black text-gray-800 leading-none">{currentStreak}</span>
+            <span className="text-[11px] font-semibold text-gray-500 text-center uppercase tracking-wide">Day Streak 🔥</span>
           </div>
         </div>
 
