@@ -1389,6 +1389,9 @@ const SweatSmartLanding = () => {
           <a href="https://www.producthunt.com/products/sweatsmart?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-sweatsmart" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
             <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1194807&theme=dark" alt="SweatSmart - The world’s first AI clinic-in-a-pocket for hyperhidrosis | Product Hunt" style={{ height: '54px', width: 'auto' }} />
           </a>
+          <a href="https://techbasedirectory.com/product/sweatsmart?utm_source=featured_embed" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+            <img src="https://techbasedirectory.com/api/featured-embed" alt="SweatSmart | Techbasedirectory.com" style={{ height: '54px', width: 'auto' }} />
+          </a>
         </div>
         <p className="footer-copy">© {new Date().getFullYear()} SweatSmart by Giftovate Therapeutics Ltd. All rights reserved.</p>
       </footer>
