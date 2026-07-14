@@ -83,16 +83,15 @@ const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
             className="flex items-center gap-2.5 cursor-pointer"
             onClick={() => navigate(user ? "/home" : "/")}
           >
-            <div className="relative h-9 w-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-inner border border-blue-400/50">
-              <span className="text-white text-lg font-black">S</span>
-              <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-400 border-2 border-white shadow-sm" />
+            <div className="flex items-center justify-center">
+              <span className="text-2xl drop-shadow-md">🏅</span>
             </div>
             <div>
               <h1 className="text-white text-xl font-black tracking-tight leading-none drop-shadow-md">
                 SweatSmart
               </h1>
               <p className="text-white/80 text-xs font-bold leading-none mt-0.5 drop-shadow-md">
-                Hyperhidrosis Tracker
+                Hyperhidrosis Warrior
               </p>
             </div>
           </div>

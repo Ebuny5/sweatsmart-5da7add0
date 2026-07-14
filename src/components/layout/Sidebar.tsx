@@ -131,22 +131,6 @@ const Sidebar: React.FC = () => {
   return (
     <aside className="w-64 flex flex-col bg-white border-r border-purple-100 shadow-sm">
 
-      {/* ── Sidebar logo header ───────────────────────────────────────── */}
-      <div className="bg-gradient-to-br from-violet-600 via-purple-500 to-pink-500 p-5">
-        <div className="flex items-center gap-3">
-          <div className="relative h-10 w-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
-            <span className="text-white text-xl font-black">S</span>
-            <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-amber-400 border-2 border-white" />
-          </div>
-          <div>
-            <h2 className="text-white text-base font-black tracking-tight leading-none">SweatSmart</h2>
-            <p className="text-purple-200 text-[10px] font-medium mt-0.5">Hyperhidrosis Tracker</p>
-          </div>
-        </div>
-        {/* Rainbow stripe */}
-        <div className="h-0.5 mt-4 rounded-full bg-gradient-to-r from-white/40 via-amber-300/60 to-white/20" />
-      </div>
-
       {/* ── Nav items ─────────────────────────────────────────────────── */}
       <nav className="flex-1 p-3 overflow-y-auto">
         <ul className="space-y-1">
@@ -199,7 +183,7 @@ const Sidebar: React.FC = () => {
       <div className="h-0.5 bg-gradient-to-r from-violet-400 via-pink-400 to-amber-400" />
       <div className="p-4">
         <div className="rounded-xl bg-gradient-to-br from-violet-50 to-pink-50 border border-purple-100 p-3 text-center">
-          <p className="text-xs font-bold text-purple-700">💧 Hyperhidrosis Warrior</p>
+          <p className="text-xs font-bold text-purple-700">🏅 Hyperhidrosis Warrior</p>
           <p className="text-[10px] text-gray-500 mt-0.5">Track · Understand · Manage</p>
         </div>
       </div>
