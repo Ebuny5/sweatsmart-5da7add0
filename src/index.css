@@ -214,3 +214,42 @@ body {
 .match-pulse-animation {
   animation: match-pulse 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
+
+/* Marquee for Landing Page Footer Badges */
+.footer-badges-marquee {
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.marquee-container {
+  display: flex;
+  overflow: hidden;
+  width: 100%;
+}
+
+.marquee-content {
+  display: flex;
+  width: max-content;
+  animation: marquee 15s linear infinite;
+}
+
+.marquee-content:hover {
+  animation-play-state: paused;
+}
+
+.marquee-set {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding-right: 20px;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-25%); /* Move exactly 1 out of 4 sets for a seamless loop */
+  }
+}

@@ -1382,16 +1382,59 @@ const SweatSmartLanding = () => {
             <a href="/contact" className="footer-link">Contact</a>
           </div>
         </div>
-        <div className="footer-badges" style={{ display: 'flex', justifyContent: 'center', gap: '20px', flexWrap: 'wrap', marginBottom: '24px' }}>
-          <a href="https://startupbase.io/products/sweatsmart?utm_source=startupbase&utm_medium=badge&utm_campaign=launch-badge-dark" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-            <img src="https://statics.startupbase.io/site/badges/launched-on-sb-dark.svg" alt="Launched on StartupBase" style={{ height: '54px', width: 'auto' }} />
-          </a>
-          <a href="https://www.producthunt.com/products/sweatsmart?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-sweatsmart" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-            <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1194807&theme=dark" alt="SweatSmart - The world’s first AI clinic-in-a-pocket for hyperhidrosis | Product Hunt" style={{ height: '54px', width: 'auto' }} />
-          </a>
-          <a href="https://techbasedirectory.com/product/sweatsmart?utm_source=featured_embed" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-            <img src="https://techbasedirectory.com/api/featured-embed" alt="SweatSmart | Techbasedirectory.com" style={{ height: '54px', width: 'auto' }} />
-          </a>
+        <div className="footer-badges-marquee" style={{ marginBottom: '24px' }}>
+          <div className="marquee-container">
+            <div className="marquee-content">
+              {/* First Set */}
+              <div className="marquee-set">
+                <a href="https://startupbase.io/products/sweatsmart?utm_source=startupbase&utm_medium=badge&utm_campaign=launch-badge-dark" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                  <img src="https://statics.startupbase.io/site/badges/launched-on-sb-dark.svg" alt="Launched on StartupBase" style={{ height: '54px', width: 'auto' }} />
+                </a>
+                <a href="https://www.producthunt.com/products/sweatsmart?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-sweatsmart" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                  <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1194807&theme=dark" alt="SweatSmart - The world’s first AI clinic-in-a-pocket for hyperhidrosis | Product Hunt" style={{ height: '54px', width: 'auto' }} />
+                </a>
+                <a href="https://techbasedirectory.com/product/sweatsmart?utm_source=featured_embed" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                  <img src="https://techbasedirectory.com/api/featured-embed" alt="SweatSmart | Techbasedirectory.com" width="200" height="60" />
+                </a>
+              </div>
+              {/* Second Set (for seamless looping) */}
+              <div className="marquee-set">
+                <a href="https://startupbase.io/products/sweatsmart?utm_source=startupbase&utm_medium=badge&utm_campaign=launch-badge-dark" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                  <img src="https://statics.startupbase.io/site/badges/launched-on-sb-dark.svg" alt="Launched on StartupBase" style={{ height: '54px', width: 'auto' }} />
+                </a>
+                <a href="https://www.producthunt.com/products/sweatsmart?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-sweatsmart" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                  <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1194807&theme=dark" alt="SweatSmart - The world’s first AI clinic-in-a-pocket for hyperhidrosis | Product Hunt" style={{ height: '54px', width: 'auto' }} />
+                </a>
+                <a href="https://techbasedirectory.com/product/sweatsmart?utm_source=featured_embed" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                  <img src="https://techbasedirectory.com/api/featured-embed" alt="SweatSmart | Techbasedirectory.com" width="200" height="60" />
+                </a>
+              </div>
+              {/* Third Set (for seamless looping on wide screens) */}
+              <div className="marquee-set">
+                <a href="https://startupbase.io/products/sweatsmart?utm_source=startupbase&utm_medium=badge&utm_campaign=launch-badge-dark" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                  <img src="https://statics.startupbase.io/site/badges/launched-on-sb-dark.svg" alt="Launched on StartupBase" style={{ height: '54px', width: 'auto' }} />
+                </a>
+                <a href="https://www.producthunt.com/products/sweatsmart?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-sweatsmart" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                  <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1194807&theme=dark" alt="SweatSmart - The world’s first AI clinic-in-a-pocket for hyperhidrosis | Product Hunt" style={{ height: '54px', width: 'auto' }} />
+                </a>
+                <a href="https://techbasedirectory.com/product/sweatsmart?utm_source=featured_embed" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                  <img src="https://techbasedirectory.com/api/featured-embed" alt="SweatSmart | Techbasedirectory.com" width="200" height="60" />
+                </a>
+              </div>
+              {/* Fourth Set (for seamless looping on ultra wide screens) */}
+              <div className="marquee-set">
+                <a href="https://startupbase.io/products/sweatsmart?utm_source=startupbase&utm_medium=badge&utm_campaign=launch-badge-dark" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                  <img src="https://statics.startupbase.io/site/badges/launched-on-sb-dark.svg" alt="Launched on StartupBase" style={{ height: '54px', width: 'auto' }} />
+                </a>
+                <a href="https://www.producthunt.com/products/sweatsmart?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-sweatsmart" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                  <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1194807&theme=dark" alt="SweatSmart - The world’s first AI clinic-in-a-pocket for hyperhidrosis | Product Hunt" style={{ height: '54px', width: 'auto' }} />
+                </a>
+                <a href="https://techbasedirectory.com/product/sweatsmart?utm_source=featured_embed" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                  <img src="https://techbasedirectory.com/api/featured-embed" alt="SweatSmart | Techbasedirectory.com" width="200" height="60" />
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
         <p className="footer-copy">© {new Date().getFullYear()} SweatSmart by Giftovate Therapeutics Ltd. All rights reserved.</p>
       </footer>
