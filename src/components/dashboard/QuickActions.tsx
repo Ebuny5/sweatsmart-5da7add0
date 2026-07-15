@@ -193,54 +193,30 @@ const WarriorLaunchpad = () => {
   const { episodes, refetch: refetchEpisodes } = useEpisodes();
   const { sweatRisk } = useClimateData();
 
-  const calculateStreak = () => {
+  // Rolling 7-day tracking consistency: unique days logged in last 7 calendar days (today + 6)
+  const calculateTrackingConsistency = () => {
     if (!episodes || episodes.length === 0) return 0;
 
-    // Extract unique dates as YYYY-MM-DD
-    const uniqueDates = Array.from(new Set(episodes.map(ep => {
-      const d = new Date(ep.datetime);
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    }))).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+    const toKey = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-    if (uniqueDates.length === 0) return 0;
-
-    const todayStr = (() => {
+    const windowKeys = new Set<string>();
+    for (let i = 0; i < 7; i++) {
       const d = new Date();
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    })();
-
-    const yesterdayStr = (() => {
-      const d = new Date();
-      d.setDate(d.getDate() - 1);
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    })();
-
-    // Streak is active only if there's a log today or yesterday
-    if (uniqueDates[0] !== todayStr && uniqueDates[0] !== yesterdayStr) {
-      return 0;
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() - i);
+      windowKeys.add(toKey(d));
     }
 
-    let streak = 0;
-    let currentDate = new Date(uniqueDates[0]);
-    currentDate.setHours(0,0,0,0);
-
-    for (let i = 0; i < uniqueDates.length; i++) {
-      const dateStr = uniqueDates[i];
-      const d = new Date(dateStr);
-      d.setHours(0,0,0,0);
-
-      const expectedDate = new Date(currentDate);
-      expectedDate.setDate(currentDate.getDate() - i);
-
-      if (d.getTime() === expectedDate.getTime()) {
-        streak++;
-      } else {
-        break;
-      }
+    const loggedDays = new Set<string>();
+    for (const ep of episodes) {
+      const key = toKey(new Date(ep.datetime));
+      if (windowKeys.has(key)) loggedDays.add(key);
     }
-    return streak;
+    return loggedDays.size;
   };
-  const currentStreak = calculateStreak();
+  const trackingConsistency = calculateTrackingConsistency();
+
 
   const [tipIndex] = useState(() => Math.floor(Math.random() * COMMUNITY_TIPS.length));
   const [quickLogOpen, setQuickLogOpen] = useState(false);
