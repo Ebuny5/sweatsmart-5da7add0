@@ -67,6 +67,7 @@ const LogEpisode = () => {
   // ── All original state ─────────────────────────────────────────────────────
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [time, setTime] = useState<string>(format(new Date(), "HH:mm"));
+  const [isDryDay, setIsDryDay] = useState(false);
   const [severity, setSeverity] = useState<SeverityLevel>(3);
   const [bodyAreas, setBodyAreas] = useState<BodyArea[]>([]);
   const [triggers, setTriggers] = useState<Trigger[]>([]);
@@ -120,7 +121,7 @@ const LogEpisode = () => {
       toast({ title: "Date required", description: "Please select a date for the episode.", variant: "destructive" });
       return;
     }
-    if (finalBodyAreas.length === 0) {
+    if (!isDryDay && finalBodyAreas.length === 0) {
       if (manualNotes === undefined) {
         toast({ title: "Body areas required", description: "Please select at least one affected body area.", variant: "destructive" });
         return;
@@ -145,11 +146,12 @@ const LogEpisode = () => {
 
       const { data, error } = await supabase.from("episodes").insert({
         user_id: user.id,
-        severity: finalSeverity,
-        body_areas: finalBodyAreas,
+        severity: isDryDay ? 1 : finalSeverity, // Hardcode severity 1 for dry days
+        body_areas: isDryDay ? [] : finalBodyAreas,
         triggers: triggerStrings,
         notes: finalNotes || null,
         date: datetime.toISOString(),
+        is_dry_day: isDryDay,
       }).select();
 
       if (error) throw error;
@@ -167,24 +169,36 @@ const LogEpisode = () => {
       // Generate insights using the deterministic recommendation engine
       setIsLoadingInsights(true);
       try {
-        const triggerData = finalTriggers.map(t => ({
-          type: t.type,
-          value: t.value,
-          label: t.label,
-        }));
+        if (!isDryDay) {
+          const triggerData = finalTriggers.map(t => ({
+            type: t.type,
+            value: t.value,
+            label: t.label,
+          }));
 
-        const insights = generateFallbackInsights(
-          finalSeverity,
-          finalBodyAreas,
-          triggerData,
-          finalNotes,
-        );
+          const insights = generateFallbackInsights(
+            finalSeverity,
+            finalBodyAreas,
+            triggerData,
+            finalNotes,
+          );
 
-        setAiInsights(insights);
-        toast({
-          title: "Episode logged 🎉",
-          description: "Your personalised insights are below.",
-        });
+          setAiInsights(insights);
+          toast({
+            title: "Episode logged 🎉",
+            description: "Your personalised insights are below.",
+          });
+        } else {
+          setAiInsights({
+            summary: "You logged a dry day / treatment day! Keep up the good work maintaining your consistency.",
+            patterns: [],
+            recommendations: ["Consistent logging helps you track the effectiveness of your treatments over time."]
+          } as any);
+          toast({
+            title: "Dry Day logged 🎉",
+            description: "Great job maintaining your consistency.",
+          });
+        }
       } catch (insightError) {
         console.error("Insight generation error:", insightError);
         toast({
@@ -340,15 +354,49 @@ const LogEpisode = () => {
       <div className="min-h-screen bg-[#EE82EE] relative">
         <div className="max-w-lg mx-auto pb-10">
 
+          {/* ── DRY DAY TOGGLE ─────────────────────────────────────────────── */}
+          <div className="px-4 pt-4 pb-2">
+            <div className="bg-white/40 backdrop-blur-md p-1.5 rounded-xl flex shadow-sm border border-white/50">
+              <button
+                type="button"
+                onClick={() => setIsDryDay(false)}
+                className={cn(
+                  "flex-1 py-2 text-sm font-bold rounded-lg transition-all",
+                  !isDryDay
+                    ? "bg-[#000080] text-white shadow-md"
+                    : "text-gray-600 hover:bg-white/50"
+                )}
+              >
+                Log Sweat Episode
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsDryDay(true)}
+                className={cn(
+                  "flex-1 py-2 text-sm font-bold rounded-lg transition-all",
+                  isDryDay
+                    ? "bg-[#22c55e] text-white shadow-md"
+                    : "text-gray-600 hover:bg-white/50"
+                )}
+              >
+                Log Dry Day / Treatment
+              </button>
+            </div>
+          </div>
+
           {/* ── GRADIENT HERO HEADER ──────────────────────────────────────── */}
-        <div className="bg-[#000080] px-6 pt-8 pb-8 rounded-b-[2.5rem] shadow-lg shadow-pink-200 mb-6">
+        <div className={cn("px-6 pt-6 pb-8 rounded-b-[2.5rem] shadow-lg shadow-pink-200 mb-6 transition-colors duration-300", isDryDay ? "bg-[#15803d]" : "bg-[#000080]")}>
           <div className="flex items-start justify-between mb-2">
             <div>
               <p className="text-blue-100 text-xs font-semibold uppercase tracking-widest mb-1">
                 SweatSmart
               </p>
               <h1 className="text-white text-2xl font-black tracking-tight leading-tight">
-                Log Sweating<br />Episode 💧
+                {isDryDay ? (
+                  <>Log Dry Day<br />Treatment ☀️</>
+                ) : (
+                  <>Log Sweating<br />Episode 💧</>
+                )}
               </h1>
             </div>
             <div className="text-right">
@@ -357,23 +405,27 @@ const LogEpisode = () => {
             </div>
           </div>
           <p className="text-blue-100 text-sm mt-3 leading-snug">
-            Track your episode in detail — every log builds your personal trigger profile.
+            {isDryDay
+              ? "Celebrate your dry days to maintain an accurate symptom tracking record."
+              : "Track your episode in detail — every log builds your personal trigger profile."}
           </p>
 
           {/* Progress dots */}
-          <div className="flex items-center gap-2 mt-5">
-            {["Date & Time", "Symptoms", "Triggers"].map((step, i) => (
-              <div key={step} className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-6 h-6 rounded-full bg-white/30 backdrop-blur-sm flex items-center justify-center">
-                    <span className="text-white text-[10px] font-bold">{i + 1}</span>
+          {!isDryDay && (
+            <div className="flex items-center gap-2 mt-5">
+              {["Date & Time", "Symptoms", "Triggers"].map((step, i) => (
+                <div key={step} className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-6 h-6 rounded-full bg-white/30 backdrop-blur-sm flex items-center justify-center">
+                      <span className="text-white text-[10px] font-bold">{i + 1}</span>
+                    </div>
+                    <span className="text-blue-100 text-[11px] font-medium hidden sm:block">{step}</span>
                   </div>
-                  <span className="text-blue-100 text-[11px] font-medium hidden sm:block">{step}</span>
+                  {i < 2 && <div className="w-4 h-px bg-white/30" />}
                 </div>
-                {i < 2 && <div className="w-4 h-px bg-white/30" />}
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ── FORM ─────────────────────────────────────────────────────── */}
@@ -447,29 +499,37 @@ const LogEpisode = () => {
             </Section>
 
             {/* Symptom Details */}
-            <Section emoji="🩺" title="Symptom Details" subtitle="How would you describe this episode?">
+            <Section
+              emoji={isDryDay ? "✨" : "🩺"}
+              title={isDryDay ? "Treatment & Notes" : "Symptom Details"}
+              subtitle={isDryDay ? "What helped keep you dry?" : "How would you describe this episode?"}
+            >
               <div className="space-y-6">
-                <div>
-                  <p className="text-sm font-bold text-black mb-3">Episode Severity</p>
-                  <SeveritySelector value={severity} onChange={setSeverity} />
-                </div>
+                {!isDryDay && (
+                  <>
+                    <div>
+                      <p className="text-sm font-bold text-black mb-3">Episode Severity</p>
+                      <SeveritySelector value={severity} onChange={setSeverity} />
+                    </div>
 
-                <div className="border-t border-white/20 pt-5">
-                  <p className="text-sm font-bold text-black mb-3">Affected Body Areas</p>
-                  <BodyAreaSelector
-                    selectedAreas={bodyAreas}
-                    onChange={setBodyAreas}
-                  />
-                </div>
+                    <div className="border-t border-white/20 pt-5">
+                      <p className="text-sm font-bold text-black mb-3">Affected Body Areas</p>
+                      <BodyAreaSelector
+                        selectedAreas={bodyAreas}
+                        onChange={setBodyAreas}
+                      />
+                    </div>
+                  </>
+                )}
 
-                <div className="border-t border-white/20 pt-5 space-y-1.5">
+                <div className={cn("space-y-1.5", !isDryDay && "border-t border-white/20 pt-5")}>
                   <Label htmlFor="notes" className="text-sm font-bold text-black">
-                    Additional Notes
+                    {isDryDay ? "Treatment / Strategy Notes" : "Additional Notes"}
                     <span className="ml-1 text-xs font-normal text-black/60">— Optional</span>
                   </Label>
                   <Textarea
                     id="notes"
-                    placeholder="Any extra context about this episode… what were you doing, how did you feel afterwards?"
+                    placeholder={isDryDay ? "e.g., Applied Certain Dri last night, felt great today." : "Any extra context about this episode… what were you doing, how did you feel afterwards?"}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     className="rounded-xl border-gray-200 min-h-[90px] text-sm resize-none focus:border-blue-400 focus:ring-blue-100"
@@ -479,12 +539,14 @@ const LogEpisode = () => {
             </Section>
 
             {/* Triggers */}
-            <Section emoji="🔍" title="Potential Triggers" subtitle="What may have caused or contributed to this episode?">
-              <TriggerSelector
-                triggers={triggers}
-                onTriggersChange={setTriggers}
-              />
-            </Section>
+            {!isDryDay && (
+              <Section emoji="🔍" title="Potential Triggers" subtitle="What may have caused or contributed to this episode?">
+                <TriggerSelector
+                  triggers={triggers}
+                  onTriggersChange={setTriggers}
+                />
+              </Section>
+            )}
 
             {/* Action buttons */}
             <div className="flex flex-col gap-3 pt-2 pb-6 px-4">

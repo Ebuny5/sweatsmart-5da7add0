@@ -115,6 +115,7 @@ export type Database = {
           created_at: string
           date: string
           id: string
+          is_dry_day: boolean | null
           notes: string | null
           severity: number
           triggers: Json | null
@@ -137,6 +138,7 @@ export type Database = {
           created_at?: string
           date?: string
           id?: string
+          is_dry_day?: boolean | null
           notes?: string | null
           severity?: number
           triggers?: Json | null

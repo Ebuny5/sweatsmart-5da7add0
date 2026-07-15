@@ -79,6 +79,7 @@ export const useEpisodes = () => {
             createdAt: new Date(ep.created_at),
             updated_at: ep.updated_at,
             userId: ep.user_id,
+            is_dry_day: ep.is_dry_day,
           };
         } catch (error) {
           console.error('Error processing episode:', ep.id, error);
@@ -96,6 +97,7 @@ export const useEpisodes = () => {
             createdAt: new Date(ep.created_at),
             updated_at: ep.updated_at,
             userId: ep.user_id,
+            is_dry_day: ep.is_dry_day,
           };
         }
       });

@@ -81,9 +81,13 @@ const Dashboard = () => {
     }));
   }, [rawEpisodes]);
 
+  const sweatEpisodes = useMemo(() => {
+    return allEpisodes.filter(ep => !ep.is_dry_day);
+  }, [allEpisodes]);
+
   const dashboardData = useMemo(() => {
     const triggerCounts = new Map();
-    allEpisodes.forEach(episode => {
+    sweatEpisodes.forEach(episode => {
       if (episode.triggers && Array.isArray(episode.triggers)) {
         episode.triggers.forEach(trigger => {
           if (trigger && (trigger.label || trigger.value)) {
@@ -107,12 +111,12 @@ const Dashboard = () => {
         count: data.count,
         trigger: { label, type: data.type || 'environmental', value: label },
         averageSeverity,
-        percentage: allEpisodes.length > 0 ? Math.round((data.count / allEpisodes.length) * 100) : 0
+        percentage: sweatEpisodes.length > 0 ? Math.round((data.count / sweatEpisodes.length) * 100) : 0
       };
     }).sort((a, b) => b.count - a.count);
 
     const bodyAreaCounts = new Map();
-    allEpisodes.forEach(episode => {
+    sweatEpisodes.forEach(episode => {
       if (episode.bodyAreas && Array.isArray(episode.bodyAreas)) {
         episode.bodyAreas.forEach(area => {
           const existing = bodyAreaCounts.get(area) || { count: 0, severities: [] };
@@ -130,21 +134,21 @@ const Dashboard = () => {
       return {
         area: area as BodyArea,
         count: data.count,
-        percentage: allEpisodes.length > 0 ? Math.round((data.count / allEpisodes.length) * 100) : 0,
+        percentage: sweatEpisodes.length > 0 ? Math.round((data.count / sweatEpisodes.length) * 100) : 0,
         averageSeverity
       };
     }).sort((a, b) => b.count - a.count);
 
-    return { triggerFrequencies, bodyAreas, allEpisodes };
-  }, [allEpisodes]);
+    return { triggerFrequencies, bodyAreas, allEpisodes, sweatEpisodes };
+  }, [allEpisodes, sweatEpisodes]);
 
   // ── Derived stats ─────────────────────────────────────────────────────────
   const displayName = profile?.display_name || user?.email?.split("@")[0] || "Warrior";
   const firstName = displayName.split(" ")[0];
-  const totalEpisodes = dashboardData.allEpisodes.length;
+  const totalEpisodes = dashboardData.sweatEpisodes.length; // use sweat episodes here
 
   const avgSeverity = totalEpisodes > 0
-    ? (dashboardData.allEpisodes.reduce((sum, e) => sum + e.severityLevel, 0) / totalEpisodes).toFixed(1)
+    ? (dashboardData.sweatEpisodes.reduce((acc, ep) => acc + (ep.severityLevel || 1), 0) / totalEpisodes).toFixed(1)
     : "—";
 
   const thisWeek = dashboardData.allEpisodes.filter(e => {

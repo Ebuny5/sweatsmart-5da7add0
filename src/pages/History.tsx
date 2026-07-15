@@ -204,27 +204,35 @@ const History = () => {
                           {format(episode.datetime, "EEEE, MMMM d, yyyy")}
                         </h3>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Badge className={`${getSeverityColor(episode.severityLevel)} text-xs`}>
-                            {getSeverityLabel(episode.severityLevel)}
-                          </Badge>
+                          {episode.is_dry_day ? (
+                            <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs">
+                              ✨ Dry Day / Treatment
+                            </Badge>
+                          ) : (
+                            <Badge className={`${getSeverityColor(episode.severityLevel)} text-xs`}>
+                              {getSeverityLabel(episode.severityLevel)}
+                            </Badge>
+                          )}
                           <span className="text-xs sm:text-sm text-muted-foreground">
                             {format(episode.datetime, "h:mm a")}
                           </span>
                         </div>
                       </div>
                       
-                      <div className="flex flex-wrap gap-1 sm:gap-2 mb-2">
-                        {episode.bodyAreas.slice(0, 3).map((area) => (
-                          <Badge key={area} variant="secondary" className="text-xs">
-                            {area}
-                          </Badge>
-                        ))}
-                        {episode.bodyAreas.length > 3 && (
-                          <Badge variant="secondary" className="text-xs">
-                            +{episode.bodyAreas.length - 3} more
-                          </Badge>
-                        )}
-                      </div>
+                      {!episode.is_dry_day && (
+                        <div className="flex flex-wrap gap-1 sm:gap-2 mb-2">
+                          {episode.bodyAreas.slice(0, 3).map((area) => (
+                            <Badge key={area} variant="secondary" className="text-xs">
+                              {area}
+                            </Badge>
+                          ))}
+                          {episode.bodyAreas.length > 3 && (
+                            <Badge variant="secondary" className="text-xs">
+                              +{episode.bodyAreas.length - 3} more
+                            </Badge>
+                          )}
+                        </div>
+                      )}
 
                       {episode.notes && (
                         <p className="text-xs sm:text-sm text-muted-foreground truncate">

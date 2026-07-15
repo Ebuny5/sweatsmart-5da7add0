@@ -162,21 +162,30 @@ const Profile = () => {
     year: "numeric", month: "long",
   });
 
-  const calculateStreak = () => {
+  const calculateConsistency = () => {
     if (episodes.length === 0) return 0;
-    const sortedEpisodes = [...episodes].sort((a, b) => b.datetime.getTime() - a.datetime.getTime());
-    let streak = 0;
-    let currentDate = new Date();
-    for (const episode of sortedEpisodes) {
-      const episodeDate = new Date(episode.datetime);
-      const daysDiff = Math.floor((currentDate.getTime() - episodeDate.getTime()) / (1000 * 60 * 60 * 24));
-      if (daysDiff <= streak + 1) { streak = daysDiff + 1; currentDate = episodeDate; }
-      else break;
-    }
-    return streak;
+
+    const now = new Date();
+    now.setHours(0, 0, 0, 0); // start of today
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setDate(now.getDate() - 6); // 7 days inclusive (today + 6 days prior)
+
+    // Extract unique dates as YYYY-MM-DD within the last 7 days
+    const uniqueDatesInWindow = new Set();
+    episodes.forEach(ep => {
+      const d = new Date(ep.datetime);
+      d.setHours(0,0,0,0);
+      if (d.getTime() >= sevenDaysAgo.getTime() && d.getTime() <= now.getTime()) {
+        uniqueDatesInWindow.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+      }
+    });
+
+    const daysLogged = uniqueDatesInWindow.size;
+    const percentage = Math.round((daysLogged / 7) * 100);
+    return percentage;
   };
 
-  const currentStreak = calculateStreak();
+  const consistencyPercentage = calculateConsistency();
   const currentGenderOption = GENDER_OPTIONS.find(g => g.value === selectedGender);
 
   return (
@@ -292,10 +301,10 @@ const Profile = () => {
             gradient="bg-gradient-to-br from-white to-blue-50 shadow-md border border-blue-100"
           />
           <StatCard
-            value={currentStreak}
-            label="Day Streak 🔥"
-            emoji="📅"
-            gradient="bg-gradient-to-br from-white to-orange-50 shadow-md border border-orange-100"
+            value={`${consistencyPercentage}%`}
+            label="Tracking Consistency"
+            emoji="🗓️"
+            gradient="bg-gradient-to-br from-white to-green-50 shadow-md border border-green-100"
           />
         </div>
 

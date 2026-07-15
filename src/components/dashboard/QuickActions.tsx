@@ -193,54 +193,29 @@ const WarriorLaunchpad = () => {
   const { episodes, refetch: refetchEpisodes } = useEpisodes();
   const { sweatRisk } = useClimateData();
 
-  const calculateStreak = () => {
+  const calculateConsistency = () => {
     if (!episodes || episodes.length === 0) return 0;
 
-    // Extract unique dates as YYYY-MM-DD
-    const uniqueDates = Array.from(new Set(episodes.map(ep => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0); // start of today
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setDate(now.getDate() - 6); // 7 days inclusive (today + 6 days prior)
+
+    // Extract unique dates as YYYY-MM-DD within the last 7 days
+    const uniqueDatesInWindow = new Set();
+    episodes.forEach(ep => {
       const d = new Date(ep.datetime);
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    }))).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-
-    if (uniqueDates.length === 0) return 0;
-
-    const todayStr = (() => {
-      const d = new Date();
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    })();
-
-    const yesterdayStr = (() => {
-      const d = new Date();
-      d.setDate(d.getDate() - 1);
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    })();
-
-    // Streak is active only if there's a log today or yesterday
-    if (uniqueDates[0] !== todayStr && uniqueDates[0] !== yesterdayStr) {
-      return 0;
-    }
-
-    let streak = 0;
-    let currentDate = new Date(uniqueDates[0]);
-    currentDate.setHours(0,0,0,0);
-
-    for (let i = 0; i < uniqueDates.length; i++) {
-      const dateStr = uniqueDates[i];
-      const d = new Date(dateStr);
       d.setHours(0,0,0,0);
-
-      const expectedDate = new Date(currentDate);
-      expectedDate.setDate(currentDate.getDate() - i);
-
-      if (d.getTime() === expectedDate.getTime()) {
-        streak++;
-      } else {
-        break;
+      if (d.getTime() >= sevenDaysAgo.getTime() && d.getTime() <= now.getTime()) {
+        uniqueDatesInWindow.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
       }
-    }
-    return streak;
+    });
+
+    const daysLogged = uniqueDatesInWindow.size;
+    const percentage = Math.round((daysLogged / 7) * 100);
+    return percentage;
   };
-  const currentStreak = calculateStreak();
+  const consistencyPercentage = calculateConsistency();
 
   const [tipIndex] = useState(() => Math.floor(Math.random() * COMMUNITY_TIPS.length));
   const [quickLogOpen, setQuickLogOpen] = useState(false);
@@ -339,9 +314,9 @@ const WarriorLaunchpad = () => {
             <span className="text-[11px] font-semibold text-gray-500 text-center uppercase tracking-wide">Episodes Logged</span>
           </div>
           <div className="bg-white rounded-2xl p-4 flex flex-col items-center gap-1 shadow-md border border-purple-100">
-            <span className="text-2xl">📅</span>
-            <span className="text-3xl font-black text-gray-800 leading-none">{currentStreak}</span>
-            <span className="text-[11px] font-semibold text-gray-500 text-center uppercase tracking-wide">Day Streak 🔥</span>
+            <span className="text-2xl">🗓️</span>
+            <span className="text-3xl font-black text-gray-800 leading-none">{consistencyPercentage}%</span>
+            <span className="text-[11px] font-semibold text-gray-500 text-center uppercase tracking-wide">Tracking Consistency</span>
           </div>
         </div>
 
