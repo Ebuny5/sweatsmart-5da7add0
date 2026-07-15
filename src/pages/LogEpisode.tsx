@@ -207,7 +207,7 @@ const LogEpisode = () => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [user, date, time, severity, bodyAreas, triggers, notes, navigate, toast]);
+  }, [user, date, time, severity, bodyAreas, triggers, notes, isDryDay, navigate, toast]);
 
   const handleUndo = async () => {
     if (!lastSavedEpisodeId) return;

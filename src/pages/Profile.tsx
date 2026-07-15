@@ -162,21 +162,35 @@ const Profile = () => {
     year: "numeric", month: "long",
   });
 
-  const calculateStreak = () => {
-    if (episodes.length === 0) return 0;
-    const sortedEpisodes = [...episodes].sort((a, b) => b.datetime.getTime() - a.datetime.getTime());
-    let streak = 0;
-    let currentDate = new Date();
-    for (const episode of sortedEpisodes) {
-      const episodeDate = new Date(episode.datetime);
-      const daysDiff = Math.floor((currentDate.getTime() - episodeDate.getTime()) / (1000 * 60 * 60 * 24));
-      if (daysDiff <= streak + 1) { streak = daysDiff + 1; currentDate = episodeDate; }
-      else break;
+  // Calendar week tracking consistency: unique days logged since Sunday (Day 1)
+  const calculateTrackingConsistency = () => {
+    if (!episodes || episodes.length === 0) return 0;
+
+    const toKey = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dayOfWeek = today.getDay(); // 0 is Sunday, 1 is Monday, etc.
+
+    const windowKeys = new Set<string>();
+    for (let i = 0; i <= dayOfWeek; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      windowKeys.add(toKey(d));
     }
-    return streak;
+
+    const loggedDays = new Set<string>();
+    for (const ep of episodes) {
+      const key = toKey(new Date(ep.datetime));
+      if (windowKeys.has(key)) loggedDays.add(key);
+    }
+
+    // Calculate percentage based on a full 7-day week
+    return Math.round((loggedDays.size / 7) * 100);
   };
 
-  const currentStreak = calculateStreak();
+  const trackingConsistencyPercentage = calculateTrackingConsistency();
   const currentGenderOption = GENDER_OPTIONS.find(g => g.value === selectedGender);
 
   return (
@@ -292,9 +306,9 @@ const Profile = () => {
             gradient="bg-gradient-to-br from-white to-blue-50 shadow-md border border-blue-100"
           />
           <StatCard
-            value={currentStreak}
-            label="Day Streak 🔥"
-            emoji="📅"
+            value={`${trackingConsistencyPercentage}%`}
+            label="Tracking Consistency"
+            emoji="🗓️"
             gradient="bg-gradient-to-br from-white to-orange-50 shadow-md border border-orange-100"
           />
         </div>
