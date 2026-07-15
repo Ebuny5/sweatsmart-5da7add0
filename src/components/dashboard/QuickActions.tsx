@@ -315,10 +315,11 @@ const WarriorLaunchpad = () => {
             <span className="text-[11px] font-semibold text-gray-500 text-center uppercase tracking-wide">Episodes Logged</span>
           </div>
           <div className="bg-white rounded-2xl p-4 flex flex-col items-center gap-1 shadow-md border border-purple-100">
-            <span className="text-2xl">📅</span>
-            <span className="text-3xl font-black text-gray-800 leading-none">{currentStreak}</span>
-            <span className="text-[11px] font-semibold text-gray-500 text-center uppercase tracking-wide">Day Streak 🔥</span>
+            <span className="text-2xl">🗓️</span>
+            <span className="text-3xl font-black text-gray-800 leading-none">{trackingConsistency} / 7</span>
+            <span className="text-[11px] font-semibold text-gray-500 text-center uppercase tracking-wide">This Week 🎯</span>
           </div>
+
         </div>
 
         {/* Warrior Status Banner */}
