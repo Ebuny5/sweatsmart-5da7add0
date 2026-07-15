@@ -1,0 +1,11 @@
+--- src/components/layout/Header.tsx
++++ src/components/layout/Header.tsx
+@@ -91,7 +91,7 @@
+                 SweatSmart
+               </h1>
+               <p className="text-white/80 text-xs font-bold leading-none mt-0.5 drop-shadow-md">
+-                Hyperhidrosis Warrior
++                {user ? "Hyperhidrosis Warrior" : "Hyperhidrosis Tracker"}
+               </p>
+             </div>
+           </div>
