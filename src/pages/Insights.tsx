@@ -198,12 +198,13 @@ const Insights = () => {
   }, [user, toast]);
 
   // ── Derived analytics from episode history ─────────────────────────────────
+  const nonDryEpisodes = episodes.filter(e => !e.is_dry_day);
   const analytics = useMemo(() => {
-    if (!episodes.length) return null;
+    if (!nonDryEpisodes.length) return null;
 
     // Trigger frequencies
     const triggerMap = new Map<string, { count: number; severities: number[]; type: string }>();
-    episodes.forEach(ep => {
+    nonDryEpisodes.forEach(ep => {
       const triggers = Array.isArray(ep.triggers) ? ep.triggers : [];
       triggers.forEach((t: any) => {
         const raw = typeof t === "string" ? JSON.parse(t) : t;
@@ -221,26 +222,26 @@ const Insights = () => {
         count: d.count,
         type: d.type,
         avgSeverity: d.severities.reduce((a, b) => a + b, 0) / d.severities.length,
-        percentage: Math.round((d.count / episodes.length) * 100),
+        percentage: Math.round((d.count / nonDryEpisodes.length) * 100),
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
 
     // Body area frequencies
     const areaMap = new Map<string, number>();
-    episodes.forEach(ep => {
+    nonDryEpisodes.forEach(ep => {
       (ep.body_areas || []).forEach((a: string) => areaMap.set(a, (areaMap.get(a) || 0) + 1));
     });
     const topAreas = Array.from(areaMap.entries()).sort((a, b) => b[1] - a[1]);
 
     // Severity stats
-    const severities = episodes.map(ep => Number(ep.severity));
+    const severities = nonDryEpisodes.map(ep => Number(ep.severity));
     const avgSeverity = (severities.reduce((a, b) => a + b, 0) / severities.length).toFixed(1);
     const maxSeverity = Math.max(...severities);
 
     // Time patterns
     const hourCounts = new Array(24).fill(0);
-    episodes.forEach(ep => {
+    nonDryEpisodes.forEach(ep => {
       const h = new Date(ep.created_at || ep.date).getHours();
       hourCounts[h]++;
     });
@@ -249,8 +250,8 @@ const Insights = () => {
 
     // Recent trend — last 7 vs previous 7
     const now = Date.now();
-    const last7 = episodes.filter(e => (now - new Date(e.date || e.created_at).getTime()) < 7 * 864e5).length;
-    const prev7 = episodes.filter(e => {
+    const last7 = nonDryEpisodes.filter(e => (now - new Date(e.date || e.created_at).getTime()) < 7 * 864e5).length;
+    const prev7 = nonDryEpisodes.filter(e => {
       const age = (now - new Date(e.date || e.created_at).getTime()) / 864e5;
       return age >= 7 && age < 14;
     }).length;

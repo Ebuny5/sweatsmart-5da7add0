@@ -83,6 +83,7 @@ export interface ProcessedEpisode {
   createdAt: Date;
   updated_at: string;
   userId: string;
+  is_dry_day?: boolean;
 }
 
 export interface TriggerFrequency {

@@ -6,6 +6,7 @@ import AppLayout from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -15,7 +16,7 @@ import BodyAreaSelector from "@/components/episode/BodyAreaSelector";
 import TriggerSelector from "@/components/episode/TriggerSelector";
 import AIGeneratedInsights from "@/components/episode/AIGeneratedInsights";
 import { SeverityLevel, BodyArea, Trigger } from "@/types";
-import { CalendarIcon, Clock, Loader2, CheckCircle2, LayoutDashboard, History, Plus, Mic, MicOff, Droplets, Square } from "lucide-react";
+import { CalendarIcon, Clock, Loader2, CheckCircle2, LayoutDashboard, History, Plus, Mic, MicOff, Droplets, Square, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEpisodes } from "@/hooks/useEpisodes";
@@ -72,6 +73,7 @@ const LogEpisode = () => {
   const [triggers, setTriggers] = useState<Trigger[]>([]);
   const [notes, setNotes] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isDryDay, setIsDryDay] = useState<boolean>(false);
   const [showInsights, setShowInsights] = useState<boolean>(false);
   const [aiInsights, setAiInsights] = useState<any>(null);
   const [isLoadingInsights, setIsLoadingInsights] = useState<boolean>(false);
@@ -120,7 +122,7 @@ const LogEpisode = () => {
       toast({ title: "Date required", description: "Please select a date for the episode.", variant: "destructive" });
       return;
     }
-    if (finalBodyAreas.length === 0) {
+    if (!isDryDay && finalBodyAreas.length === 0) {
       if (manualNotes === undefined) {
         toast({ title: "Body areas required", description: "Please select at least one affected body area.", variant: "destructive" });
         return;
@@ -139,14 +141,18 @@ const LogEpisode = () => {
     const finalNotes = manualNotes !== undefined ? manualNotes : notes;
 
     try {
-      const triggerStrings = finalTriggers.map((trigger) =>
+      const dbTriggers = isDryDay ? [] : finalTriggers;
+      const triggerStrings = dbTriggers.map((trigger) =>
         JSON.stringify({ type: trigger.type, value: trigger.value, label: trigger.label })
       );
 
+      const dbSeverity = isDryDay ? 1 : finalSeverity;
+      const dbBodyAreas = isDryDay ? [] : finalBodyAreas;
       const { data, error } = await supabase.from("episodes").insert({
         user_id: user.id,
-        severity: finalSeverity,
-        body_areas: finalBodyAreas,
+        severity: dbSeverity,
+        is_dry_day: isDryDay,
+        body_areas: dbBodyAreas,
         triggers: triggerStrings,
         notes: finalNotes || null,
         date: datetime.toISOString(),
@@ -174,8 +180,8 @@ const LogEpisode = () => {
         }));
 
         const insights = generateFallbackInsights(
-          finalSeverity,
-          finalBodyAreas,
+          dbSeverity,
+          dbBodyAreas,
           triggerData,
           finalNotes,
         );
@@ -311,6 +317,7 @@ const LogEpisode = () => {
                     setBodyAreas([]);
                     setTriggers([]);
                     setNotes("");
+                    setIsDryDay(false);
                     setShowInsights(false);
                     setAiInsights(null);
                   }}
@@ -446,6 +453,24 @@ const LogEpisode = () => {
               </div>
             </Section>
 
+            {/* Dry Day Toggle */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4 p-5 flex items-center justify-between">
+              <div>
+                <Label htmlFor="dry-day-toggle" className="text-base font-bold text-gray-800 flex items-center gap-2">
+                  <span className="text-xl">✨</span> Dry Day / Treatment
+                </Label>
+                <p className="text-xs text-gray-500 mt-1">Track days with no sweating or treatment days</p>
+              </div>
+              <Switch
+                id="dry-day-toggle"
+                checked={isDryDay}
+                onCheckedChange={setIsDryDay}
+                className="data-[state=checked]:bg-green-500"
+              />
+            </div>
+
+            {!isDryDay && (
+              <>
             {/* Symptom Details */}
             <Section emoji="🩺" title="Symptom Details" subtitle="How would you describe this episode?">
               <div className="space-y-6">
@@ -485,6 +510,8 @@ const LogEpisode = () => {
                 onTriggersChange={setTriggers}
               />
             </Section>
+              </>
+            )}
 
             {/* Action buttons */}
             <div className="flex flex-col gap-3 pt-2 pb-6 px-4">

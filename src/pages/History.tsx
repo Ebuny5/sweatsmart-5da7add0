@@ -204,9 +204,15 @@ const History = () => {
                           {format(episode.datetime, "EEEE, MMMM d, yyyy")}
                         </h3>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Badge className={`${getSeverityColor(episode.severityLevel)} text-xs`}>
-                            {getSeverityLabel(episode.severityLevel)}
-                          </Badge>
+                          {episode.is_dry_day ? (
+                            <Badge className="bg-green-100 text-green-800 border-green-200 text-xs shadow-sm">
+                              ✨ Dry Day / Treatment
+                            </Badge>
+                          ) : (
+                            <Badge className={`${getSeverityColor(episode.severityLevel)} text-xs`}>
+                              {getSeverityLabel(episode.severityLevel)}
+                            </Badge>
+                          )}
                           <span className="text-xs sm:text-sm text-muted-foreground">
                             {format(episode.datetime, "h:mm a")}
                           </span>

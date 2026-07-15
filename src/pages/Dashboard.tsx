@@ -82,8 +82,9 @@ const Dashboard = () => {
   }, [rawEpisodes]);
 
   const dashboardData = useMemo(() => {
+    const nonDryEpisodes = allEpisodes.filter(e => !e.is_dry_day);
     const triggerCounts = new Map();
-    allEpisodes.forEach(episode => {
+    nonDryEpisodes.forEach(episode => {
       if (episode.triggers && Array.isArray(episode.triggers)) {
         episode.triggers.forEach(trigger => {
           if (trigger && (trigger.label || trigger.value)) {
@@ -107,12 +108,12 @@ const Dashboard = () => {
         count: data.count,
         trigger: { label, type: data.type || 'environmental', value: label },
         averageSeverity,
-        percentage: allEpisodes.length > 0 ? Math.round((data.count / allEpisodes.length) * 100) : 0
+        percentage: nonDryEpisodes.length > 0 ? Math.round((data.count / nonDryEpisodes.length) * 100) : 0
       };
     }).sort((a, b) => b.count - a.count);
 
     const bodyAreaCounts = new Map();
-    allEpisodes.forEach(episode => {
+    nonDryEpisodes.forEach(episode => {
       if (episode.bodyAreas && Array.isArray(episode.bodyAreas)) {
         episode.bodyAreas.forEach(area => {
           const existing = bodyAreaCounts.get(area) || { count: 0, severities: [] };
@@ -130,12 +131,12 @@ const Dashboard = () => {
       return {
         area: area as BodyArea,
         count: data.count,
-        percentage: allEpisodes.length > 0 ? Math.round((data.count / allEpisodes.length) * 100) : 0,
+        percentage: nonDryEpisodes.length > 0 ? Math.round((data.count / nonDryEpisodes.length) * 100) : 0,
         averageSeverity
       };
     }).sort((a, b) => b.count - a.count);
 
-    return { triggerFrequencies, bodyAreas, allEpisodes };
+    return { triggerFrequencies, bodyAreas, allEpisodes, nonDryEpisodes };
   }, [allEpisodes]);
 
   // ── Derived stats ─────────────────────────────────────────────────────────
@@ -143,8 +144,9 @@ const Dashboard = () => {
   const firstName = displayName.split(" ")[0];
   const totalEpisodes = dashboardData.allEpisodes.length;
 
-  const avgSeverity = totalEpisodes > 0
-    ? (dashboardData.allEpisodes.reduce((sum, e) => sum + e.severityLevel, 0) / totalEpisodes).toFixed(1)
+  const nonDryCount = dashboardData.nonDryEpisodes.length;
+  const avgSeverity = nonDryCount > 0
+    ? (dashboardData.nonDryEpisodes.reduce((sum, e) => sum + e.severityLevel, 0) / nonDryCount).toFixed(1)
     : "—";
 
   const thisWeek = dashboardData.allEpisodes.filter(e => {
@@ -329,7 +331,7 @@ const Dashboard = () => {
             <DashboardSummary
               weeklyData={[]}
               monthlyData={[]}
-              allEpisodes={dashboardData.allEpisodes}
+              allEpisodes={dashboardData.nonDryEpisodes}
             />
           </div>
 
@@ -346,7 +348,7 @@ const Dashboard = () => {
             </div>
             <TriggerSummary
               triggers={dashboardData.triggerFrequencies}
-              allEpisodes={dashboardData.allEpisodes}
+              allEpisodes={dashboardData.nonDryEpisodes}
             />
           </div>
 
