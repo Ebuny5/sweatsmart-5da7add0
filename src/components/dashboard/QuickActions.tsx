@@ -193,18 +193,21 @@ const WarriorLaunchpad = () => {
   const { episodes, refetch: refetchEpisodes } = useEpisodes();
   const { sweatRisk } = useClimateData();
 
-  // Rolling 7-day tracking consistency: unique days logged in last 7 calendar days (today + 6)
+  // Calendar week tracking consistency: unique days logged since Sunday (Day 1)
   const calculateTrackingConsistency = () => {
     if (!episodes || episodes.length === 0) return 0;
 
     const toKey = (d: Date) =>
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dayOfWeek = today.getDay(); // 0 is Sunday, 1 is Monday, etc.
+
     const windowKeys = new Set<string>();
-    for (let i = 0; i < 7; i++) {
-      const d = new Date();
-      d.setHours(0, 0, 0, 0);
-      d.setDate(d.getDate() - i);
+    for (let i = 0; i <= dayOfWeek; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
       windowKeys.add(toKey(d));
     }
 
@@ -213,9 +216,11 @@ const WarriorLaunchpad = () => {
       const key = toKey(new Date(ep.datetime));
       if (windowKeys.has(key)) loggedDays.add(key);
     }
-    return loggedDays.size;
+
+    // Calculate percentage based on a full 7-day week
+    return Math.round((loggedDays.size / 7) * 100);
   };
-  const trackingConsistency = calculateTrackingConsistency();
+  const trackingConsistencyPercentage = calculateTrackingConsistency();
 
 
   const [tipIndex] = useState(() => Math.floor(Math.random() * COMMUNITY_TIPS.length));
@@ -316,8 +321,8 @@ const WarriorLaunchpad = () => {
           </div>
           <div className="bg-white rounded-2xl p-4 flex flex-col items-center gap-1 shadow-md border border-purple-100">
             <span className="text-2xl">🗓️</span>
-            <span className="text-3xl font-black text-gray-800 leading-none">{trackingConsistency} / 7</span>
-            <span className="text-[11px] font-semibold text-gray-500 text-center uppercase tracking-wide">This Week 🎯</span>
+            <span className="text-3xl font-black text-gray-800 leading-none">{trackingConsistencyPercentage}%</span>
+            <span className="text-[11px] font-semibold text-gray-500 text-center uppercase tracking-wide">Tracking Consistency</span>
           </div>
 
         </div>
