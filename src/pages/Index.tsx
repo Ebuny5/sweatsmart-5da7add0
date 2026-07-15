@@ -1396,8 +1396,8 @@ const SweatSmartLanding = () => {
                 <a href="https://techbasedirectory.com/product/sweatsmart?utm_source=featured_embed" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
                   <img src="https://techbasedirectory.com/api/featured-embed" alt="SweatSmart | Techbasedirectory.com" width="200" height="60" />
                 </a>
-                <a href="https://www.f6s.com/giftovate-therapeutics-ltd" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                  <img src="/f6s-award.png" alt="F6S Top Company AI" style={{ height: '54px', width: 'auto' }} />
+                <a href="https://www.f6s.com/giftovate-therapeutics-ltd" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity" style={{ backgroundColor: 'white', borderRadius: '8px', padding: '4px' }}>
+                  <img src="/f6s-award.png" alt="F6S Top Company AI" style={{ height: '46px', width: 'auto' }} />
                 </a>
               </div>
               {/* Second Set (for seamless looping) */}
@@ -1411,8 +1411,8 @@ const SweatSmartLanding = () => {
                 <a href="https://techbasedirectory.com/product/sweatsmart?utm_source=featured_embed" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
                   <img src="https://techbasedirectory.com/api/featured-embed" alt="SweatSmart | Techbasedirectory.com" width="200" height="60" />
                 </a>
-                <a href="https://www.f6s.com/giftovate-therapeutics-ltd" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                  <img src="/f6s-award.png" alt="F6S Top Company AI" style={{ height: '54px', width: 'auto' }} />
+                <a href="https://www.f6s.com/giftovate-therapeutics-ltd" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity" style={{ backgroundColor: 'white', borderRadius: '8px', padding: '4px' }}>
+                  <img src="/f6s-award.png" alt="F6S Top Company AI" style={{ height: '46px', width: 'auto' }} />
                 </a>
               </div>
               {/* Third Set (for seamless looping on wide screens) */}
@@ -1426,8 +1426,8 @@ const SweatSmartLanding = () => {
                 <a href="https://techbasedirectory.com/product/sweatsmart?utm_source=featured_embed" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
                   <img src="https://techbasedirectory.com/api/featured-embed" alt="SweatSmart | Techbasedirectory.com" width="200" height="60" />
                 </a>
-                <a href="https://www.f6s.com/giftovate-therapeutics-ltd" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                  <img src="/f6s-award.png" alt="F6S Top Company AI" style={{ height: '54px', width: 'auto' }} />
+                <a href="https://www.f6s.com/giftovate-therapeutics-ltd" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity" style={{ backgroundColor: 'white', borderRadius: '8px', padding: '4px' }}>
+                  <img src="/f6s-award.png" alt="F6S Top Company AI" style={{ height: '46px', width: 'auto' }} />
                 </a>
               </div>
               {/* Fourth Set (for seamless looping on ultra wide screens) */}
@@ -1441,8 +1441,8 @@ const SweatSmartLanding = () => {
                 <a href="https://techbasedirectory.com/product/sweatsmart?utm_source=featured_embed" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
                   <img src="https://techbasedirectory.com/api/featured-embed" alt="SweatSmart | Techbasedirectory.com" width="200" height="60" />
                 </a>
-                <a href="https://www.f6s.com/giftovate-therapeutics-ltd" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                  <img src="/f6s-award.png" alt="F6S Top Company AI" style={{ height: '54px', width: 'auto' }} />
+                <a href="https://www.f6s.com/giftovate-therapeutics-ltd" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity" style={{ backgroundColor: 'white', borderRadius: '8px', padding: '4px' }}>
+                  <img src="/f6s-award.png" alt="F6S Top Company AI" style={{ height: '46px', width: 'auto' }} />
                 </a>
               </div>
             </div>
