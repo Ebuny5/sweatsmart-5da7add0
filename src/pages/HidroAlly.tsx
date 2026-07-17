@@ -342,7 +342,8 @@ const HidroAlly = () => {
   const abortRef         = useRef<AbortController | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef   = useRef<Blob[]>([]);
-  const currentAudioRef  = useRef<HTMLAudioElement | null>(null);
+  const currentAudioRef  = useRef<{ audio: HTMLAudioElement; url: string } | null>(null);
+  const ttsAbortControllerRef = useRef<AbortController | null>(null);
   const autoSpeakIdxRef  = useRef<number | null>(null);
   const hasLoadedConvRef = useRef<boolean>(false); // prevents welcome overwriting loaded conv
 
@@ -853,34 +854,115 @@ const HidroAlly = () => {
     }
   };
 
-  // ── Browser speech for message readout (keeps recorded alert audio separate) ─
+  // ── Stop active TTS playback safely ───────────────────────────────────────
+  const stopElevenLabsAudio = useCallback(() => {
+    if (ttsAbortControllerRef.current) {
+      ttsAbortControllerRef.current.abort();
+      ttsAbortControllerRef.current = null;
+    }
+    if (currentAudioRef.current) {
+      currentAudioRef.current.audio.pause();
+      URL.revokeObjectURL(currentAudioRef.current.url);
+      currentAudioRef.current = null;
+    }
+  }, []);
+
+  // ── TTS helper via ElevenLabs Edge Function ───────────────────────────────
+  const playElevenLabsAudio = async (text: string): Promise<void> => {
+    stopElevenLabsAudio();
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) throw new Error('Not authenticated');
+
+    const abortController = new AbortController();
+    ttsAbortControllerRef.current = abortController;
+
+    const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/hidro-ally-chat`;
+
+    let response;
+    try {
+      response = await fetch(CHAT_URL, {
+        method: 'POST',
+        signal: abortController.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionData.session.access_token}`,
+        },
+        body: JSON.stringify({ type: 'tts', text: text.replace(/[*_#]/g, '').slice(0, 3000) }),
+      });
+    } catch (err: any) {
+      if (err.name === 'AbortError') return;
+      throw err;
+    }
+
+    if (!response.ok) throw new Error('TTS fetch failed');
+
+    let audioBlob;
+    try {
+      audioBlob = await response.blob();
+    } catch (err: any) {
+      if (err.name === 'AbortError') return;
+      throw err;
+    }
+
+    const url = URL.createObjectURL(audioBlob);
+
+    return new Promise<void>((resolve, reject) => {
+      const audio = new Audio(url);
+      currentAudioRef.current = { audio, url };
+      audio.crossOrigin = 'anonymous';
+
+      const cleanUp = () => {
+        if (currentAudioRef.current?.url === url) {
+           URL.revokeObjectURL(url);
+           currentAudioRef.current = null;
+        }
+      };
+
+      audio.onended = () => {
+        cleanUp();
+        resolve();
+      };
+      audio.onerror = (e) => {
+        cleanUp();
+        reject(e);
+      };
+      audio.play().catch((err) => {
+        if (err.name !== 'AbortError') {
+          cleanUp();
+          reject(err);
+        }
+      });
+    });
+  };
+
+  // ── Speech for message readout ──────────────────────────────────────────────
   const speakMessage = useCallback(async (text: string, msgIndex: number) => {
     if (speakingIndex === msgIndex) {
-      stopProfessionalSpeech();
+      stopElevenLabsAudio();
       setSpeakingIndex(null);
       return;
     }
 
-    currentAudioRef.current?.pause();
-    currentAudioRef.current = null;
-    stopProfessionalSpeech();
+    stopElevenLabsAudio();
     setSpeakingIndex(null);
 
     try {
       setSpeakingIndex(msgIndex);
-      await speakProfessionally(text.replace(/[*_#]/g, '').slice(0, 3000), { rate: 1 });
+      await playElevenLabsAudio(text);
       setSpeakingIndex(null);
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'AbortError') return;
       console.error('TTS error:', err);
       setSpeakingIndex(null);
       toast.error('Speech is unavailable on this device');
     }
-  }, [speakingIndex]);
+  }, [speakingIndex, stopElevenLabsAudio]);
 
-  // ── Helper: play browser-speech greeting before recording ─────────────────
+  // ── Helper: play greeting before recording ──────────────────────────────────
   const playVoiceGreeting = useCallback(async (): Promise<void> => {
     try {
-      await speakProfessionally("I'm listening. Speak now.", { rate: 1 });
+      await playElevenLabsAudio("I'm listening. Speak now.");
     } catch { /* greeting failing silently is fine */ }
   }, []);
 
@@ -929,25 +1011,15 @@ const HidroAlly = () => {
           reader.onload = async () => {
             try {
               const base64 = (reader.result as string).split(',')[1];
-              const { data: sessionData } = await supabase.auth.getSession();
-              if (!sessionData.session) { setIsProcessingVoice(false); return; }
 
-              const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/hidro-ally-chat`;
-
-              // Step 1 — STT: audio → transcript via Gemini
-              const sttRes = await fetch(CHAT_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionData.session.access_token}` },
-                body: JSON.stringify({ type: 'stt', audioBase64: base64, mimeType: mimeType || 'audio/webm', audioSize: audioBlob.size }),
+              // Step 1 — STT: audio → transcript via AssemblyAI (voice-transcribe edge function)
+              const { data, error } = await supabase.functions.invoke('voice-transcribe', {
+                body: { audio_base64: base64, mode: 'transcribe' },
               });
 
-              if (!sttRes.ok) {
-                const errText = await sttRes.text();
-                console.error('STT error:', errText);
-                throw new Error('STT failed');
-              }
-              const sttData = await sttRes.json();
-              const transcript = sttData.transcript?.trim();
+              if (error) throw error;
+
+              const transcript = data?.transcript?.trim();
 
               if (!transcript) {
                 setIsProcessingVoice(false);
@@ -958,7 +1030,7 @@ const HidroAlly = () => {
               setIsProcessingVoice(false);
               incrementVoiceUsage();
 
-              // Step 2 — Send transcript to Gemini + auto-speak response
+              // Step 2 — Send transcript to chat logic + auto-speak response
               await handleSend(transcript, true);
             } catch (e) {
               console.error('Voice chat error:', e);
