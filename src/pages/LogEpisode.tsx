@@ -168,9 +168,6 @@ const LogEpisode = () => {
       // Reschedule the next reminder 6 hours from now
       loggingReminderService.handleLogSaved();
 
-      // Dry days have no symptom data to analyse — the engine's isDryDay flag
-      // bypasses clinical analysis and returns a rotating, treatment-focused
-      // message instead of the generic "no body areas" fallback.
       setIsLoadingInsights(true);
       try {
         const triggerData = (finalTriggers || []).map(t => ({
