@@ -1011,25 +1011,15 @@ const HidroAlly = () => {
           reader.onload = async () => {
             try {
               const base64 = (reader.result as string).split(',')[1];
-              const { data: sessionData } = await supabase.auth.getSession();
-              if (!sessionData.session) { setIsProcessingVoice(false); return; }
 
-              const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/hidro-ally-chat`;
-
-              // Step 1 — STT: audio → transcript via Gemini
-              const sttRes = await fetch(CHAT_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionData.session.access_token}` },
-                body: JSON.stringify({ type: 'stt', audioBase64: base64, mimeType: mimeType || 'audio/webm', audioSize: audioBlob.size }),
+              // Step 1 — STT: audio → transcript via AssemblyAI (voice-transcribe edge function)
+              const { data, error } = await supabase.functions.invoke('voice-transcribe', {
+                body: { audio_base64: base64, mode: 'transcribe' },
               });
 
-              if (!sttRes.ok) {
-                const errText = await sttRes.text();
-                console.error('STT error:', errText);
-                throw new Error('STT failed');
-              }
-              const sttData = await sttRes.json();
-              const transcript = sttData.transcript?.trim();
+              if (error) throw error;
+
+              const transcript = data?.transcript?.trim();
 
               if (!transcript) {
                 setIsProcessingVoice(false);
@@ -1040,7 +1030,7 @@ const HidroAlly = () => {
               setIsProcessingVoice(false);
               incrementVoiceUsage();
 
-              // Step 2 — Send transcript to Gemini + auto-speak response
+              // Step 2 — Send transcript to chat logic + auto-speak response
               await handleSend(transcript, true);
             } catch (e) {
               console.error('Voice chat error:', e);
