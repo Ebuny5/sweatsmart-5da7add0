@@ -20,7 +20,7 @@ import { CalendarIcon, Clock, Loader2, CheckCircle2, LayoutDashboard, History, P
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEpisodes } from "@/hooks/useEpisodes";
-import { generateFallbackInsights } from "@components/recommendationEngine";
+import { generateFallbackInsights } from "@/components/recommendationEngine";
 import { loggingReminderService, LAST_LOG_TIME_KEY, CURRENT_HDSS_KEY } from "@/services/LoggingReminderService";
 import { useVoiceLogging } from "@/hooks/useVoiceLogging";
 import VoiceVisualizer from "@/components/episode/VoiceVisualizer";
@@ -141,7 +141,7 @@ const LogEpisode = () => {
     const finalNotes = manualNotes !== undefined ? manualNotes : notes;
 
     try {
-      const dbTriggers = isDryDay ? [] : finalTriggers;
+      const dbTriggers = isDryDay ? [] : (finalTriggers || []);
       const triggerStrings = dbTriggers.map((trigger) =>
         JSON.stringify({ type: trigger.type, value: trigger.value, label: trigger.label })
       );
@@ -173,7 +173,7 @@ const LogEpisode = () => {
       // message instead of the generic "no body areas" fallback.
       setIsLoadingInsights(true);
       try {
-        const triggerData = finalTriggers.map(t => ({
+        const triggerData = (finalTriggers || []).map(t => ({
           type: t.type,
           value: t.value,
           label: t.label,
