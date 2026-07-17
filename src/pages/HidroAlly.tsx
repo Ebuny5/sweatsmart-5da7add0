@@ -990,19 +990,62 @@ const HidroAlly = () => {
     mediaRecorderRef.current?.stop();
   };
 
-  // ── Browser mic for typing ─────────────────────────────────────────────────
+  // ── Browser mic for typing via AssemblyAI ──────────────────────────────────
   const toggleVoice = () => {
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) { toast.error('Speech recognition not supported on this browser'); return; }
-    if (isListening) { recognitionRef.current?.stop(); setIsListening(false); return; }
-    const r = new SR();
-    r.continuous = false; r.interimResults = false; r.lang = 'en-US';
-    r.onresult = (e: any) => { setInput(p => p + e.results[0][0].transcript); setIsListening(false); };
-    r.onerror  = () => setIsListening(false);
-    r.onend    = () => setIsListening(false);
-    recognitionRef.current = r;
-    r.start();
-    setIsListening(true);
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+      const mimeType = candidates.find((m) => (window as any).MediaRecorder?.isTypeSupported?.(m)) || 'audio/webm';
+      const recorder = new MediaRecorder(stream, { mimeType });
+      let audioChunks: Blob[] = [];
+
+      recorder.ondataavailable = e => {
+        if (e.data.size > 0) audioChunks.push(e.data);
+      };
+
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        setIsListening(false);
+        const audioBlob = new Blob(audioChunks, { type: mimeType });
+
+        const loadingToast = toast.loading('Transcribing...');
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          try {
+            const base64 = (reader.result as string).split(',')[1];
+            const { data, error } = await supabase.functions.invoke('voice-transcribe', {
+              body: { audio_base64: base64, mode: 'transcribe' },
+            });
+
+            toast.dismiss(loadingToast);
+            if (error) throw error;
+            if (data?.transcript) {
+              setInput(p => p + (p ? ' ' : '') + data.transcript);
+            }
+          } catch (e) {
+            toast.dismiss(loadingToast);
+            console.error('AssemblyAI transcribe error', e);
+            toast.error('Could not transcribe audio');
+          }
+        };
+        reader.onerror = () => {
+          toast.dismiss(loadingToast);
+          toast.error('Could not read audio data');
+        };
+        reader.readAsDataURL(audioBlob);
+      };
+
+      recognitionRef.current = recorder;
+      recorder.start();
+      setIsListening(true);
+    }).catch(() => {
+      toast.error('Microphone access denied or unavailable');
+    });
   };
 
   const handleStop = () => {
