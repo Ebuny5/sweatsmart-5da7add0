@@ -316,7 +316,7 @@ const WarriorLaunchpad = () => {
         <div className="grid grid-cols-2 gap-3 mt-5">
           <div className="bg-white rounded-2xl p-4 flex flex-col items-center gap-1 shadow-md border border-purple-100">
             <span className="text-2xl">📋</span>
-            <span className="text-3xl font-black text-gray-800 leading-none">{episodes.length}</span>
+            <span className="text-3xl font-black text-gray-800 leading-none">{episodes.filter(e => !e.is_dry_day).length}</span>
             <span className="text-[11px] font-semibold text-gray-500 text-center uppercase tracking-wide">Episodes Logged</span>
           </div>
           <div className="bg-white rounded-2xl p-4 flex flex-col items-center gap-1 shadow-md border border-purple-100">
@@ -497,7 +497,7 @@ const WarriorLaunchpad = () => {
           </div>
           <WarriorBadge
             userName={displayName}
-            episodeCount={episodes.length}
+            episodeCount={episodes.filter(e => !e.is_dry_day).length}
             episodes={episodes.map(e => ({ datetime: e.datetime }))}
           />
         </div>
