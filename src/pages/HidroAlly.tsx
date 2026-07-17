@@ -1012,13 +1012,29 @@ const HidroAlly = () => {
             try {
               const base64 = (reader.result as string).split(',')[1];
 
-              // Step 1 — STT: audio → transcript via AssemblyAI (voice-transcribe edge function)
-              const { data, error } = await supabase.functions.invoke('voice-transcribe', {
-                body: { audio_base64: base64, mode: 'transcribe' },
+              // Step 1 — STT: audio → transcript via Gemini (hidro-ally-chat edge function)
+              const { data: sessionData } = await supabase.auth.getSession();
+              const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/hidro-ally-chat`;
+
+              const res = await fetch(CHAT_URL, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${sessionData?.session?.access_token}`,
+                },
+                body: JSON.stringify({
+                  type: 'stt',
+                  audioBase64: base64,
+                  mimeType: mimeType || 'audio/webm',
+                }),
               });
 
-              if (error) throw error;
+              if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || 'Failed to transcribe audio with Gemini');
+              }
 
+              const data = await res.json();
               const transcript = data?.transcript?.trim();
 
               if (!transcript) {
@@ -1074,7 +1090,7 @@ const HidroAlly = () => {
       const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
       const mimeType = candidates.find((m) => (window as any).MediaRecorder?.isTypeSupported?.(m)) || 'audio/webm';
       const recorder = new MediaRecorder(stream, { mimeType });
-      let audioChunks: Blob[] = [];
+      const audioChunks: Blob[] = [];
 
       recorder.ondataavailable = e => {
         if (e.data.size > 0) audioChunks.push(e.data);
