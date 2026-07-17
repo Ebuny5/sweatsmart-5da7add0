@@ -20,7 +20,7 @@ import { CalendarIcon, Clock, Loader2, CheckCircle2, LayoutDashboard, History, P
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEpisodes } from "@/hooks/useEpisodes";
-import { generateFallbackInsights } from "@components/recommendationEngine";
+import { generateFallbackInsights } from "@/components/recommendationEngine";
 import { loggingReminderService, LAST_LOG_TIME_KEY, CURRENT_HDSS_KEY } from "@/services/LoggingReminderService";
 import { useVoiceLogging } from "@/hooks/useVoiceLogging";
 import VoiceVisualizer from "@/components/episode/VoiceVisualizer";
