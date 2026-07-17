@@ -254,7 +254,7 @@ serve(async (req) => {
         });
       }
       const safeText  = text.replace(/[*_#]/g, '').slice(0, 3000);
-      const safeVoice = voiceId || '21m00Tcm4TlvDq8ikWAM'; // Rachel default
+      const safeVoice = voiceId || 'X5gGKB97vhrZhE6AgMYI'; // User selected default
       const stability = speed === 0.75 ? 0.65 : speed === 1.25 ? 0.40 : 0.50;
 
       const elRes = await fetch(
