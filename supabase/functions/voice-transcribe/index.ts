@@ -138,7 +138,6 @@ async function transcribeWithAssemblyAI(audioBytes: Uint8Array): Promise<string>
     },
     body: JSON.stringify({
       audio_url: upload_url,
-      speech_model: 'universal',
       punctuate: true,
       format_text: true,
     }),
