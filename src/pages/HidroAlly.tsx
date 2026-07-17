@@ -453,7 +453,7 @@ const HidroAlly = () => {
 
   const dashboardAnalytics = useMemo(() => {
     if (!rawEpisodes?.length) return null;
-    const episodes = rawEpisodes.map(ep => ({
+    const episodes = rawEpisodes.filter(ep => !ep.is_dry_day).map(ep => ({
       ...ep,
       datetime: new Date(ep.datetime),
       severityLevel: Number(ep.severityLevel),

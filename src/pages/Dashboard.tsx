@@ -143,7 +143,7 @@ const Dashboard = () => {
   // ── Derived stats ─────────────────────────────────────────────────────────
   const displayName = profile?.display_name || user?.email?.split("@")[0] || "Warrior";
   const firstName = displayName.split(" ")[0];
-  const totalEpisodes = dashboardData.allEpisodes.length;
+  const totalEpisodes = dashboardData.nonDryEpisodes.length;
 
   const nonDryCount = dashboardData.nonDryEpisodes.length;
   const avgSeverity = nonDryCount > 0
