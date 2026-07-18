@@ -179,45 +179,39 @@ const LogEpisode = () => {
       // Reschedule the next reminder 6 hours from now
       loggingReminderService.handleLogSaved();
 
-      if (isDryDay) {
-        // For dry days, the user explicitly requested NO clinical analysis or insights produced.
-        // We just toast success and leave the form as is, ready to log another or go home,
-        // without showing the AIGeneratedInsights component.
-        toast({ title: "Dry day logged! ✨", description: "Nice work — no sweating today." });
-        setAiInsights(null);
-        setShowInsights(false);
+      setIsLoadingInsights(true);
+      try {
+        const triggerData = (finalTriggers || []).map(t => ({
+          type: t.type,
+          value: t.value,
+          label: t.label,
+        }));
+
+        const insights = generateFallbackInsights(
+          dbSeverity,
+          dbBodyAreas,
+          triggerData,
+          finalNotes,
+          undefined,
+          isDryDay,
+        );
+
+        setAiInsights(insights);
+        toast(
+          isDryDay
+            ? { title: "Dry day logged! ✨", description: "Nice work — no sweating today." }
+            : { title: "Episode logged 🎉", description: "Your personalised insights are below." }
+        );
+      } catch (insightError) {
+        console.error("Insight generation error:", insightError);
+        toast({
+          title: "Insights unavailable",
+          description: "Episode saved. Insights could not be generated.",
+          variant: "destructive",
+        });
+      } finally {
         setIsLoadingInsights(false);
-      } else {
-        setIsLoadingInsights(true);
-        try {
-          const triggerData = (finalTriggers || []).map(t => ({
-            type: t.type,
-            value: t.value,
-            label: t.label,
-          }));
-
-          const insights = generateFallbackInsights(
-            dbSeverity,
-            dbBodyAreas,
-            triggerData,
-            finalNotes,
-            undefined,
-            isDryDay, // will be false here, but pass it anyway for signature
-          );
-
-          setAiInsights(insights);
-          toast({ title: "Episode logged 🎉", description: "Your personalised insights are below." });
-        } catch (insightError) {
-          console.error("Insight generation error:", insightError);
-          toast({
-            title: "Insights unavailable",
-            description: "Episode saved. Insights could not be generated.",
-            variant: "destructive",
-          });
-        } finally {
-          setIsLoadingInsights(false);
-          setShowInsights(true);
-        }
+        setShowInsights(true);
       }
     } catch (error) {
       toast({ title: "Failed to log episode", description: "An error occurred. Please try again.", variant: "destructive" });

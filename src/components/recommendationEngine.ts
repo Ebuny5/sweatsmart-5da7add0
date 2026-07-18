@@ -1075,16 +1075,16 @@ function buildDryDayResponse(
   const greeting = userName ? `Hi ${userName}, this is HidroAlly 👋` : `Hi, this is HidroAlly 👋`;
 
   const theme = pick([
-    // Theme 1 — General Compliance
-    `Great job tracking a dry day! Your consistency helps map how well your current management routine is working. Keep logging to see long-term dry patterns build up over time.`,
-    // Theme 2 — Treatment Focus
-    `Log noted! If you applied a treatment or antiperspirant last night, a dry day like this is a great indicator of compliance. Consistency with treatment is key to keeping hyperhidrosis managed.`,
-    // Theme 3 — Empowerment & Control
-    `Fantastic check-in. Tracking dry days is just as important as tracking flare-ups — it shows you are actively taking control and managing your hyperhidrosis effectively.`,
-    // Theme 4 — Insight Building / Data Value
-    `No episodes today! By documenting these dry periods alongside your treatment schedule, you're building a powerful dataset that helps prove what works best for your body.`,
-    // Theme 5 — Supportive & Brief
-    `A dry day is a win for comfort! Thank you for maintaining your tracking habit today — every log brings you closer to mastering your triggers.`,
+    // Theme 1 (General Compliance)
+    `Great job tracking a dry day! Your consistency helps map how well your current management routine is working. Keep logging to see long-term dry patterns!`,
+    // Theme 2 (Treatment Focus)
+    `Log noted! If you applied a treatment or antiperspirant last night, a dry day is a great indicator of compliance. Consistency is key to keeping hyperhidrosis managed.`,
+    // Theme 3 (Empowerment & Control)
+    `Fantastic check-in. Tracking dry days is just as important as tracking flare-ups. It shows you are actively taking control and managing your hyperhidrosis effectively!`,
+    // Theme 4 (Insight Building)
+    `No episodes today! By documenting these dry periods alongside your treatment schedule, you're building a powerful dataset to prove what works best for your body.`,
+    // Theme 5 (Supportive & Brief)
+    `A dry day is a win for comfort! Thank you for maintaining your tracking habit today—every log brings you closer to mastering your triggers.`,
   ], seed);
 
   return {
