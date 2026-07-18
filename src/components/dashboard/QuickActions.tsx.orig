@@ -281,7 +281,6 @@ const WarriorLaunchpad = () => {
         id: data.id,
         datetime: isoDate,
         severityLevel: quickHDSS,
-        hdssLevel: quickHDSS,
         bodyAreas: [],
         triggers: [],
         notes: "Quick HDSS Capture"
