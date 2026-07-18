@@ -28,12 +28,31 @@ serve(async (req) => {
     // If this episode is a Dry Day / Treatment day, skip AI generation entirely
     if (dryDay) {
       console.log('Skipping insight generation for dry-day episode');
+
+      const themes = [
+        `Great job tracking a dry day! Your consistency helps map how well your current management routine is working. Keep logging to see long-term dry patterns!`,
+        `Log noted! If you applied a treatment or antiperspirant last night, a dry day is a great indicator of compliance. Consistency is key to keeping hyperhidrosis managed.`,
+        `Fantastic check-in. Tracking dry days is just as important as tracking flare-ups. It shows you are actively taking control and managing your hyperhidrosis effectively!`,
+        `No episodes today! By documenting these dry periods alongside your treatment schedule, you're building a powerful dataset to prove what works best for your body.`,
+        `A dry day is a win for comfort! Thank you for maintaining your tracking habit today—every log brings you closer to mastering your triggers.`
+      ];
+
+      const randomTheme = themes[Math.floor(Math.random() * themes.length)];
+
       const insights = {
-        clinicalAnalysis: 'This episode was recorded as a Dry Day / Treatment day. No clinical analysis is generated for dry days.',
-        immediateRelief: [],
-        treatmentOptions: [],
-        lifestyleModifications: [],
-        medicalAttention: 'No clinical analysis for dry days.'
+        emotionalOpener: `Hi, this is HidroAlly 👋 — ${randomTheme}`,
+        clinicalAnalysis: "This was logged as a dry day, so there's no episode to clinically analyse — and that's exactly the outcome we want to see more of. Dry days logged alongside your treatment routine are valuable data in their own right, helping build a clear picture of what's working.",
+        immediateRelief: [
+          "No relief steps needed today — nothing to manage. Keep up whatever routine got you here.",
+        ],
+        treatmentOptions: [
+          "If you're using a treatment (antiperspirant, iontophoresis, medication, etc.), a dry day is a strong signal it's working. Keep your current routine consistent rather than changing anything based on one good day.",
+        ],
+        lifestyleModifications: [
+          "Keep logging dry days as well as episodes — the contrast between the two is what reveals which habits, treatments, or conditions are actually helping.",
+        ],
+        medicalAttention: "No concerns today — nothing to flag.",
+        cta: "Keep tracking your daily experience to build a complete picture of your triggers and treatment effectiveness."
       };
       return new Response(
         JSON.stringify({ insights }),
