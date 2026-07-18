@@ -1045,6 +1045,10 @@ export function generateFallbackInsights(
   climate?: ClimateInput,
   isDryDay?: boolean,
 ): EpisodeInsights & { emotionalOpener: string; cta: string } {
+  // Get actual count from local logs or default to a simple fallback, avoid random numbers
+  const localLogsJson = localStorage.getItem('sweatSmartLogs');
+  const actualCount = localLogsJson ? JSON.parse(localLogsJson).filter((log: any) => !log.is_dry_day).length : 0;
+
   const result = generateEpisodeInsights({
     severity,
     bodyAreas,
@@ -1052,7 +1056,7 @@ export function generateFallbackInsights(
     notes,
     climate,
     isDryDay,
-    episodeCount: Math.floor(Date.now() / 1000) % 50,
+    episodeCount: actualCount,
   });
   return result;
 }

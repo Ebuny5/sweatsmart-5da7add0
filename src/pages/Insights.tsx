@@ -284,7 +284,7 @@ const Insights = () => {
   }
 
   // ── Empty state ────────────────────────────────────────────────────────────
-  if (episodes.length === 0) {
+  if (nonDryEpisodes.length === 0) {
     return (
       <AppLayout>
         <div className="max-w-lg mx-auto pb-10">
@@ -340,7 +340,7 @@ const Insights = () => {
             Insights & Recommendations 📊
           </h1>
           <p className="text-purple-100 text-sm mt-1.5 leading-snug">
-            Based on <strong className="text-white">{episodes.length} logged episodes</strong> — your personal hyperhidrosis intelligence
+            Based on <strong className="text-white">{nonDryEpisodes.length} logged episodes</strong> — your personal hyperhidrosis intelligence
           </p>
 
           {/* Trend badge */}
@@ -358,7 +358,7 @@ const Insights = () => {
           {/* ── STATS GRID ────────────────────────────────────────────── */}
           {analytics && (
             <div className="grid grid-cols-4 gap-2">
-              <StatTile emoji="📋" value={episodes.length} label="Total episodes" gradient="bg-violet-50" />
+              <StatTile emoji="📋" value={nonDryEpisodes.length} label="Total episodes" gradient="bg-violet-50" />
               <StatTile emoji="⚡" value={analytics.avgSeverity} label="Avg HDSS" gradient="bg-pink-50" />
               <StatTile emoji="🕐" value={analytics.peakTime} label="Peak time" gradient="bg-amber-50" />
               <StatTile emoji="📊" value={analytics.last7} label="This week" gradient="bg-sky-50" />

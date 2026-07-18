@@ -1,0 +1,10 @@
+--- QuickActions.tsx
++++ QuickActions.tsx
+@@ -4,6 +4,7 @@
+ import { Card, CardContent, CardTitle } from "@/components/ui/card";
+ import { Progress } from "@/components/ui/progress";
+ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
++import { CURRENT_HDSS_KEY, LAST_LOG_TIME_KEY } from "@/services/LoggingReminderService";
+ import { gaugeHDSS } from "@/utils/hdssGauger";
+ import {
+   Droplets, Sparkles, AlertTriangle, CloudSun, MapPin, Wind, Thermometer, Sun, Umbrella, Shield, Plus, X, ListPlus

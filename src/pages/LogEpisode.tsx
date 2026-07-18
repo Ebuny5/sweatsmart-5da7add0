@@ -163,6 +163,17 @@ const LogEpisode = () => {
       if (data && data[0]) {
         setLastSavedEpisodeId(data[0].id);
         localStorage.setItem(CURRENT_HDSS_KEY, finalSeverity.toString());
+        // Keep local storage in sync
+        const existingLogsStr = localStorage.getItem("sweatSmartLogs");
+        const existingLogs = existingLogsStr ? JSON.parse(existingLogsStr) : [];
+        const newLog = {
+          id: data[0].id,
+          datetime: datetime.toISOString(),
+          severityLevel: dbSeverity,
+          is_dry_day: isDryDay,
+          hdssLevel: dbSeverity
+        };
+        localStorage.setItem("sweatSmartLogs", JSON.stringify([newLog, ...existingLogs]));
       }
 
       // Reschedule the next reminder 6 hours from now
@@ -228,6 +239,11 @@ const LogEpisode = () => {
       setLastSavedEpisodeId(null);
       setShowInsights(false);
       setAiInsights(null);
+
+      // Also clean up local storage if we just undid the log
+      const existingLogsStr = localStorage.getItem('sweatSmartLogs');
+      const existingLogs = existingLogsStr ? JSON.parse(existingLogsStr) : [];
+      localStorage.setItem('sweatSmartLogs', JSON.stringify(existingLogs.filter((log: any) => log.id !== lastSavedEpisodeId)));
     } catch (error) {
       console.error("Undo failed:", error);
       toast({

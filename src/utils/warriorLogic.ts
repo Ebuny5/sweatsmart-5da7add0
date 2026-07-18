@@ -109,7 +109,9 @@ export function getWarriorInsight(episodes: ProcessedEpisode[]): { message: stri
     const lastLogDiff = now.getTime() - lastLogTime;
     const lastHDSS = parseInt(localStorage.getItem(CURRENT_HDSS_KEY) || '0', 10);
 
-    if (episodes.length > 0 && lastLogTime > 0 && lastLogDiff < 4 * 60 * 60 * 1000 && lastHDSS > 0) {
+    // Only show the immediate post-log commendation for 10 minutes (600000 ms) IF a log actually exists
+    // rather than 4 hours, so it doesn't persistently replace standard insights
+    if (episodes.length > 0 && lastLogTime > 0 && lastLogDiff < 10 * 60 * 1000 && lastHDSS > 0 && lastLogTimeStr) {
       if (lastHDSS <= 2) {
         return {
           message: `Awesome work! You kept your sweat level at HDSS ${lastHDSS} today. Your consistency is paying off.`,
