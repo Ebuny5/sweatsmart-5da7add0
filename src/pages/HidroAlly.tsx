@@ -336,7 +336,7 @@ const HidroAlly = () => {
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const messagesEndRef   = useRef<HTMLDivElement>(null);
-  const recognitionRef   = useRef<any>(null);
+  const recognitionRef   = useRef<SpeechRecognition | null>(null);
   const textareaRef      = useRef<HTMLTextAreaElement>(null);
   const imageInputRef    = useRef<HTMLInputElement>(null);
   const abortRef         = useRef<AbortController | null>(null);
@@ -890,18 +890,22 @@ const HidroAlly = () => {
         },
         body: JSON.stringify({ type: 'tts', text: text.replace(/[*_#]/g, '').slice(0, 3000) }),
       });
-    } catch (err: any) {
-      if (err.name === 'AbortError') return;
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') return;
       throw err;
     }
 
-    if (!response.ok) throw new Error('TTS fetch failed');
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      console.error('ElevenLabs TTS failed:', response.status, errText);
+      throw new Error(`TTS fetch failed: ${response.status}`);
+    }
 
     let audioBlob;
     try {
       audioBlob = await response.blob();
-    } catch (err: any) {
-      if (err.name === 'AbortError') return;
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') return;
       throw err;
     }
 
@@ -951,22 +955,31 @@ const HidroAlly = () => {
       setSpeakingIndex(msgIndex);
       await playElevenLabsAudio(text);
       setSpeakingIndex(null);
-    } catch (err: any) {
-      if (err.name === 'AbortError') return;
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') return;
       console.error('TTS error:', err);
       setSpeakingIndex(null);
       toast.error('Speech is unavailable on this device');
     }
   }, [speakingIndex, stopElevenLabsAudio]);
 
-  // ── Helper: play greeting before recording ──────────────────────────────────
+  // ── Helper: play greeting before recording ─────────────────────────────────
+  // Tries ElevenLabs first; falls back to browser speech so recording always starts
   const playVoiceGreeting = useCallback(async (): Promise<void> => {
+    const greetingText = "I'm listening. Speak now.";
     try {
-      await playElevenLabsAudio("I'm listening. Speak now.");
-    } catch { /* greeting failing silently is fine */ }
+      await playElevenLabsAudio(greetingText);
+    } catch {
+      // ElevenLabs failed — use browser speech so user still hears something
+      try {
+        await speakProfessionally(greetingText);
+      } catch {
+        // Both failed — silent is fine, recording will still start
+      }
+    }
   }, []);
 
-  // ── Gemini STT → Chat → browser speech readout (full voice chat) ──────────
+  // ── Full voice chat: record → Gemini STT → chat → auto-speak ──────────────
   const startVoiceChat = async () => {
     if (getVoiceUsageToday() >= DAILY_VOICE_LIMIT) {
       toast.error('Daily voice limit reached 💙 Upgrade to Warrior Plan for unlimited voice chat');
@@ -1012,16 +1025,35 @@ const HidroAlly = () => {
             try {
               const base64 = (reader.result as string).split(',')[1];
 
-              // Step 1 — STT: audio → transcript via AssemblyAI (voice-transcribe edge function)
-              const { data, error } = await supabase.functions.invoke('voice-transcribe', {
-                body: { audio_base64: base64, mode: 'transcribe' },
-              });
-
-              if (error) {
-                throw new Error(error.message || 'Failed to transcribe audio with AssemblyAI');
+              // Step 1 — STT: audio → transcript via Gemini (hidro-ally-chat edge function)
+              const { data: sessionData } = await supabase.auth.getSession();
+              if (!sessionData.session) {
+                setIsProcessingVoice(false);
+                toast.error('Please log in to use voice chat');
+                return;
               }
 
-              const transcript = data?.transcript?.trim();
+              const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/hidro-ally-chat`;
+              const sttRes = await fetch(CHAT_URL, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${sessionData.session.access_token}`,
+                },
+                body: JSON.stringify({
+                  type: 'stt',
+                  audioBase64: base64,
+                  mimeType: mimeType || 'audio/webm',
+                  audioSize: audioBlob.size,
+                }),
+              });
+
+              if (!sttRes.ok) {
+                throw new Error(`STT request failed: ${sttRes.status}`);
+              }
+
+              const sttData = await sttRes.json() as { transcript?: string; error?: string };
+              const transcript = sttData.transcript?.trim();
 
               if (!transcript) {
                 setIsProcessingVoice(false);
@@ -1035,7 +1067,7 @@ const HidroAlly = () => {
               // Step 2 — Send transcript to chat logic + auto-speak response
               await handleSend(transcript, true);
             } catch (e) {
-              console.error('Voice chat error:', e);
+              console.error('Voice chat STT error:', e);
               setIsProcessingVoice(false);
               toast.error('Voice processing failed — please try again');
             }
@@ -1051,8 +1083,8 @@ const HidroAlly = () => {
       mediaRecorderRef.current = recorder;
       recorder.start(100); // 100ms timeslice — essential for Android
       setIsRecording(true);
-    } catch (err: any) {
-      if (err?.name === 'NotAllowedError') {
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'NotAllowedError') {
         toast.error('Microphone access denied — allow microphone in browser settings');
       } else {
         toast.error('Could not start recording — please try again');
@@ -1064,62 +1096,66 @@ const HidroAlly = () => {
     mediaRecorderRef.current?.stop();
   };
 
-  // ── Browser mic for typing via AssemblyAI ──────────────────────────────────
+  // ── Mic button: real-time voice-to-text via Web Speech API ────────────────
+  // Uses the browser's built-in speech recognition — no API key required.
+  // Words appear live in the text box as you speak.
   const toggleVoice = () => {
     if (isListening) {
       recognitionRef.current?.stop();
+      recognitionRef.current = null;
       setIsListening(false);
       return;
     }
 
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-      const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
-      const mimeType = candidates.find((m) => (window as any).MediaRecorder?.isTypeSupported?.(m)) || 'audio/webm';
-      const recorder = new MediaRecorder(stream, { mimeType });
-      const audioChunks: Blob[] = [];
+    const SpeechRecognitionAPI =
+      (window as unknown as { SpeechRecognition?: typeof SpeechRecognition; webkitSpeechRecognition?: typeof SpeechRecognition })
+        .SpeechRecognition ||
+      (window as unknown as { SpeechRecognition?: typeof SpeechRecognition; webkitSpeechRecognition?: typeof SpeechRecognition })
+        .webkitSpeechRecognition;
 
-      recorder.ondataavailable = e => {
-        if (e.data.size > 0) audioChunks.push(e.data);
-      };
+    if (!SpeechRecognitionAPI) {
+      toast.error('Speech recognition is not supported in this browser. Try Chrome or Safari.');
+      return;
+    }
 
-      recorder.onstop = async () => {
-        stream.getTracks().forEach(t => t.stop());
-        setIsListening(false);
-        const audioBlob = new Blob(audioChunks, { type: mimeType });
+    const recognition = new SpeechRecognitionAPI();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
 
-        const loadingToast = toast.loading('Transcribing...');
-        const reader = new FileReader();
-        reader.onloadend = async () => {
-          try {
-            const base64 = (reader.result as string).split(',')[1];
-            const { data, error } = await supabase.functions.invoke('voice-transcribe', {
-              body: { audio_base64: base64, mode: 'transcribe' },
-            });
+    let finalTranscript = '';
 
-            toast.dismiss(loadingToast);
-            if (error) throw error;
-            if (data?.transcript) {
-              setInput(p => p + (p ? ' ' : '') + data.transcript);
-            }
-          } catch (e) {
-            toast.dismiss(loadingToast);
-            console.error('AssemblyAI transcribe error', e);
-            toast.error('Could not transcribe audio');
-          }
-        };
-        reader.onerror = () => {
-          toast.dismiss(loadingToast);
-          toast.error('Could not read audio data');
-        };
-        reader.readAsDataURL(audioBlob);
-      };
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      let interimTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        if (result.isFinal) {
+          finalTranscript += result[0].transcript;
+        } else {
+          interimTranscript += result[0].transcript;
+        }
+      }
+      // Show final + current interim in the text box live
+      setInput(finalTranscript + interimTranscript);
+    };
 
-      recognitionRef.current = recorder;
-      recorder.start(100);
-      setIsListening(true);
-    }).catch(() => {
-      toast.error('Microphone access denied or unavailable');
-    });
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      if (event.error !== 'aborted') {
+        console.error('Speech recognition error:', event.error);
+        toast.error('Microphone error — please try again');
+      }
+      setIsListening(false);
+      recognitionRef.current = null;
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsListening(true);
   };
 
   const handleStop = () => {
@@ -1218,432 +1254,135 @@ const HidroAlly = () => {
       let convId = currentConversationId;
       if (!convId) {
         const { data: newConv } = await supabase.from('chat_conversations').insert({
-          user_id: user!.id, title: 'New Conversation',
+          user_id: user?.id, title: text.slice(0, 60), updated_at: new Date().toISOString(),
         }).select().single();
-        if (newConv) { convId = newConv.id; setCurrentConversationId(convId); }
+        if (newConv) {
+          convId = newConv.id;
+          setCurrentConversationId(convId);
+        }
       }
 
-      const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/hidro-ally-chat`;
+      // Build conversation history for the API
       const allMessages = [...messages, userMessage];
+      const apiHistory = allMessages
+        .filter(m => m.role !== 'assistant' || allMessages.indexOf(m) > 0)
+        .map(m => ({ role: m.role, content: m.content }));
 
-      abortRef.current = new AbortController();
+      // Determine if attachment is carried over from earlier in conversation
+      const attachmentCarriedOver = capturedImage
+        ? messages.some(m => m.imageUrl)
+        : false;
 
-      const response = await fetch(CHAT_URL, {
+      const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/hidro-ally-chat`;
+      const res = await fetch(CHAT_URL, {
         method: 'POST',
-        signal: abortRef.current.signal,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${sessionData.session.access_token}`,
         },
         body: JSON.stringify({
           type: 'chat',
-          messages: allMessages,
+          messages: apiHistory,
           dashboardAnalytics,
           edaReading,
           climateSnapshot,
           userName,
           imageBase64: capturedImage || undefined,
-          lastEpisodeInsight: localStorage.getItem('last_episode_insight'),
+          attachmentMime: capturedImage?.startsWith('data:') ? capturedImage.split(';')[0].split(':')[1] : undefined,
+          attachmentCarriedOver,
         }),
+        signal: abortRef.current?.signal,
       });
 
-      if (!response.ok) {
-        let errorMsg = 'Failed to get response';
-        try {
-          const errData = await response.json();
-          errorMsg = errData.error || errorMsg;
-        } catch {
-          errorMsg = `Server error: ${response.status}`;
-        }
-        throw new Error(errorMsg);
+      if (!res.ok || !res.body) {
+        toast.error('HidroAlly is having a moment — please try again');
+        setIsLoading(false);
+        return;
       }
 
-      // Streaming response — fix: only add bubble when first real token arrives
-      if (!response.body) throw new Error('No response body');
-      const reader  = response.body.getReader();
+      // Stream the response
+      const reader = res.body.getReader();
       const decoder = new TextDecoder();
-      let assistantContent = '';
+      let assistantText = '';
       let buffer = '';
-      let streamingStarted = false;
-      let assistantMsgIndex = -1;
 
+      setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+
+      // eslint-disable-next-line no-constant-condition
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
-        let nl: number;
-        while ((nl = buffer.indexOf('\n')) !== -1) {
-          let line = buffer.slice(0, nl);
-          buffer   = buffer.slice(nl + 1);
-          if (line.endsWith('\r')) line = line.slice(0, -1);
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
           if (!line.startsWith('data: ')) continue;
-          const json = line.slice(6).trim();
-          if (json === '[DONE]') break;
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') break;
           try {
-            const parsed  = JSON.parse(json);
-            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-            if (content) {
-              assistantContent += content;
-              if (!streamingStarted) {
-                streamingStarted = true;
-                setMessages(prev => {
-                  assistantMsgIndex = prev.length;
-                  return [...prev, { role: 'assistant', content: assistantContent }];
-                });
-              } else {
-                setMessages(prev => {
-                  const updated = [...prev];
-                  updated[updated.length - 1] = { role: 'assistant', content: assistantContent };
-                  return updated;
-                });
-              }
+            const parsed = JSON.parse(data) as { choices?: Array<{ delta?: { content?: string } }> };
+            const delta = parsed.choices?.[0]?.delta?.content || '';
+            if (delta) {
+              assistantText += delta;
+              setMessages(prev => {
+                const updated = [...prev];
+                updated[updated.length - 1] = { role: 'assistant', content: assistantText };
+                return updated;
+              });
             }
-          } catch { buffer = line + '\n' + buffer; break; }
+          } catch { /* skip malformed chunks */ }
         }
       }
 
+      setIsLoading(false);
+
+      // Check if the response triggers PDF generation
+      if (assistantText.includes('triggerPdf')) {
+        generatePDFReport();
+      }
+
+      // Save conversation
       if (convId) {
-        await saveMessages(convId, [...allMessages, { role: 'assistant', content: assistantContent }]);
+        const finalMessages = [...allMessages, { role: 'assistant' as const, content: assistantText }];
+        await saveMessages(convId, finalMessages);
       }
 
-      // Auto-speak the response if this came from voice chat
-      if (autoSpeak && assistantContent) {
-        // Small delay to let messages state settle
-        setTimeout(() => {
-          setMessages(prev => {
-            const idx = prev.length - 1;
-            speakMessage(assistantContent, idx);
-            return prev;
-          });
-        }, 200);
+      // Auto-speak if this came from voice chat
+      if (autoSpeak && assistantText) {
+        const newIdx = messages.length + 1;
+        autoSpeakIdxRef.current = newIdx;
+        try {
+          await playElevenLabsAudio(assistantText.slice(0, 500));
+        } catch {
+          // Fall back to browser speech if ElevenLabs fails
+          try {
+            speakProfessionally(assistantText.slice(0, 500));
+          } catch { /* silent fallback */ }
+        }
       }
 
-    } catch (error: any) {
-      if (error?.name === 'AbortError') {
-        // User stopped — remove any empty trailing bubble
-        setMessages(prev => {
-          const last = prev[prev.length - 1];
-          if (last?.role === 'assistant' && !last.content) return prev.slice(0, -1);
-          return prev;
-        });
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        setIsLoading(false);
         return;
       }
-      console.error('Chat error:', error);
-      toast.error('Failed to send message. Please try again.');
-      setMessages(prev => {
-        const last = prev[prev.length - 1];
-        if (last?.role === 'assistant' && !last.content) return prev.slice(0, -1);
-        return prev;
-      });
-    } finally {
+      console.error('HidroAlly send error:', err);
       setIsLoading(false);
+      toast.error('Something went wrong — please try again');
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
-  };
-
-  const climateAlert = sweatRisk === 'extreme' || sweatRisk === 'high';
-
+  // ── JSX ───────────────────────────────────────────────────────────────────
   return (
     <PageTransition>
       <div
-        className="h-[100dvh] w-full max-w-[100vw] overflow-x-hidden flex flex-col relative"
-        style={{ background: 'linear-gradient(160deg, #0a0a1e 0%, #0d1030 40%, #0a1520 100%)' }}
+        className="flex flex-col h-screen"
+        style={{
+          background: 'linear-gradient(135deg, #0a0a1e 0%, #0d1b2a 50%, #0a0a1e 100%)',
+        }}
       >
-        {/* Ambient glow */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{ background: 'radial-gradient(ellipse at 20% 20%, rgba(0,188,212,0.06) 0%, transparent 60%), radial-gradient(ellipse at 80% 80%, rgba(124,58,237,0.06) 0%, transparent 60%)' }}
-        />
-
-        {/* ── HEADER ──────────────────────────────────────────────────────────── */}
-        <div
-          className="relative z-10 px-4 py-3 flex items-center justify-between shrink-0"
-          style={{
-            background: 'rgba(255,255,255,0.03)',
-            backdropFilter: 'blur(20px)',
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
-          }}
-        >
-          <div className="flex items-center gap-3">
-            <div>
-              <h1 className="text-white font-black text-base leading-tight">HidroAlly</h1>
-              <p className="text-white/40 text-[10px]">World's first hyperhidrosis clinical companion</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            {edaReading && <EdaPill value={edaReading.value} phase={edaReading.phase} />}
-            {climateAlert && (
-              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-amber-900/40 border border-amber-500/40">
-                <AlertTriangle className="h-3 w-3 text-amber-400" />
-                <span className="text-[10px] font-bold text-amber-300">
-                  {sweatRisk === 'extreme' ? 'Extreme' : 'High'} Risk
-                </span>
-              </div>
-            )}
-            <button
-              onClick={handleNewChat}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:bg-white/10 text-white/50 hover:text-white/90 transition-all border border-white/10"
-            >
-              <PenSquare className="h-3.5 w-3.5" />
-              <span className="text-[10px] font-semibold">New chat</span>
-            </button>
-            <button
-              onClick={() => setHistoryOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:bg-white/10 text-white/50 hover:text-white/90 transition-all border border-white/10"
-            >
-              <History className="h-3.5 w-3.5" />
-              <span className="text-[10px] font-semibold">History</span>
-            </button>
-          </div>
-        </div>
-
-        {/* ── MESSAGES ─────────────────────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 relative z-10">
-          {messages.map((msg, i) => (
-            <MessageBubble
-              key={i}
-              message={msg}
-              index={i}
-              copiedIndex={copiedIndex}
-              speakingIndex={speakingIndex}
-              onCopy={handleCopy}
-              onSpeak={speakMessage}
-            />
-          ))}
-          {isLoading && messages[messages.length - 1]?.role === 'user' && <TypingIndicator />}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* ── WARRIOR REPORT GATE ─────────────────────────────────────────────── */}
-        {showSuggestions && dashboardAnalytics && (
-          <div className="relative z-10 px-4 mb-4">
-            <div
-              className="p-4 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md"
-              style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-teal-500/20 flex items-center justify-center">
-                    <FileText className="h-4 w-4 text-teal-300" />
-                  </div>
-                  <h3 className="text-white font-bold text-sm">Clinical Warrior Report</h3>
-                </div>
-                <button
-                  onClick={generatePDFReport}
-                  disabled={dashboardAnalytics.totalEpisodes < 5}
-                  className={`px-4 py-1.5 rounded-xl text-[11px] font-bold transition-all ${
-                    dashboardAnalytics.totalEpisodes < 5
-                      ? 'bg-white/10 text-white/30 cursor-not-allowed'
-                      : 'bg-teal-500 hover:bg-teal-400 text-white shadow-lg shadow-teal-500/20'
-                  }`}
-                >
-                  Generate PDF
-                </button>
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-[11px] text-white/60 leading-relaxed">
-                  {dashboardAnalytics.totalEpisodes < 5
-                    ? canGenerateReport(dashboardAnalytics.totalEpisodes).message
-                    : `Ready to share with your dermatologist. Based on ${dashboardAnalytics.totalEpisodes} logged episodes.`}
-                </p>
-                {dashboardAnalytics.totalEpisodes >= 5 && dashboardAnalytics.totalEpisodes < 10 && (
-                  <div className="flex items-center gap-1.5 text-[10px] text-amber-300 font-medium">
-                    <AlertTriangle className="h-3 w-3" />
-                    <span>Limited data accuracy — continue logging for a fuller picture.</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── SUGGESTION CHIPS ─────────────────────────────────────────────────── */}
-        {showSuggestions && messages.length <= 1 && (
-          <div className="relative z-10 px-4 pb-2">
-            <p className="text-[10px] text-white/30 uppercase tracking-widest mb-2 px-1">Ask me anything</p>
-            <div className="grid grid-cols-2 gap-2">
-              {SUGGESTION_PROMPTS.map((s, i) => (
-                <button
-                  key={i}
-                  onClick={() => handleSend(s.text)}
-                  className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs text-left transition-all hover:scale-[1.02]"
-                  style={{
-                    background: 'rgba(255,255,255,0.04)',
-                    backdropFilter: 'blur(8px)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    color: 'rgba(255,255,255,0.7)',
-                  }}
-                >
-                  <span className="text-base shrink-0">{s.icon}</span>
-                  <span className="leading-tight">{s.text}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ── INPUT AREA ───────────────────────────────────────────────────────── */}
-        <div
-          className="relative z-10 px-4 py-3 shrink-0"
-          style={{
-            background: 'rgba(255,255,255,0.03)',
-            backdropFilter: 'blur(20px)',
-            borderTop: '1px solid rgba(255,255,255,0.06)',
-          }}
-        >
-          {/* Pending image preview */}
-          {pendingImage && (
-            <div className="w-full flex items-center gap-2 px-1 pb-2">
-              <div className="relative inline-block">
-                <img src={pendingImage} alt="Attached" className="h-16 w-auto rounded-xl border border-white/20 object-cover" />
-                <button
-                  onClick={() => setPendingImage(null)}
-                  className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center"
-                >
-                  <X className="h-3 w-3 text-white" />
-                </button>
-              </div>
-              <span className="text-[10px] text-white/40">Image attached — send to analyse</span>
-            </div>
-          )}
-
-          <div className="flex items-end gap-2">
-            {/* Hidden file input */}
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/*,application/pdf"
-              className="hidden"
-              onChange={handleImageAttach}
-            />
-
-            {/* Unified voice button */}
-            <div className="relative shrink-0">
-              <button
-                onClick={() => isRecording ? stopVoiceChat() : isListening ? toggleVoice() : setVoiceMenuOpen((open) => !open)}
-                disabled={isProcessingVoice || isLoading}
-                title="Voice options"
-                className={`p-3 rounded-xl transition-all ${isRecording || isListening ? 'record-pulse' : ''} disabled:opacity-40 flex items-center justify-center`}
-                style={{
-                  background: isRecording || isListening
-                    ? 'rgba(239,68,68,0.25)'
-                    : 'linear-gradient(135deg, rgba(0,188,212,0.18), rgba(0,151,167,0.18))',
-                  border: isRecording || isListening
-                    ? '1px solid rgba(239,68,68,0.5)'
-                    : '1px solid rgba(0,188,212,0.35)',
-                }}
-              >
-                {isProcessingVoice ? <Loader2 className="h-4 w-4 text-teal-400 animate-spin" /> : isRecording || isListening ? <MicOff className="h-4 w-4 text-red-400" /> : <Mic className="h-4 w-4 text-teal-400" />}
-              </button>
-
-              {voiceMenuOpen && !isRecording && !isProcessingVoice && (
-                <div
-                  className="absolute bottom-14 left-0 z-30 w-56 rounded-2xl p-2 space-y-2"
-                  style={{ background: 'rgba(15,15,35,0.98)', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 16px 40px rgba(0,0,0,0.35)' }}
-                >
-                  <button
-                    onClick={() => { setVoiceMenuOpen(false); toggleVoice(); }}
-                    className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left text-sm text-white/80 hover:bg-white/10"
-                  >
-                    <Mic className="h-4 w-4 text-teal-300" /> Voice to text
-                  </button>
-                  <button
-                    onClick={() => { setVoiceMenuOpen(false); startVoiceChat(); }}
-                    className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left text-sm text-white/80 hover:bg-white/10"
-                  >
-                    <Volume2 className="h-4 w-4 text-teal-300" /> Speech to speech
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Image attach button */}
-            <button
-              onClick={() => imageInputRef.current?.click()}
-              title="Attach image or document"
-              className="p-3 rounded-xl transition-all shrink-0 hover:bg-white/10 text-white/30 hover:text-white/60"
-              style={{ border: '1px solid rgba(255,255,255,0.08)' }}
-            >
-              <ImagePlus className="h-4 w-4" />
-            </button>
-
-            {/* Text input */}
-            <div className="flex-1 relative">
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Ask me anything about hyperhidrosis..."
-                rows={1}
-                disabled={isLoading}
-                className="w-full px-4 py-3 rounded-2xl text-sm resize-none outline-none transition-all"
-                style={{
-                  background: 'rgba(255,255,255,0.06)',
-                  backdropFilter: 'blur(8px)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  color: 'rgba(255,255,255,0.9)',
-                  caretColor: '#00BCD4',
-                  minHeight: '48px',
-                  maxHeight: '120px',
-                }}
-                onInput={e => {
-                  const t = e.target as HTMLTextAreaElement;
-                  t.style.height = 'auto';
-                  t.style.height = Math.min(t.scrollHeight, 120) + 'px';
-                }}
-              />
-              {isListening && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
-                  <span className="text-[10px] text-red-400">Listening</span>
-                </div>
-              )}
-            </div>
-
-            {/* Send / Stop button */}
-            {isLoading ? (
-              <button
-                onClick={handleStop}
-                title="Stop generating"
-                className="p-3 rounded-xl shrink-0 transition-all"
-                style={{ background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.4)' }}
-              >
-                <Square className="h-4 w-4 text-red-400" />
-              </button>
-            ) : (
-              <button
-                onClick={() => handleSend()}
-                disabled={!input.trim() && !pendingImage}
-                className="p-3 rounded-xl shrink-0 transition-all disabled:opacity-30"
-                style={{
-                  background: (input.trim() || pendingImage)
-                    ? 'linear-gradient(135deg, #00BCD4, #0097A7)'
-                    : 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  boxShadow: (input.trim() || pendingImage) ? '0 4px 20px rgba(0,188,212,0.4)' : 'none',
-                }}
-              >
-                <Send className="h-4 w-4 text-white" />
-              </button>
-            )}
-          </div>
-
-          {/* Voice chat hint */}
-          <p className="text-center text-[10px] text-white/20 mt-2">
-            📞 Tap phone icon to speak with HidroAlly · {DAILY_VOICE_LIMIT - getVoiceUsageToday()} voice chats remaining today
-          </p>
-        </div>
-
-        {/* History overlay */}
-        {historyOpen && (
-          <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={() => setHistoryOpen(false)} />
-        )}
+        {/* History Sidebar */}
         <HistorySidebar
           open={historyOpen}
           conversations={conversations}
@@ -1652,8 +1391,262 @@ const HidroAlly = () => {
           onDelete={deleteConversation}
           onClose={() => setHistoryOpen(false)}
         />
+        {historyOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/40"
+            onClick={() => setHistoryOpen(false)}
+          />
+        )}
 
-        {/* Voice settings modal */}
+        {/* Header */}
+        <div
+          className="shrink-0 flex items-center justify-between px-4 py-3 border-b"
+          style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'rgba(10,10,30,0.8)', backdropFilter: 'blur(20px)' }}
+        >
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate(-1)}
+              className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-white/50 hover:text-white"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center neural-idle"
+              style={{ background: 'linear-gradient(135deg, #00BCD4, #0097A7)', boxShadow: '0 0 16px rgba(0,188,212,0.5)' }}
+            >
+              <Sparkles className="h-4 w-4 text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-white">HidroAlly</p>
+              <p className="text-[10px] text-teal-400">Your hyperhidrosis companion</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {edaReading && <EdaPill value={edaReading.value} phase={edaReading.phase} />}
+            <button
+              onClick={handleNewChat}
+              className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-white/50 hover:text-white"
+              title="New chat"
+            >
+              <PenSquare className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setHistoryOpen(true)}
+              className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-white/50 hover:text-white"
+              title="Chat history"
+            >
+              <History className="h-4 w-4" />
+            </button>
+            {dashboardAnalytics && (
+              <button
+                onClick={generatePDFReport}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold text-teal-300 border border-teal-500/40 hover:bg-teal-500/20 transition-colors"
+              >
+                <FileText className="h-3.5 w-3.5" /> Report
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+          {messages.map((message, index) => (
+            <MessageBubble
+              key={index}
+              message={message}
+              index={index}
+              copiedIndex={copiedIndex}
+              speakingIndex={speakingIndex}
+              onCopy={handleCopy}
+              onSpeak={speakMessage}
+            />
+          ))}
+          {isLoading && <TypingIndicator />}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Suggestion prompts */}
+        {showSuggestions && messages.length <= 1 && !isLoading && (
+          <div className="shrink-0 px-4 pb-2">
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              {SUGGESTION_PROMPTS.map((prompt, i) => (
+                <button
+                  key={i}
+                  onClick={() => { setInput(prompt.text); textareaRef.current?.focus(); }}
+                  className="shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-white/70 hover:text-white transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  style={{
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    backdropFilter: 'blur(8px)',
+                  }}
+                >
+                  <span>{prompt.icon}</span>
+                  <span className="whitespace-nowrap">{prompt.text}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Input area */}
+        <div
+          className="shrink-0 px-4 py-3 border-t"
+          style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'rgba(10,10,30,0.9)', backdropFilter: 'blur(20px)' }}
+        >
+          {/* Voice status banners */}
+          {isRecording && (
+            <div className="mb-2 flex items-center justify-between px-3 py-2 rounded-xl bg-red-500/20 border border-red-500/40">
+              <div className="flex items-center gap-2">
+                <div className="flex gap-0.5 items-end h-4">
+                  {[1,2,3,4,5].map(i => (
+                    <div key={i} className={`w-0.5 bg-red-400 rounded-full wave-bar-${i}`} />
+                  ))}
+                </div>
+                <span className="text-xs font-bold text-red-300">Recording — tap stop when done</span>
+              </div>
+              <button
+                onClick={stopVoiceChat}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-red-500 text-white text-xs font-bold active:scale-95 record-pulse"
+              >
+                <Square className="h-3 w-3 fill-white" /> Stop
+              </button>
+            </div>
+          )}
+
+          {isProcessingVoice && (
+            <div className="mb-2 flex items-center gap-2 px-3 py-2 rounded-xl bg-teal-500/20 border border-teal-500/40">
+              <Loader2 className="h-3.5 w-3.5 text-teal-400 animate-spin" />
+              <span className="text-xs font-bold text-teal-300">Processing your voice...</span>
+            </div>
+          )}
+
+          {/* Pending image preview */}
+          {pendingImage && (
+            <div className="mb-2 relative inline-block">
+              <img
+                src={pendingImage}
+                alt="Pending"
+                className="h-16 w-auto rounded-xl object-cover"
+                style={{ border: '1px solid rgba(255,255,255,0.2)' }}
+              />
+              <button
+                onClick={() => setPendingImage(null)}
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center"
+              >
+                <X className="h-3 w-3 text-white" />
+              </button>
+            </div>
+          )}
+
+          <div className="flex items-end gap-2">
+            {/* Mic button — real-time Web Speech API */}
+            <button
+              onClick={toggleVoice}
+              className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 ${
+                isListening
+                  ? 'bg-teal-500/30 border border-teal-500/60 record-pulse'
+                  : 'hover:bg-white/10'
+              }`}
+              style={isListening ? {} : { border: '1px solid rgba(255,255,255,0.1)' }}
+              title={isListening ? 'Tap to stop' : 'Tap to speak'}
+            >
+              {isListening
+                ? <MicOff className="h-4 w-4 text-teal-400" />
+                : <Mic className="h-4 w-4 text-white/50" />}
+            </button>
+
+            {/* Image attach */}
+            <button
+              onClick={() => imageInputRef.current?.click()}
+              className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center hover:bg-white/10 transition-all active:scale-95"
+              style={{ border: '1px solid rgba(255,255,255,0.1)' }}
+              title="Attach image or PDF"
+            >
+              <ImagePlus className="h-4 w-4 text-white/50" />
+            </button>
+            <input ref={imageInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleImageAttach} />
+
+            {/* Text input */}
+            <div className="flex-1 relative">
+              {isListening && (
+                <div className="absolute -top-6 left-0 flex items-center gap-1.5">
+                  <div className="flex gap-0.5 items-end h-3">
+                    {[1,2,3,4,5].map(i => (
+                      <div key={i} className={`w-0.5 bg-teal-400 rounded-full wave-bar-${i}`} />
+                    ))}
+                  </div>
+                  <span className="text-[10px] text-teal-400 font-semibold">Listening...</span>
+                </div>
+              )}
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                placeholder={isListening ? 'Speak now — words appear here...' : 'Ask HidroAlly anything...'}
+                rows={1}
+                className="w-full resize-none rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/30 outline-none transition-all"
+                style={{
+                  background: 'rgba(255,255,255,0.06)',
+                  border: isListening ? '1px solid rgba(0,188,212,0.5)' : '1px solid rgba(255,255,255,0.1)',
+                  maxHeight: '120px',
+                  lineHeight: '1.5',
+                }}
+              />
+            </div>
+
+            {/* Voice chat button */}
+            <button
+              onClick={isRecording ? stopVoiceChat : startVoiceChat}
+              disabled={isProcessingVoice}
+              className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 ${
+                isRecording
+                  ? 'bg-red-500/30 border border-red-500/60 record-pulse'
+                  : isProcessingVoice
+                  ? 'opacity-50 cursor-not-allowed'
+                  : 'hover:bg-white/10'
+              }`}
+              style={isRecording || isProcessingVoice ? {} : { border: '1px solid rgba(255,255,255,0.1)' }}
+              title={isRecording ? 'Stop recording' : 'Start voice chat'}
+            >
+              {isRecording
+                ? <Square className="h-4 w-4 text-red-400 fill-red-400" />
+                : isProcessingVoice
+                ? <Loader2 className="h-4 w-4 text-teal-400 animate-spin" />
+                : <AlertTriangle className="h-4 w-4 text-white/50 rotate-180" />}
+            </button>
+
+            {/* Send / Stop */}
+            <button
+              onClick={isLoading ? handleStop : handleSend}
+              disabled={!isLoading && !input.trim() && !pendingImage}
+              className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 disabled:opacity-30"
+              style={{
+                background: isLoading
+                  ? 'rgba(239,68,68,0.3)'
+                  : input.trim() || pendingImage
+                  ? 'linear-gradient(135deg, #00BCD4, #0097A7)'
+                  : 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                boxShadow: input.trim() && !isLoading ? '0 4px 16px rgba(0,188,212,0.3)' : 'none',
+              }}
+            >
+              {isLoading
+                ? <Square className="h-3.5 w-3.5 text-red-400 fill-red-400" />
+                : <Send className="h-4 w-4 text-white" />}
+            </button>
+          </div>
+
+          <p className="text-[10px] text-white/20 text-center mt-2">
+            HidroAlly can make mistakes. Always consult a healthcare professional.
+          </p>
+        </div>
       </div>
     </PageTransition>
   );
