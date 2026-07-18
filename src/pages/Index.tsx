@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
-const SweatSmartLanding = () => {
+const HidroAllyLanding = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const [scrolled, setScrolled] = useState(false);
@@ -1149,10 +1149,10 @@ const SweatSmartLanding = () => {
         <a href="/" className="logo">
           <img 
             src="/sweatsmart-logo.png"
-            alt="SweatSmart Logo" 
+            alt="HidroAlly Logo"
             className="logo-img"
           />
-          <span className="logo-text">SweatSmart</span>
+          <span className="logo-text">HidroAlly</span>
         </a>
         <div className="nav-links">
           <a href="/register" className="btn-primary">Get Started</a>
@@ -1356,7 +1356,7 @@ const SweatSmartLanding = () => {
             with data-driven confidence?
           </div>
           <p className="cta-sub">
-            Join a global community of Warriors using SweatSmart to quantify their experience, optimize their daily environment, and finally achieve the dignity of being understood.
+            Join a global community of Warriors using HidroAlly to quantify their experience, optimize their daily environment, and finally achieve the dignity of being understood.
           </p>
           <div className="cta-buttons">
             <a href="/register" className="btn-primary-lg">Start your journey free</a>
@@ -1371,10 +1371,10 @@ const SweatSmartLanding = () => {
           <a href="/" className="logo" style={{ textDecoration: 'none' }}>
             <img 
               src="/sweatsmart-logo.png"
-              alt="SweatSmart Logo" 
+              alt="HidroAlly Logo"
               className="footer-logo-img"
             />
-            <span className="logo-text" style={{ fontSize: 16 }}>SweatSmart</span>
+            <span className="logo-text" style={{ fontSize: 16 }}>HidroAlly</span>
           </a>
           <div className="footer-links">
             <a href="/privacy" className="footer-link">Privacy</a>
@@ -1391,10 +1391,10 @@ const SweatSmartLanding = () => {
                   <img src="https://statics.startupbase.io/site/badges/launched-on-sb-dark.svg" alt="Launched on StartupBase" style={{ height: '54px', width: 'auto' }} />
                 </a>
                 <a href="https://www.producthunt.com/products/sweatsmart?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-sweatsmart" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                  <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1194807&theme=dark" alt="SweatSmart - The world’s first AI clinic-in-a-pocket for hyperhidrosis | Product Hunt" style={{ height: '54px', width: 'auto' }} />
+                  <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1194807&theme=dark" alt="HidroAlly - The world’s first AI clinic-in-a-pocket for hyperhidrosis | Product Hunt" style={{ height: '54px', width: 'auto' }} />
                 </a>
                 <a href="https://techbasedirectory.com/product/sweatsmart?utm_source=featured_embed" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                  <img src="https://techbasedirectory.com/api/featured-embed" alt="SweatSmart | Techbasedirectory.com" width="200" height="60" />
+                  <img src="https://techbasedirectory.com/api/featured-embed" alt="HidroAlly | Techbasedirectory.com" width="200" height="60" />
                 </a>
                 <a href="https://www.f6s.com/giftovate-therapeutics-ltd" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity" style={{ backgroundColor: 'white', borderRadius: '8px', padding: '4px' }}>
                   <img src="/f6s-award.png" alt="F6S Top Company AI" style={{ height: '46px', width: 'auto' }} />
@@ -1406,10 +1406,10 @@ const SweatSmartLanding = () => {
                   <img src="https://statics.startupbase.io/site/badges/launched-on-sb-dark.svg" alt="Launched on StartupBase" style={{ height: '54px', width: 'auto' }} />
                 </a>
                 <a href="https://www.producthunt.com/products/sweatsmart?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-sweatsmart" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                  <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1194807&theme=dark" alt="SweatSmart - The world’s first AI clinic-in-a-pocket for hyperhidrosis | Product Hunt" style={{ height: '54px', width: 'auto' }} />
+                  <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1194807&theme=dark" alt="HidroAlly - The world’s first AI clinic-in-a-pocket for hyperhidrosis | Product Hunt" style={{ height: '54px', width: 'auto' }} />
                 </a>
                 <a href="https://techbasedirectory.com/product/sweatsmart?utm_source=featured_embed" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                  <img src="https://techbasedirectory.com/api/featured-embed" alt="SweatSmart | Techbasedirectory.com" width="200" height="60" />
+                  <img src="https://techbasedirectory.com/api/featured-embed" alt="HidroAlly | Techbasedirectory.com" width="200" height="60" />
                 </a>
                 <a href="https://www.f6s.com/giftovate-therapeutics-ltd" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity" style={{ backgroundColor: 'white', borderRadius: '8px', padding: '4px' }}>
                   <img src="/f6s-award.png" alt="F6S Top Company AI" style={{ height: '46px', width: 'auto' }} />
@@ -1421,10 +1421,10 @@ const SweatSmartLanding = () => {
                   <img src="https://statics.startupbase.io/site/badges/launched-on-sb-dark.svg" alt="Launched on StartupBase" style={{ height: '54px', width: 'auto' }} />
                 </a>
                 <a href="https://www.producthunt.com/products/sweatsmart?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-sweatsmart" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                  <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1194807&theme=dark" alt="SweatSmart - The world’s first AI clinic-in-a-pocket for hyperhidrosis | Product Hunt" style={{ height: '54px', width: 'auto' }} />
+                  <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1194807&theme=dark" alt="HidroAlly - The world’s first AI clinic-in-a-pocket for hyperhidrosis | Product Hunt" style={{ height: '54px', width: 'auto' }} />
                 </a>
                 <a href="https://techbasedirectory.com/product/sweatsmart?utm_source=featured_embed" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                  <img src="https://techbasedirectory.com/api/featured-embed" alt="SweatSmart | Techbasedirectory.com" width="200" height="60" />
+                  <img src="https://techbasedirectory.com/api/featured-embed" alt="HidroAlly | Techbasedirectory.com" width="200" height="60" />
                 </a>
                 <a href="https://www.f6s.com/giftovate-therapeutics-ltd" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity" style={{ backgroundColor: 'white', borderRadius: '8px', padding: '4px' }}>
                   <img src="/f6s-award.png" alt="F6S Top Company AI" style={{ height: '46px', width: 'auto' }} />
@@ -1436,10 +1436,10 @@ const SweatSmartLanding = () => {
                   <img src="https://statics.startupbase.io/site/badges/launched-on-sb-dark.svg" alt="Launched on StartupBase" style={{ height: '54px', width: 'auto' }} />
                 </a>
                 <a href="https://www.producthunt.com/products/sweatsmart?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-sweatsmart" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                  <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1194807&theme=dark" alt="SweatSmart - The world’s first AI clinic-in-a-pocket for hyperhidrosis | Product Hunt" style={{ height: '54px', width: 'auto' }} />
+                  <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1194807&theme=dark" alt="HidroAlly - The world’s first AI clinic-in-a-pocket for hyperhidrosis | Product Hunt" style={{ height: '54px', width: 'auto' }} />
                 </a>
                 <a href="https://techbasedirectory.com/product/sweatsmart?utm_source=featured_embed" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                  <img src="https://techbasedirectory.com/api/featured-embed" alt="SweatSmart | Techbasedirectory.com" width="200" height="60" />
+                  <img src="https://techbasedirectory.com/api/featured-embed" alt="HidroAlly | Techbasedirectory.com" width="200" height="60" />
                 </a>
                 <a href="https://www.f6s.com/giftovate-therapeutics-ltd" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity" style={{ backgroundColor: 'white', borderRadius: '8px', padding: '4px' }}>
                   <img src="/f6s-award.png" alt="F6S Top Company AI" style={{ height: '46px', width: 'auto' }} />
@@ -1448,10 +1448,10 @@ const SweatSmartLanding = () => {
             </div>
           </div>
         </div>
-        <p className="footer-copy">© {new Date().getFullYear()} SweatSmart by Giftovate Therapeutics Ltd. All rights reserved.</p>
+        <p className="footer-copy">© {new Date().getFullYear()} HidroAlly by Giftovate Therapeutics Ltd. All rights reserved.</p>
       </footer>
     </div>
   );
 };
 
-export default SweatSmartLanding;
+export default HidroAllyLanding;
