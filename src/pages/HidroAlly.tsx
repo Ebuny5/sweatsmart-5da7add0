@@ -454,7 +454,7 @@ const HidroAlly = () => {
 
   const dashboardAnalytics = useMemo(() => {
     if (!rawEpisodes?.length) return null;
-    const episodes = rawEpisodes.map(ep => ({
+    const episodes = rawEpisodes.filter(ep => !ep.is_dry_day).map(ep => ({
       ...ep,
       datetime: new Date(ep.datetime),
       severityLevel: Number(ep.severityLevel),
@@ -1017,7 +1017,9 @@ const HidroAlly = () => {
                 body: { audio_base64: base64, mode: 'transcribe' },
               });
 
-              if (error) throw error;
+              if (error) {
+                throw new Error(error.message || 'Failed to transcribe audio with AssemblyAI');
+              }
 
               const transcript = data?.transcript?.trim();
 
@@ -1074,7 +1076,7 @@ const HidroAlly = () => {
       const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
       const mimeType = candidates.find((m) => (window as any).MediaRecorder?.isTypeSupported?.(m)) || 'audio/webm';
       const recorder = new MediaRecorder(stream, { mimeType });
-      let audioChunks: Blob[] = [];
+      const audioChunks: Blob[] = [];
 
       recorder.ondataavailable = e => {
         if (e.data.size > 0) audioChunks.push(e.data);
@@ -1113,7 +1115,7 @@ const HidroAlly = () => {
       };
 
       recognitionRef.current = recorder;
-      recorder.start();
+      recorder.start(100);
       setIsListening(true);
     }).catch(() => {
       toast.error('Microphone access denied or unavailable');
@@ -1485,38 +1487,6 @@ const HidroAlly = () => {
           </div>
         )}
 
-        {/* ── VOICE RECORDING OVERLAY ───────────────────────────────────────────── */}
-        {(isRecording || isProcessingVoice) && (
-          <div
-            className="relative z-10 mx-4 mb-2 px-4 py-3 rounded-2xl flex items-center gap-3"
-            style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)' }}
-          >
-            {isRecording ? (
-              <>
-                <div className="flex items-end gap-0.5 h-5">
-                  <div className="w-1 rounded-full bg-red-400 wave-bar-1" />
-                  <div className="w-1 rounded-full bg-red-400 wave-bar-2" />
-                  <div className="w-1 rounded-full bg-red-400 wave-bar-3" />
-                  <div className="w-1 rounded-full bg-red-400 wave-bar-4" />
-                  <div className="w-1 rounded-full bg-red-400 wave-bar-5" />
-                </div>
-                <span className="text-xs text-red-300 flex-1">Listening... tap stop when done</span>
-                <button
-                  onClick={stopVoiceChat}
-                  className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-red-300 border border-red-500/40 hover:bg-red-500/20 transition-colors"
-                >
-                  Stop
-                </button>
-              </>
-            ) : (
-              <>
-                <Loader2 className="h-4 w-4 text-teal-400 animate-spin" />
-                <span className="text-xs text-teal-300">Processing your voice...</span>
-              </>
-            )}
-          </div>
-        )}
-
         {/* ── INPUT AREA ───────────────────────────────────────────────────────── */}
         <div
           className="relative z-10 px-4 py-3 shrink-0"
@@ -1555,10 +1525,10 @@ const HidroAlly = () => {
             {/* Unified voice button */}
             <div className="relative shrink-0">
               <button
-                onClick={() => isRecording ? stopVoiceChat() : setVoiceMenuOpen((open) => !open)}
+                onClick={() => isRecording ? stopVoiceChat() : isListening ? toggleVoice() : setVoiceMenuOpen((open) => !open)}
                 disabled={isProcessingVoice || isLoading}
                 title="Voice options"
-                className={`p-3 rounded-xl transition-all ${isRecording ? 'record-pulse' : ''} disabled:opacity-40`}
+                className={`p-3 rounded-xl transition-all ${isRecording || isListening ? 'record-pulse' : ''} disabled:opacity-40 flex items-center justify-center`}
                 style={{
                   background: isRecording || isListening
                     ? 'rgba(239,68,68,0.25)'
@@ -1568,7 +1538,7 @@ const HidroAlly = () => {
                     : '1px solid rgba(0,188,212,0.35)',
                 }}
               >
-                {isRecording || isListening ? <MicOff className="h-4 w-4 text-red-400" /> : <Mic className="h-4 w-4 text-teal-400" />}
+                {isProcessingVoice ? <Loader2 className="h-4 w-4 text-teal-400 animate-spin" /> : isRecording || isListening ? <MicOff className="h-4 w-4 text-red-400" /> : <Mic className="h-4 w-4 text-teal-400" />}
               </button>
 
               {voiceMenuOpen && !isRecording && !isProcessingVoice && (

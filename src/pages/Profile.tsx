@@ -300,7 +300,7 @@ const Profile = () => {
         {/* ── STATS CARDS ──────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-4 mx-4 -mt-8 mb-6 relative z-10">
           <StatCard
-            value={episodes.length}
+            value={episodes.filter(e => !e.is_dry_day).length}
             label="Episodes Logged"
             emoji="📋"
             gradient="bg-gradient-to-br from-white to-blue-50 shadow-md border border-blue-100"
