@@ -330,9 +330,7 @@ const HidroAlly = () => {
 
   // ── Voice state ───────────────────────────────────────────────────────────
   const [speakingIndex, setSpeakingIndex]     = useState<number | null>(null);
-  const [isRecording, setIsRecording]         = useState(false);
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
-  const [voiceMenuOpen, setVoiceMenuOpen]     = useState(false);
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const messagesEndRef   = useRef<HTMLDivElement>(null);
@@ -340,7 +338,6 @@ const HidroAlly = () => {
   const textareaRef      = useRef<HTMLTextAreaElement>(null);
   const imageInputRef    = useRef<HTMLInputElement>(null);
   const abortRef         = useRef<AbortController | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef   = useRef<Blob[]>([]);
   const currentAudioRef  = useRef<{ audio: HTMLAudioElement; url: string } | null>(null);
   const ttsAbortControllerRef = useRef<AbortController | null>(null);
@@ -966,129 +963,41 @@ const HidroAlly = () => {
     } catch { /* greeting failing silently is fine */ }
   }, []);
 
-  // ── Gemini STT → Chat → browser speech readout (full voice chat) ──────────
-  const startVoiceChat = async () => {
-    if (getVoiceUsageToday() >= DAILY_VOICE_LIMIT) {
-      toast.error('Daily voice limit reached 💙 Upgrade to Warrior Plan for unlimited voice chat');
-      return;
-    }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-      // Play greeting FIRST, then start recording
-      await playVoiceGreeting();
-
-      // Detect best supported MIME type for Android
-      const mimeType =
-        MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' :
-        MediaRecorder.isTypeSupported('audio/webm')             ? 'audio/webm' :
-        MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')  ? 'audio/ogg;codecs=opus' :
-        MediaRecorder.isTypeSupported('audio/mp4')              ? 'audio/mp4' :
-        '';
-
-      const recorderOptions = mimeType ? { mimeType } : {};
-      const recorder = new MediaRecorder(stream, recorderOptions);
-      audioChunksRef.current = [];
-
-      // Use 100ms timeslice — critical for Android to avoid empty blobs
-      recorder.ondataavailable = e => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
-      recorder.onstop = async () => {
-        stream.getTracks().forEach(t => t.stop());
-        setIsRecording(false);
-        setIsProcessingVoice(true);
-
-        try {
-          const audioBlob = new Blob(audioChunksRef.current, { type: mimeType || 'audio/webm' });
-
-          // Guard: reject if too small (empty recording)
-          if (audioBlob.size < 500) {
-            setIsProcessingVoice(false);
-            toast.error("Recording too short — please try again and speak clearly");
-            return;
-          }
-
-          const reader = new FileReader();
-          reader.onload = async () => {
-            try {
-              const base64 = (reader.result as string).split(',')[1];
-
-              // Step 1 — STT: audio → transcript via AssemblyAI (voice-transcribe edge function)
-              const { data, error } = await supabase.functions.invoke('voice-transcribe', {
-                body: { audio_base64: base64, mode: 'transcribe' },
-              });
-
-              if (error) {
-                throw new Error(error.message || 'Failed to transcribe audio with AssemblyAI');
-              }
-
-              const transcript = data?.transcript?.trim();
-
-              if (!transcript) {
-                setIsProcessingVoice(false);
-                toast.error("Couldn't catch that — please speak clearly and try again");
-                return;
-              }
-
-              setIsProcessingVoice(false);
-              incrementVoiceUsage();
-
-              // Step 2 — Send transcript to chat logic + auto-speak response
-              await handleSend(transcript, true);
-            } catch (e) {
-              console.error('Voice chat error:', e);
-              setIsProcessingVoice(false);
-              toast.error('Voice processing failed — please try again');
-            }
-          };
-          reader.onerror = () => { setIsProcessingVoice(false); toast.error('Audio read failed'); };
-          reader.readAsDataURL(audioBlob);
-        } catch (e) {
-          setIsProcessingVoice(false);
-          toast.error('Could not process audio');
-        }
-      };
-
-      mediaRecorderRef.current = recorder;
-      recorder.start(100); // 100ms timeslice — essential for Android
-      setIsRecording(true);
-    } catch (err: any) {
-      if (err?.name === 'NotAllowedError') {
-        toast.error('Microphone access denied — allow microphone in browser settings');
-      } else {
-        toast.error('Could not start recording — please try again');
-      }
-    }
-  };
-
-  const stopVoiceChat = () => {
-    mediaRecorderRef.current?.stop();
-  };
-
   // ── Browser mic for typing via AssemblyAI ──────────────────────────────────
-  const toggleVoice = () => {
+  const toggleVoice = async () => {
     if (isListening) {
       recognitionRef.current?.stop();
       setIsListening(false);
       return;
     }
 
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
       const mimeType = candidates.find((m) => (window as any).MediaRecorder?.isTypeSupported?.(m)) || 'audio/webm';
       const recorder = new MediaRecorder(stream, { mimeType });
-      const audioChunks: Blob[] = [];
+      audioChunksRef.current = [];
 
       recorder.ondataavailable = e => {
-        if (e.data.size > 0) audioChunks.push(e.data);
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
       };
 
       recorder.onstop = async () => {
         stream.getTracks().forEach(t => t.stop());
         setIsListening(false);
-        const audioBlob = new Blob(audioChunks, { type: mimeType });
+        setIsProcessingVoice(true);
+
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+
+        if (audioBlob.size < 500) {
+          setIsProcessingVoice(false);
+          toast.error("Recording too short — please speak clearly");
+          return;
+        }
 
         const loadingToast = toast.loading('Transcribing...');
         const reader = new FileReader();
+
         reader.onloadend = async () => {
           try {
             const base64 = (reader.result as string).split(',')[1];
@@ -1097,29 +1006,36 @@ const HidroAlly = () => {
             });
 
             toast.dismiss(loadingToast);
+            setIsProcessingVoice(false);
+
             if (error) throw error;
             if (data?.transcript) {
               setInput(p => p + (p ? ' ' : '') + data.transcript);
             }
           } catch (e) {
             toast.dismiss(loadingToast);
+            setIsProcessingVoice(false);
             console.error('AssemblyAI transcribe error', e);
             toast.error('Could not transcribe audio');
           }
         };
+
         reader.onerror = () => {
           toast.dismiss(loadingToast);
+          setIsProcessingVoice(false);
           toast.error('Could not read audio data');
         };
+
         reader.readAsDataURL(audioBlob);
       };
 
       recognitionRef.current = recorder;
       recorder.start(100);
       setIsListening(true);
-    }).catch(() => {
+    } catch (err) {
       toast.error('Microphone access denied or unavailable');
-    });
+      console.error("Mic error", err);
+    }
   };
 
   const handleStop = () => {
@@ -1525,41 +1441,21 @@ const HidroAlly = () => {
             {/* Unified voice button */}
             <div className="relative shrink-0">
               <button
-                onClick={() => isRecording ? stopVoiceChat() : isListening ? toggleVoice() : setVoiceMenuOpen((open) => !open)}
+                onClick={toggleVoice}
                 disabled={isProcessingVoice || isLoading}
-                title="Voice options"
-                className={`p-3 rounded-xl transition-all ${isRecording || isListening ? 'record-pulse' : ''} disabled:opacity-40 flex items-center justify-center`}
+                title="Voice dictation"
+                className={`p-3 rounded-xl transition-all ${isListening ? 'record-pulse' : ''} disabled:opacity-40 flex items-center justify-center`}
                 style={{
-                  background: isRecording || isListening
+                  background: isListening
                     ? 'rgba(239,68,68,0.25)'
                     : 'linear-gradient(135deg, rgba(0,188,212,0.18), rgba(0,151,167,0.18))',
-                  border: isRecording || isListening
+                  border: isListening
                     ? '1px solid rgba(239,68,68,0.5)'
                     : '1px solid rgba(0,188,212,0.35)',
                 }}
               >
-                {isProcessingVoice ? <Loader2 className="h-4 w-4 text-teal-400 animate-spin" /> : isRecording || isListening ? <MicOff className="h-4 w-4 text-red-400" /> : <Mic className="h-4 w-4 text-teal-400" />}
+                {isProcessingVoice ? <Loader2 className="h-4 w-4 text-teal-400 animate-spin" /> : isListening ? <MicOff className="h-4 w-4 text-red-400" /> : <Mic className="h-4 w-4 text-teal-400" />}
               </button>
-
-              {voiceMenuOpen && !isRecording && !isProcessingVoice && (
-                <div
-                  className="absolute bottom-14 left-0 z-30 w-56 rounded-2xl p-2 space-y-2"
-                  style={{ background: 'rgba(15,15,35,0.98)', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 16px 40px rgba(0,0,0,0.35)' }}
-                >
-                  <button
-                    onClick={() => { setVoiceMenuOpen(false); toggleVoice(); }}
-                    className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left text-sm text-white/80 hover:bg-white/10"
-                  >
-                    <Mic className="h-4 w-4 text-teal-300" /> Voice to text
-                  </button>
-                  <button
-                    onClick={() => { setVoiceMenuOpen(false); startVoiceChat(); }}
-                    className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left text-sm text-white/80 hover:bg-white/10"
-                  >
-                    <Volume2 className="h-4 w-4 text-teal-300" /> Speech to speech
-                  </button>
-                </div>
-              )}
             </div>
 
             {/* Image attach button */}
@@ -1598,12 +1494,6 @@ const HidroAlly = () => {
                   t.style.height = Math.min(t.scrollHeight, 120) + 'px';
                 }}
               />
-              {isListening && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
-                  <span className="text-[10px] text-red-400">Listening</span>
-                </div>
-              )}
             </div>
 
             {/* Send / Stop button */}
@@ -1634,10 +1524,6 @@ const HidroAlly = () => {
             )}
           </div>
 
-          {/* Voice chat hint */}
-          <p className="text-center text-[10px] text-white/20 mt-2">
-            📞 Tap phone icon to speak with HidroAlly · {DAILY_VOICE_LIMIT - getVoiceUsageToday()} voice chats remaining today
-          </p>
         </div>
 
         {/* History overlay */}
