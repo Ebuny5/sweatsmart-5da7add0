@@ -88,10 +88,10 @@ const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
             </div>
             <div>
               <h1 className="text-white text-xl font-black tracking-tight leading-none drop-shadow-md">
-                SweatSmart
+                HidroAlly
               </h1>
               <p className="text-white/80 text-xs font-bold leading-none mt-0.5 drop-shadow-md">
-                {user ? "Hyperhidrosis Warrior" : "Hyperhidrosis Tracker"}
+                Health Companion
               </p>
             </div>
           </div>
