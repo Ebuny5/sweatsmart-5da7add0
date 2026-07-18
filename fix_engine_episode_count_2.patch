@@ -1,0 +1,11 @@
+--- src/components/recommendationEngine.ts
++++ src/components/recommendationEngine.ts
+@@ -1055,7 +1055,7 @@
+     notes,
+     climate,
+     isDryDay,
+-    episodeCount: Math.floor(Date.now() / 1000) % 50,
++    episodeCount: actualCount,
+   });
+   return result;
+ }

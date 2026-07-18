@@ -1,0 +1,38 @@
+--- src/utils/hdssGauger.ts
++++ src/utils/hdssGauger.ts
+@@ -29,23 +29,23 @@
+
+   // 1. Get the latest log (within 6 hours)
+   const latestLocalLog = [...localLogs]
+-    .filter(l => l.timestamp >= sixHoursAgo)
++    .filter(l => l.timestamp >= sixHoursAgo && !l.is_dry_day)
+     .sort((a, b) => b.timestamp - a.timestamp)[0];
+
+   const latestEpisode = [...episodes]
+-    .filter(e => new Date(e.date).getTime() >= sixHoursAgo)
++    .filter(e => new Date(e.date).getTime() >= sixHoursAgo && !e.is_dry_day)
+     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+
+   let currentLevel: number = 2; // Default baseline if nothing found
+
+   if (latestLocalLog) {
+-    currentLevel = latestLocalLog.hdssLevel;
++    currentLevel = latestLocalLog.hdssLevel || (latestLocalLog as any).severityLevel || 2;
+   } else if (latestEpisode) {
+     currentLevel = latestEpisode.severity;
+   } else {
+     // Fallback to absolute last known if none in 6h
+-    const lastAnyLog = [...localLogs].sort((a, b) => b.timestamp - a.timestamp)[0];
+-    const lastAnyEpisode = [...episodes].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
++    const lastAnyLog = [...localLogs].filter(l => !l.is_dry_day).sort((a, b) => b.timestamp - a.timestamp)[0];
++    const lastAnyEpisode = [...episodes].filter(e => !e.is_dry_day).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+
+     const lastLogTime = lastAnyLog?.timestamp || 0;
+     const lastEpTime = lastAnyEpisode ? new Date(lastAnyEpisode.date).getTime() : 0;
+
+     if (lastLogTime > lastEpTime && lastAnyLog) {
+-        currentLevel = lastAnyLog.hdssLevel;
++        currentLevel = lastAnyLog.hdssLevel || (lastAnyLog as any).severityLevel || 2;
+     } else if (lastAnyEpisode) {
+         currentLevel = lastAnyEpisode.severity;
+     }

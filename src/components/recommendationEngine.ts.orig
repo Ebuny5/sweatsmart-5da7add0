@@ -1056,7 +1056,7 @@ export function generateFallbackInsights(
     notes,
     climate,
     isDryDay,
-    episodeCount: actualCount,
+    episodeCount: Math.floor(Date.now() / 1000) % 50,
   });
   return result;
 }
