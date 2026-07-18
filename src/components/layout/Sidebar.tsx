@@ -183,7 +183,7 @@ const Sidebar: React.FC = () => {
       <div className="h-0.5 bg-gradient-to-r from-violet-400 via-pink-400 to-amber-400" />
       <div className="p-4">
         <div className="rounded-xl bg-gradient-to-br from-violet-50 to-pink-50 border border-purple-100 p-3 text-center">
-          <p className="text-xs font-bold text-purple-700">🏅 HidroAlly Health Companion</p>
+          <p className="text-xs font-bold text-purple-700">🏅 HidroAlly Hyperhidrosis Companion</p>
           <p className="text-[10px] text-gray-500 mt-0.5">Track · Understand · Manage</p>
         </div>
       </div>
