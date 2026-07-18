@@ -215,6 +215,66 @@ body {
   animation: match-pulse 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
+.brand-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.2;
+}
+
+.brand-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+  padding: 0;
+}
+
+.brand-subtitle-1 {
+  font-size: 12px;
+  font-weight: 500;
+  margin: 2px 0 0 0;
+  letter-spacing: 0.5px;
+}
+
+.brand-subtitle-2 {
+  font-size: 12px;
+  font-weight: 400;
+  margin: 0;
+}
+
+/* Container holding both buttons */
+.auth-buttons-container {
+  display: flex;
+  align-items: center;
+  gap: 12px; /* Uniform spacing between buttons */
+}
+/* Base button styles to ensure identical shapes */
+.nav-btn {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 20px; /* Forces identical inner sizing */
+  border-radius: 20px; /* Matching clean pill shape */
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px; /* Guarantees identical heights */
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+/* Custom, styled Sign Up button */
+.btn-signup {
+  background-color: #E2D3F5; /* Light purple fill from your design */
+  color: #4A154B; /* Dark text for contrast */
+  border: none;
+}
+/* Upgraded Login button to match shape and height */
+.btn-login {
+  background-color: transparent;
+  color: #FFFFFF; /* Clean white text */
+  border: 2px solid #FFFFFF; /* Outlined border gives it identical structure */
+}
+
 /* Marquee for Landing Page Footer Badges */
 .footer-badges-marquee {
   width: 100%;

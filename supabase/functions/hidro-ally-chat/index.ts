@@ -347,7 +347,17 @@ serve(async (req) => {
       episodes.forEach((ep: any) => {
         (ep.body_areas || []).forEach((a: string) => areaMap.set(a, (areaMap.get(a) || 0) + 1));
         (Array.isArray(ep.triggers) ? ep.triggers : []).forEach((t: any) => {
-          const label = t.label || t.value || t;
+          let label = t;
+          if (typeof t === 'string') {
+            try {
+              const parsed = JSON.parse(t);
+              label = parsed.label || parsed.value || t;
+            } catch (e) {
+              label = t;
+            }
+          } else {
+            label = t.label || t.value || t;
+          }
           triggerMap.set(label, (triggerMap.get(label) || 0) + 1);
         });
       });
@@ -363,7 +373,17 @@ WARRIOR'S PERSONAL DATA (last ${episodes.length} episodes — USE THIS to person
 - Average HDSS severity: ${hdssAvg}/4 — clinically ${hdssLabel}
 - Most common triggers: ${topTriggers.join(', ') || 'none yet'}
 - Most affected body areas: ${topAreas.join(', ') || 'none yet'}
-- Most recent episode: ${episodes[0]?.created_at ? new Date(episodes[0].created_at).toLocaleDateString() : 'unknown'}`;
+- Most recent episode details:
+  * Date: ${episodes[0]?.created_at ? new Date(episodes[0].created_at).toLocaleDateString() : 'unknown'}
+  * Triggers: ${Array.isArray(episodes[0]?.triggers) ? episodes[0].triggers.map((t: any) => {
+    let label = t;
+    if (typeof t === 'string') {
+      try { const parsed = JSON.parse(t); label = parsed.label || parsed.value || t; } catch (e) { label = t; }
+    } else { label = t.label || t.value || t; }
+    return label;
+  }).join(', ') : 'none specified'}
+  * Affected Areas: ${Array.isArray(episodes[0]?.body_areas) ? episodes[0].body_areas.join(', ') : 'none specified'}
+  * Severity: ${episodes[0]?.severity || 'unknown'}`;
     }
 
     // ── Dashboard visual analytics ────────────────────────────────────────────
