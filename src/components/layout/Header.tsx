@@ -86,12 +86,15 @@ const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
             <div className="flex items-center justify-center">
               <span className="text-2xl drop-shadow-md">🏅</span>
             </div>
-            <div>
-              <h1 className="text-white text-xl font-black tracking-tight leading-none drop-shadow-md">
+            <div className="brand-container">
+              <h1 className="text-white drop-shadow-md brand-title">
                 HidroAlly
               </h1>
-              <p className="text-white/80 text-xs font-bold leading-none mt-0.5 drop-shadow-md">
-                Health Companion
+              <p className="text-[#E0E0E0] drop-shadow-md brand-subtitle-1">
+                Hyperhidrosis
+              </p>
+              <p className="text-[#B3B3B3] drop-shadow-md brand-subtitle-2">
+                Companion
               </p>
             </div>
           </div>
@@ -140,19 +143,19 @@ const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <div className="flex items-center gap-2">
-                <button
+              <div className="auth-buttons-container">
+                <a
                   onClick={() => navigate("/login")}
-                  className="bg-[#D6CEFA]/20 text-white hover:bg-[#D6CEFA]/40 text-sm font-medium px-4 py-1.5 rounded-lg transition-all border border-[#D6CEFA]/50"
+                  className="nav-btn btn-login cursor-pointer"
                 >
                   Login
-                </button>
-                <button
+                </a>
+                <a
                   onClick={() => navigate("/register")}
-                  className="bg-[#D6CEFA] text-violet-800 text-sm font-bold px-4 py-1.5 rounded-lg hover:brightness-105 transition-all shadow-sm"
+                  className="nav-btn btn-signup cursor-pointer"
                 >
                   Sign Up
-                </button>
+                </a>
               </div>
             )}
           </div>

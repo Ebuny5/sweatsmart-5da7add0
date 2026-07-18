@@ -466,7 +466,15 @@ const HidroAlly = () => {
     const areaCounts    = new Map<string, { count: number; severities: number[] }>();
     episodes.forEach(ep => {
       ep.triggers.forEach((t: any) => {
-        const label = t.label || t.value || 'Unknown';
+        let label = t;
+        if (typeof t === 'string') {
+          try {
+            const parsed = JSON.parse(t);
+            label = parsed.label || parsed.value || t;
+          } catch (e) { label = t; }
+        } else {
+          label = t.label || t.value || t || 'Unknown';
+        }
         const x = triggerCounts.get(label) || { count: 0, severities: [] };
         x.count++; x.severities.push(ep.severityLevel);
         triggerCounts.set(label, x);
