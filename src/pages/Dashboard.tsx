@@ -150,10 +150,34 @@ const Dashboard = () => {
     ? (dashboardData.nonDryEpisodes.reduce((sum, e) => sum + e.severityLevel, 0) / nonDryCount).toFixed(1)
     : "—";
 
-  const thisWeek = dashboardData.allEpisodes.filter(e => {
-    const diff = (Date.now() - new Date(e.datetime).getTime()) / (1000 * 60 * 60 * 24);
-    return diff <= 7;
-  }).length;
+  // Calendar week tracking consistency: unique days logged since Sunday (Day 1)
+  const calculateTrackingConsistency = () => {
+    if (!dashboardData.allEpisodes || dashboardData.allEpisodes.length === 0) return 0;
+
+    const toKey = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dayOfWeek = today.getDay(); // 0 is Sunday, 1 is Monday, etc.
+
+    const windowKeys = new Set<string>();
+    for (let i = 0; i <= dayOfWeek; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      windowKeys.add(toKey(d));
+    }
+
+    const loggedDays = new Set<string>();
+    for (const ep of dashboardData.allEpisodes) {
+      const key = toKey(new Date(ep.datetime));
+      if (windowKeys.has(key)) loggedDays.add(key);
+    }
+
+    // Calculate percentage based on a full 7-day week
+    return Math.round((loggedDays.size / 7) * 100);
+  };
+  const trackingConsistencyPercentage = calculateTrackingConsistency();
 
   const topTrigger = dashboardData.triggerFrequencies[0]?.name ?? "None yet";
 
@@ -311,7 +335,7 @@ const Dashboard = () => {
           {/* Stats row — 4 equal pills, no scroll, no confusing icons */}
           <div className="grid grid-cols-4 gap-2">
             <StatPill icon={<span className="text-base">📋</span>} value={totalEpisodes} label="Episodes" gradient="bg-white/20 backdrop-blur-sm" />
-            <StatPill icon={<CalendarDays className="h-4 w-4 text-white" />} value={thisWeek} label="This week" gradient="bg-white/20 backdrop-blur-sm" />
+            <StatPill icon={<span className="text-base">🗓️</span>} value={`${trackingConsistencyPercentage}%`} label="Consistency" gradient="bg-white/20 backdrop-blur-sm" />
             <StatPill icon={<span className="text-base">⚡</span>} value={avgSeverity} label="Avg HDSS" gradient="bg-white/20 backdrop-blur-sm" />
             <StatPill icon={<span className="text-base">🔥</span>} value={topTrigger.length > 8 ? topTrigger.slice(0, 8) + "…" : topTrigger} label="Top trigger" gradient="bg-white/20 backdrop-blur-sm" />
           </div>
@@ -332,7 +356,8 @@ const Dashboard = () => {
             <DashboardSummary
               weeklyData={[]}
               monthlyData={[]}
-              allEpisodes={dashboardData.nonDryEpisodes}
+              allEpisodes={dashboardData.allEpisodes}
+              trackingConsistency={trackingConsistencyPercentage}
             />
           </div>
 

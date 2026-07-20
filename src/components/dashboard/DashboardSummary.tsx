@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { format, startOfWeek, startOfMonth } from "date-fns";
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Area,
+  Tooltip, ResponsiveContainer, Area, Scatter,
 } from "recharts";
 import { ProcessedEpisode, TrendData } from "@/types";
 import { Sparkles } from "lucide-react";
@@ -11,6 +11,7 @@ interface DashboardSummaryProps {
   weeklyData: TrendData[];
   monthlyData: TrendData[];
   allEpisodes?: ProcessedEpisode[];
+  trackingConsistency?: number;
 }
 
 type Timeframe = "D" | "W" | "M" | "Y";
@@ -34,10 +35,16 @@ const DualTooltip = ({ active, payload, label, timeframe }: any) => {
   return (
     <div className="bg-white rounded-2xl shadow-2xl border border-purple-100 px-4 py-3 text-xs min-w-[150px]">
       <p className="font-bold text-gray-500 mb-2">{TIMEFRAME_CONFIG[timeframe as Timeframe]?.tooltipLabel}: {label}</p>
-      {freq && (
+      {freq && freq.value > 0 && (
         <div className="flex items-center gap-2 mb-1">
           <div className="w-2.5 h-2.5 rounded-sm bg-violet-400" />
           <span className="text-gray-700"><strong className="text-violet-700">{freq.value}</strong> episode{freq.value !== 1 ? "s" : ""}</span>
+        </div>
+      )}
+      {payload.find((p: any) => p.dataKey === "dryCount") && payload.find((p: any) => p.dataKey === "dryCount").value > 0 && (
+        <div className="flex items-center gap-2 mb-1">
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+          <span className="text-gray-700"><strong className="text-emerald-700">{payload.find((p: any) => p.dataKey === "dryCount").value}</strong> dry day{payload.find((p: any) => p.dataKey === "dryCount").value !== 1 ? "s" : ""}</span>
         </div>
       )}
       {sev && sev.value > 0 && (
@@ -53,10 +60,12 @@ const DualTooltip = ({ active, payload, label, timeframe }: any) => {
 };
 
 const generateInsight = (
-  allEpisodes: ProcessedEpisode[],
+  allEpisodesRaw: ProcessedEpisode[],
   tf: Timeframe,
-  chartData: any[]
+  chartData: any[],
+  trackingConsistency: number
 ): string => {
+  const allEpisodes = allEpisodesRaw.filter(e => !e.is_dry_day);
   if (!allEpisodes.length)
     return "No episodes logged yet. Start tracking to see your personal patterns.";
 
@@ -156,24 +165,34 @@ const generateInsight = (
 
   const validSev = allEpisodes.filter(e => e.severityLevel > 0);
   const avgSev   = validSev.length ? validSev.reduce((s, e) => s + e.severityLevel, 0) / validSev.length : 0;
+
+  let consistencyMsg = "";
+  if (trackingConsistency > 0) {
+    consistencyMsg = ` You have maintained a ${trackingConsistency}% tracking consistency this week.`;
+  }
+
   if (avgSev >= 3)
-    return `⚠️ Your average HDSS is ${avgSev.toFixed(1)} — episodes are frequently interfering with daily life. Consider discussing prescription options with your dermatologist. ${total} total tracked.`;
-  return `Pattern is stable in this ${TIMEFRAME_CONFIG[tf].label.toLowerCase()} view. ${total} total episodes tracked — more data will reveal deeper correlations.`;
+    return `⚠️ Your average HDSS is ${avgSev.toFixed(1)} — episodes are frequently interfering with daily life. Consider discussing prescription options with your dermatologist. ${total} total tracked.${consistencyMsg}`;
+  return `Pattern is stable in this ${TIMEFRAME_CONFIG[tf].label.toLowerCase()} view. ${total} total episodes tracked — more data will reveal deeper correlations.${consistencyMsg}`;
 };
 
-const DashboardSummary: React.FC<DashboardSummaryProps> = ({ allEpisodes = [] }) => {
+const DashboardSummary: React.FC<DashboardSummaryProps> = ({ allEpisodes = [], trackingConsistency = 0 }) => {
   const [timeframe, setTimeframe] = useState<Timeframe>("W");
 
   const chartData = useMemo(() => {
     if (!allEpisodes.length) return [];
     const cfg = TIMEFRAME_CONFIG[timeframe];
-    const bucketMap = new Map<string, { count: number; severities: number[] }>();
+    const bucketMap = new Map<string, { count: number; dryCount: number; severities: number[] }>();
     allEpisodes.forEach(ep => {
       try {
         const key = cfg.bucketFn(new Date(ep.datetime));
-        const b = bucketMap.get(key) || { count: 0, severities: [] };
-        b.count++;
-        b.severities.push(ep.severityLevel);
+        const b = bucketMap.get(key) || { count: 0, dryCount: 0, severities: [] };
+        if (ep.is_dry_day) {
+          b.dryCount++;
+        } else {
+          b.count++;
+          b.severities.push(ep.severityLevel);
+        }
         bucketMap.set(key, b);
       } catch {}
     });
@@ -181,6 +200,8 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ allEpisodes = [] })
       .map(([date, d]) => ({
         date,
         count: d.count,
+        dryCount: d.dryCount,
+        dryMarker: d.dryCount > 0 ? 0 : null,
         severity: d.severities.length
           ? parseFloat((d.severities.reduce((a, b) => a + b, 0) / d.severities.length).toFixed(2))
           : 0,
@@ -190,8 +211,8 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ allEpisodes = [] })
   }, [allEpisodes, timeframe]);
 
   const aiInsight = useMemo(
-    () => generateInsight(allEpisodes, timeframe, chartData),
-    [allEpisodes, timeframe, chartData]
+    () => generateInsight(allEpisodes, timeframe, chartData, trackingConsistency),
+    [allEpisodes, timeframe, chartData, trackingConsistency]
   );
   const maxCount = Math.max(...chartData.map(d => d.count), 1);
 
@@ -232,6 +253,10 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ allEpisodes = [] })
           <span className="text-[11px] text-gray-500 font-medium">Episode count</span>
         </div>
         <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-full bg-emerald-500" />
+          <span className="text-[11px] text-gray-500 font-medium">Dry days</span>
+        </div>
+        <div className="flex items-center gap-1.5">
           <div className="w-4 h-0.5 bg-pink-500 rounded-full" />
           <span className="text-[11px] text-gray-500 font-medium">HDSS severity (1–4)</span>
         </div>
@@ -261,6 +286,7 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ allEpisodes = [] })
                 domain={[1, 4]} ticks={[1, 2, 3, 4]} tick={{ fill: "#f472b6" }} />
               <Tooltip content={<DualTooltip timeframe={timeframe} />} />
               <Bar yAxisId="left" dataKey="count" fill="url(#barGrad)" radius={[6, 6, 0, 0]} maxBarSize={28} name="Episodes" />
+              <Scatter yAxisId="left" dataKey="dryMarker" fill="#10b981" shape="circle" isAnimationActive={false} />
               <Area yAxisId="right" type="monotone" dataKey="severity" stroke="none" fill="url(#areaGrad)" connectNulls />
               <Line yAxisId="right" type="monotone" dataKey="severity" stroke="#ec4899" strokeWidth={2.5}
                 dot={{ fill: "#ec4899", strokeWidth: 2, r: 4, stroke: "#fff" }}
