@@ -83,9 +83,6 @@ const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
             className="flex items-center gap-2.5 cursor-pointer"
             onClick={() => navigate(user ? "/home" : "/")}
           >
-            <div className="flex items-center justify-center">
-              <span className="text-2xl drop-shadow-md">🏅</span>
-            </div>
             <div className="brand-container">
               <h1 className="text-white drop-shadow-md brand-title">
                 HidroAlly
@@ -93,7 +90,7 @@ const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
               <p className="text-[#E0E0E0] drop-shadow-md brand-subtitle-1">
                 Hyperhidrosis
               </p>
-              <p className="text-[#B3B3B3] drop-shadow-md brand-subtitle-2">
+              <p className="text-[#E0E0E0] drop-shadow-md brand-subtitle-2">
                 Companion
               </p>
             </div>
