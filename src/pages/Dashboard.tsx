@@ -83,9 +83,8 @@ const Dashboard = () => {
   }, [rawEpisodes]);
 
   const dashboardData = useMemo(() => {
-    const nonDryEpisodes = allEpisodes.filter(e => !e.is_dry_day);
     const triggerCounts = new Map();
-    nonDryEpisodes.forEach(episode => {
+    allEpisodes.forEach(episode => {
       if (episode.triggers && Array.isArray(episode.triggers)) {
         episode.triggers.forEach(trigger => {
           if (trigger && (trigger.label || trigger.value)) {
@@ -109,12 +108,12 @@ const Dashboard = () => {
         count: data.count,
         trigger: { label, type: data.type || 'environmental', value: label },
         averageSeverity,
-        percentage: nonDryEpisodes.length > 0 ? Math.round((data.count / nonDryEpisodes.length) * 100) : 0
+        percentage: allEpisodes.length > 0 ? Math.round((data.count / allEpisodes.length) * 100) : 0
       };
     }).sort((a, b) => b.count - a.count);
 
     const bodyAreaCounts = new Map();
-    nonDryEpisodes.forEach(episode => {
+    allEpisodes.forEach(episode => {
       if (episode.bodyAreas && Array.isArray(episode.bodyAreas)) {
         episode.bodyAreas.forEach(area => {
           const existing = bodyAreaCounts.get(area) || { count: 0, severities: [] };
@@ -132,52 +131,27 @@ const Dashboard = () => {
       return {
         area: area as BodyArea,
         count: data.count,
-        percentage: nonDryEpisodes.length > 0 ? Math.round((data.count / nonDryEpisodes.length) * 100) : 0,
+        percentage: allEpisodes.length > 0 ? Math.round((data.count / allEpisodes.length) * 100) : 0,
         averageSeverity
       };
     }).sort((a, b) => b.count - a.count);
 
-    return { triggerFrequencies, bodyAreas, allEpisodes, nonDryEpisodes };
+    return { triggerFrequencies, bodyAreas, allEpisodes };
   }, [allEpisodes]);
 
   // ── Derived stats ─────────────────────────────────────────────────────────
   const displayName = profile?.display_name || user?.email?.split("@")[0] || "Warrior";
   const firstName = displayName.split(" ")[0];
-  const totalEpisodes = dashboardData.nonDryEpisodes.length;
+  const totalEpisodes = dashboardData.allEpisodes.length;
 
-  const nonDryCount = dashboardData.nonDryEpisodes.length;
-  const avgSeverity = nonDryCount > 0
-    ? (dashboardData.nonDryEpisodes.reduce((sum, e) => sum + e.severityLevel, 0) / nonDryCount).toFixed(1)
+  const avgSeverity = totalEpisodes > 0
+    ? (dashboardData.allEpisodes.reduce((sum, e) => sum + e.severityLevel, 0) / totalEpisodes).toFixed(1)
     : "—";
 
-  // Calendar week tracking consistency: unique days logged since Sunday (Day 1)
-  const calculateTrackingConsistency = () => {
-    if (!dashboardData.allEpisodes || dashboardData.allEpisodes.length === 0) return 0;
-
-    const toKey = (d: Date) =>
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const dayOfWeek = today.getDay(); // 0 is Sunday, 1 is Monday, etc.
-
-    const windowKeys = new Set<string>();
-    for (let i = 0; i <= dayOfWeek; i++) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - i);
-      windowKeys.add(toKey(d));
-    }
-
-    const loggedDays = new Set<string>();
-    for (const ep of dashboardData.allEpisodes) {
-      const key = toKey(new Date(ep.datetime));
-      if (windowKeys.has(key)) loggedDays.add(key);
-    }
-
-    // Calculate percentage based on a full 7-day week
-    return Math.round((loggedDays.size / 7) * 100);
-  };
-  const trackingConsistencyPercentage = calculateTrackingConsistency();
+  const thisWeek = dashboardData.allEpisodes.filter(e => {
+    const diff = (Date.now() - new Date(e.datetime).getTime()) / (1000 * 60 * 60 * 24);
+    return diff <= 7;
+  }).length;
 
   const topTrigger = dashboardData.triggerFrequencies[0]?.name ?? "None yet";
 
@@ -270,10 +244,10 @@ const Dashboard = () => {
                 onClick={() => navigate("/insights")}
               />
               <OnboardingStep
-                step={3} emoji="🤖" title="Talk to HidroAlly"
+                step={3} emoji="🤖" title="Talk to Hidro Ally"
                 description="Your 24/7 AI companion reads your history and gives personalised advice."
-                action="Meet HidroAlly"
-                onClick={() => navigate("/hidro-ally")}
+                action="Meet Hidro Ally"
+                onClick={() => navigate("/hyper-ai")}
               />
             </div>
 
@@ -335,7 +309,7 @@ const Dashboard = () => {
           {/* Stats row — 4 equal pills, no scroll, no confusing icons */}
           <div className="grid grid-cols-4 gap-2">
             <StatPill icon={<span className="text-base">📋</span>} value={totalEpisodes} label="Episodes" gradient="bg-white/20 backdrop-blur-sm" />
-            <StatPill icon={<span className="text-base">🗓️</span>} value={`${trackingConsistencyPercentage}%`} label="Consistency" gradient="bg-white/20 backdrop-blur-sm" />
+            <StatPill icon={<CalendarDays className="h-4 w-4 text-white" />} value={thisWeek} label="This week" gradient="bg-white/20 backdrop-blur-sm" />
             <StatPill icon={<span className="text-base">⚡</span>} value={avgSeverity} label="Avg HDSS" gradient="bg-white/20 backdrop-blur-sm" />
             <StatPill icon={<span className="text-base">🔥</span>} value={topTrigger.length > 8 ? topTrigger.slice(0, 8) + "…" : topTrigger} label="Top trigger" gradient="bg-white/20 backdrop-blur-sm" />
           </div>
@@ -357,7 +331,6 @@ const Dashboard = () => {
               weeklyData={[]}
               monthlyData={[]}
               allEpisodes={dashboardData.allEpisodes}
-              trackingConsistency={trackingConsistencyPercentage}
             />
           </div>
 
@@ -374,7 +347,7 @@ const Dashboard = () => {
             </div>
             <TriggerSummary
               triggers={dashboardData.triggerFrequencies}
-              allEpisodes={dashboardData.nonDryEpisodes}
+              allEpisodes={dashboardData.allEpisodes}
             />
           </div>
 
@@ -414,18 +387,18 @@ const Dashboard = () => {
             <ChevronRight className="h-5 w-5 text-white/70 shrink-0" />
           </button>
 
-          {/* HidroAlly */}
+          {/* Hidro Ally */}
           <button
-            onClick={() => navigate("/hidro-ally?from=dashboard_cta")}
+            onClick={() => navigate("/hyper-ai?from=dashboard_cta")}
             className="w-full bg-gradient-to-r from-violet-500 to-pink-500 rounded-2xl p-5 flex items-center gap-4 shadow-md shadow-purple-100 hover:shadow-lg transition-all text-left"
           >
             <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
               <Sparkles className="h-6 w-6 text-white" />
             </div>
             <div className="flex-1">
-              <p className="text-white font-black text-sm leading-tight">Ask HidroAlly 🤖</p>
+              <p className="text-white font-black text-sm leading-tight">Ask Hidro Ally 🤖</p>
               <p className="text-purple-100 text-xs mt-0.5 leading-snug">
-                Do you want more understanding of your analytics, click to ask HidroAlly
+                Do you want more understanding of your analytics, click to ask Hidro Ally
               </p>
             </div>
             <ChevronRight className="h-5 w-5 text-white/70 shrink-0" />
