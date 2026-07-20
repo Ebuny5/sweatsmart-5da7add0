@@ -1147,11 +1147,6 @@ const HidroAllyLanding = () => {
       {/* NAV */}
       <nav className={scrolled ? 'scrolled' : ''}>
         <a href="/" className="logo">
-          <img 
-            src="/sweatsmart-logo.png"
-            alt="HidroAlly Logo"
-            className="logo-img"
-          />
           <span className="logo-text">HidroAlly</span>
         </a>
         <div className="nav-links">
@@ -1369,11 +1364,6 @@ const HidroAllyLanding = () => {
       <footer>
         <div className="footer-top">
           <a href="/" className="logo" style={{ textDecoration: 'none' }}>
-            <img 
-              src="/sweatsmart-logo.png"
-              alt="HidroAlly Logo"
-              className="footer-logo-img"
-            />
             <span className="logo-text" style={{ fontSize: 16 }}>HidroAlly</span>
           </a>
           <div className="footer-links">

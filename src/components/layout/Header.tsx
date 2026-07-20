@@ -80,7 +80,7 @@ const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
 
           {/* Logo */}
           <div
-            className="flex items-center gap-2.5 cursor-pointer"
+            className="flex items-center -ml-1 cursor-pointer"
             onClick={() => navigate(user ? "/home" : "/")}
           >
             <div className="brand-container">
@@ -88,10 +88,7 @@ const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
                 HidroAlly
               </h1>
               <p className="text-[#E0E0E0] drop-shadow-md brand-subtitle-1">
-                Hyperhidrosis
-              </p>
-              <p className="text-[#E0E0E0] drop-shadow-md brand-subtitle-2">
-                Companion
+                Hyperhidrosis Companion
               </p>
             </div>
           </div>
