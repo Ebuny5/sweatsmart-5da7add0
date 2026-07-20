@@ -80,7 +80,7 @@ const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
 
           {/* Logo */}
           <div
-            className="flex items-center gap-2.5 cursor-pointer"
+            className="flex items-center cursor-pointer -ml-1"
             onClick={() => navigate(user ? "/home" : "/")}
           >
             <div className="brand-container">
