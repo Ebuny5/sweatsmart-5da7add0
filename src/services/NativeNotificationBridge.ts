@@ -9,9 +9,10 @@
 
 let capCache: {
   isNative: boolean;
+  platform: string;
   LocalNotifications?: typeof import('@capacitor/local-notifications').LocalNotifications;
   PushNotifications?: typeof import('@capacitor/push-notifications').PushNotifications;
-  Capacitor?: any;
+  Capacitor?: typeof import('@capacitor/core').Capacitor;
 } | null = null;
 
 async function loadCapacitor() {
@@ -19,17 +20,18 @@ async function loadCapacitor() {
   try {
     const { Capacitor } = await import('@capacitor/core');
     const isNative = Capacitor.isNativePlatform?.() ?? false;
+    const platform = Capacitor.getPlatform?.() ?? 'web';
     if (!isNative) {
-      capCache = { isNative: false };
+      capCache = { isNative: false, platform };
       return capCache;
     }
     const [{ LocalNotifications }, { PushNotifications }] = await Promise.all([
       import('@capacitor/local-notifications'),
       import('@capacitor/push-notifications'),
     ]);
-    capCache = { isNative: true, LocalNotifications, PushNotifications, Capacitor };
+    capCache = { isNative: true, platform, LocalNotifications, PushNotifications, Capacitor };
   } catch {
-    capCache = { isNative: false };
+    capCache = { isNative: false, platform: 'web' };
   }
   return capCache;
 }
@@ -41,56 +43,82 @@ export async function isNativeApp(): Promise<boolean> {
 
 export async function ensureNativeChannels(): Promise<void> {
   const c = await loadCapacitor();
-  if (!c.isNative || !c.LocalNotifications || !c.Capacitor) return;
+  if (!c.isNative || !c.LocalNotifications || c.platform !== 'android') return;
 
-  if (c.Capacitor.getPlatform() === 'android') {
-    try {
-      await c.LocalNotifications.createChannel({
-        id: 'reminder',
-        name: 'Check-in Reminders',
-        description: 'Daily sweat tracking reminders',
-        importance: 5,
-        visibility: 1,
-        vibration: true,
-      });
-      await c.LocalNotifications.createChannel({
-        id: 'climate',
-        name: 'Climate Alerts',
-        description: 'Real-time sweat risk alerts',
-        importance: 5,
-        visibility: 1,
-        vibration: true,
-      });
-      console.log('✅ Native notification channels ensured');
-    } catch (e) {
-      console.warn('Failed to create native channels:', e);
-    }
+  try {
+    await c.LocalNotifications.createChannel({
+      id: 'reminder',
+      name: 'Check-in Reminders',
+      description: 'Daily sweat tracking reminders',
+      importance: 5,          // IMPORTANCE_HIGH
+      visibility: 1,          // VISIBILITY_PUBLIC
+      vibration: true,
+      lights: true,
+      lightColor: '#7C3AED',
+    });
+    await c.LocalNotifications.createChannel({
+      id: 'climate',
+      name: 'Climate Alerts',
+      description: 'Real-time sweat risk alerts',
+      importance: 5,
+      visibility: 1,
+      vibration: true,
+      lights: true,
+      lightColor: '#EF4444',
+    });
+    console.log('✅ Native notification channels ensured');
+  } catch (e) {
+    console.warn('Failed to create native channels:', e);
   }
 }
 
 export async function requestNativePermissions(): Promise<boolean> {
   const c = await loadCapacitor();
-  if (!c.isNative || !c.LocalNotifications || !c.Capacitor) return false;
+  if (!c.isNative || !c.LocalNotifications) return false;
+
   try {
-    const local = await c.LocalNotifications.requestPermissions();
+    // Check current permission status first
+    const existing = await c.LocalNotifications.checkPermissions();
+    let granted = existing.display === 'granted';
+
+    if (!granted) {
+      const result = await c.LocalNotifications.requestPermissions();
+      granted = result.display === 'granted';
+    }
+
+    if (!granted) {
+      console.warn('⚠️ Local notification permission denied');
+      return false;
+    }
 
     // Ensure high-priority channels exist on Android
     await ensureNativeChannels();
 
+    // Register for push notifications as well
     if (c.PushNotifications) {
-      const push = await c.PushNotifications.requestPermissions();
-      if (push.receive === 'granted') {
+      const pushStatus = await c.PushNotifications.checkPermissions();
+      if (pushStatus.receive !== 'granted') {
+        const pushResult = await c.PushNotifications.requestPermissions();
+        if (pushResult.receive === 'granted') {
+          await c.PushNotifications.register();
+        }
+      } else {
         await c.PushNotifications.register();
       }
     }
-    return local.display === 'granted';
+
+    console.log('✅ Native notification permissions granted');
+    return true;
   } catch (e) {
     console.warn('Native permission request failed:', e);
     return false;
   }
 }
 
-/** Schedule a one-shot local notification at a specific time. */
+/**
+ * Schedule a one-shot local notification at a specific time.
+ * Uses allowWhileIdle so it fires even in Android Doze mode.
+ */
 export async function scheduleNativeReminder(opts: {
   id: number;
   at: Date;
@@ -102,24 +130,35 @@ export async function scheduleNativeReminder(opts: {
   const c = await loadCapacitor();
   if (!c.isNative || !c.LocalNotifications) return false;
 
-  // Guard: Don't schedule in the past
-  if (opts.at.getTime() <= Date.now()) {
-    console.warn('scheduleNativeReminder: Target time is in the past, skipping.');
+  // Guard: Don't schedule in the past (add 2s buffer)
+  if (opts.at.getTime() <= Date.now() + 2000) {
+    console.warn('scheduleNativeReminder: Target time is in the past or too soon, skipping.');
     return false;
   }
 
   try {
-    await c.LocalNotifications.cancel({ notifications: [{ id: opts.id }] });
+    // Cancel any existing notification with this ID to avoid duplicates
+    await c.LocalNotifications.cancel({ notifications: [{ id: opts.id }] }).catch(() => {});
+
     await c.LocalNotifications.schedule({
       notifications: [
         {
           id: opts.id,
           title: opts.title,
           body: opts.body,
-          schedule: { at: opts.at, allowWhileIdle: true },
+          largeBody: opts.body,
+          summaryText: 'HidroAlly Reminder',
+          schedule: {
+            at: opts.at,
+            allowWhileIdle: true,  // Critical for Android Doze mode
+          },
           smallIcon: 'ic_stat_icon_config_sample',
-          channelId: opts.channelId || 'reminder',
+          channelId: opts.channelId ?? 'reminder',
           extra: { url: opts.url ?? '/' },
+          actionTypeId: '',
+          // Android: auto-cancel when tapped
+          ongoing: false,
+          autoCancel: true,
         },
       ],
     });
@@ -141,17 +180,24 @@ export async function showNativeNotification(opts: {
 }): Promise<boolean> {
   const c = await loadCapacitor();
   if (!c.isNative || !c.LocalNotifications) return false;
+
   try {
     await c.LocalNotifications.schedule({
       notifications: [
         {
-          id: opts.id ?? Math.floor(Date.now() % 2147483647),
+          id: opts.id ?? Math.floor(Date.now() % 2_147_483_647),
           title: opts.title,
           body: opts.body,
-          schedule: { at: new Date(Date.now() + 500), allowWhileIdle: true },
+          largeBody: opts.body,
+          summaryText: 'HidroAlly',
+          schedule: {
+            at: new Date(Date.now() + 500),
+            allowWhileIdle: true,
+          },
           smallIcon: 'ic_stat_icon_config_sample',
-          channelId: opts.channelId || 'climate',
+          channelId: opts.channelId ?? 'climate',
           extra: { url: opts.url ?? '/' },
+          autoCancel: true,
         },
       ],
     });
@@ -166,14 +212,27 @@ export async function showNativeNotification(opts: {
 export async function attachNativeTapHandler(navigate: (url: string) => void) {
   const c = await loadCapacitor();
   if (!c.isNative || !c.LocalNotifications) return;
+
   try {
+    // Handle taps on local notifications
     await c.LocalNotifications.addListener(
       'localNotificationActionPerformed',
       (event) => {
-        const url = (event.notification.extra as any)?.url as string | undefined;
+        const url = (event.notification.extra as Record<string, string> | undefined)?.url;
         if (url) navigate(url);
       },
     );
+
+    // Handle taps on push notifications
+    if (c.PushNotifications) {
+      await c.PushNotifications.addListener(
+        'pushNotificationActionPerformed',
+        (event) => {
+          const url = (event.notification.data as Record<string, string> | undefined)?.url;
+          if (url) navigate(url);
+        },
+      );
+    }
   } catch {
     /* ignore */
   }
