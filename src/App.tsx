@@ -47,7 +47,7 @@ import SetupProfile from "./pages/SetupProfile";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: (failureCount) => {
+      retry: (failureCount, error) => {
         if (failureCount < 2) return true;
         return false;
       },
@@ -71,10 +71,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (authLoading || profileLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-violet-50 to-pink-50">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-violet-600 font-medium">Loading SweatSmart...</p>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <p className="text-sm text-muted-foreground">Loading SweatSmart...</p>
         </div>
       </div>
     );
@@ -85,16 +85,11 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   // Enforce mandatory onboarding
-  if (
-    profile &&
-    !profile.is_profile_complete &&
-    location.pathname !== "/mandatory-onboarding" &&
-    location.pathname !== "/setup-profile"
-  ) {
+  if (profile && !profile.is_profile_complete && location.pathname !== '/mandatory-onboarding' && location.pathname !== '/setup-profile') {
     return <Navigate to="/mandatory-onboarding" replace />;
   }
 
-  return <>{children}</>;
+  return <ErrorBoundary>{children}</ErrorBoundary>;
 };
 
 // Public Route component
@@ -105,211 +100,129 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/home" replace />;
   }
 
-  return <>{children}</>;
+  return <ErrorBoundary>{children}</ErrorBoundary>;
 };
 
 const AppRoutes = () => {
   const location = useLocation();
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
-        <Route path="/" element={<Index />} />
-        <Route path="/new" element={<NewIndex />} />
-        <Route path="/contact" element={<Contact />} />
-        <Route path="/privacy" element={<Privacy />} />
-        <Route path="/terms" element={<Terms />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/cookies" element={<Cookies />} />
-        <Route path="/legal" element={<Legal />} />
-        <Route
-          path="/login"
-          element={
-            <PublicRoute>
-              <Login />
-            </PublicRoute>
-          }
-        />
-        <Route path="/auth/callback" element={<AuthCallback />} />
-        <Route
-          path="/register"
-          element={
-            <PublicRoute>
-              <Register />
-            </PublicRoute>
-          }
-        />
-        <Route path="/auth" element={<Auth />} />
-        <Route
-          path="/verify-email"
-          element={
-            <PublicRoute>
-              <VerifyEmail />
-            </PublicRoute>
-          }
-        />
-        <Route
-          path="/forgot-password"
-          element={
-            <PublicRoute>
-              <ForgotPassword />
-            </PublicRoute>
-          }
-        />
-        <Route
-          path="/reset-password"
-          element={
-            <PublicRoute>
-              <ResetPassword />
-            </PublicRoute>
-          }
-        />
-        <Route
-          path="/onboarding"
-          element={
-            <ProtectedRoute>
-              <Onboarding />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/mandatory-onboarding"
-          element={
-            <ProtectedRoute>
-              <MandatoryOnboarding />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/setup-profile"
-          element={
-            <ProtectedRoute>
-              <SetupProfile />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/home"
-          element={
-            <ProtectedRoute>
-              <Home />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/log-episode"
-          element={
-            <ProtectedRoute>
-              <LogEpisode />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/history"
-          element={
-            <ProtectedRoute>
-              <History />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/episode/:id"
-          element={
-            <ProtectedRoute>
-              <EpisodeDetail />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/insights"
-          element={
-            <ProtectedRoute>
-              <Insights />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/community"
-          element={
-            <ProtectedRoute>
-              <Community />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <ProtectedRoute>
-              <Settings />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/palm-scanner"
-          element={
-            <ProtectedRoute>
-              <PalmScanner />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/climate"
-          element={
-            <ProtectedRoute>
-              <ClimateMonitor />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/climate-history"
-          element={
-            <ProtectedRoute>
-              <ClimateHistory />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/hyper-ai"
-          element={
-            <ProtectedRoute>
-              <HidroAlly />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/knowledge-base-admin"
-          element={
-            <ProtectedRoute>
-              <KnowledgeBaseAdmin />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/specialist-radar"
-          element={
-            <ProtectedRoute>
-              <SpecialistRadar />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </AnimatePresence>
+  <AnimatePresence mode="wait">
+  <Routes location={location} key={location.pathname}>
+    <Route path="/" element={<Index />} />
+    <Route path="/old-blue" element={<PublicRoute><NewIndex /></PublicRoute>} />
+    <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
+    <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+    <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+    <Route path="/verify-email" element={<PublicRoute><VerifyEmail /></PublicRoute>} />
+    <Route path="/forgot-password" element={
+      <PublicRoute>
+        <ForgotPassword />
+      </PublicRoute>
+    } />
+    <Route path="/reset-password" element={
+      <ResetPassword />
+    } />
+    <Route path="/auth/callback" element={<AuthCallback />} />
+    <Route path="/onboarding" element={
+      <ProtectedRoute>
+        <Onboarding />
+      </ProtectedRoute>
+    } />
+    <Route path="/setup-profile" element={
+      <ProtectedRoute>
+        <SetupProfile />
+      </ProtectedRoute>
+    } />
+    <Route path="/mandatory-onboarding" element={
+      <ProtectedRoute>
+        <MandatoryOnboarding />
+      </ProtectedRoute>
+    } />
+    <Route path="/home" element={
+      <ProtectedRoute>
+        <Home />
+      </ProtectedRoute>
+    } />
+    <Route path="/dashboard" element={
+      <ProtectedRoute>
+        <Dashboard />
+      </ProtectedRoute>
+    } />
+    <Route path="/log-episode" element={
+      <ProtectedRoute>
+        <LogEpisode />
+      </ProtectedRoute>
+    } />
+    <Route path="/history" element={
+      <ProtectedRoute>
+        <History />
+      </ProtectedRoute>
+    } />
+    <Route path="/episode/:id" element={
+      <ProtectedRoute>
+        <EpisodeDetail />
+      </ProtectedRoute>
+    } />
+    <Route path="/profile" element={
+      <ProtectedRoute>
+        <Profile />
+      </ProtectedRoute>
+    } />
+    <Route path="/insights" element={
+      <ProtectedRoute>
+        <Insights />
+      </ProtectedRoute>
+    } />
+    <Route path="/community" element={
+      <ProtectedRoute>
+        <Community />
+      </ProtectedRoute>
+    } />
+    <Route path="/settings" element={
+      <ProtectedRoute>
+        <Settings />
+      </ProtectedRoute>
+    } />
+    <Route path="/palm-scanner" element={
+      <ProtectedRoute>
+        <PalmScanner />
+      </ProtectedRoute>
+    } />
+    <Route path="/climate" element={
+      <ProtectedRoute>
+        <ClimateMonitor />
+      </ProtectedRoute>
+    } />
+    <Route path="/climate/history" element={
+      <ProtectedRoute>
+        <ClimateHistory />
+      </ProtectedRoute>
+    } />
+    <Route path="/climate/settings" element={<Navigate to="/settings" replace />} />
+    <Route path="/hidro-ally" element={
+      <ProtectedRoute>
+        <HidroAlly />
+      </ProtectedRoute>
+    } />
+    <Route path="/knowledge-admin" element={
+      <ProtectedRoute>
+        <KnowledgeBaseAdmin />
+      </ProtectedRoute>
+    } />
+    <Route path="/specialist-radar" element={
+      <ProtectedRoute>
+        <SpecialistRadar />
+      </ProtectedRoute>
+    } />
+    <Route path="/contact" element={<Contact />} />
+    <Route path="/privacy" element={<Privacy />} />
+    <Route path="/terms" element={<Terms />} />
+    <Route path="/about" element={<About />} />
+    <Route path="/cookies" element={<Cookies />} />
+    <Route path="/legal" element={<Legal />} />
+    <Route path="*" element={<NotFound />} />
+  </Routes>
+  </AnimatePresence>
   );
 };
 
@@ -317,19 +230,18 @@ const App = () => {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <AuthProvider>
-            {/* EpisodesProvider must be inside AuthProvider so it can read the user */}
-            <EpisodesProvider>
-              <TooltipProvider>
-                <Toaster />
-                <Sonner />
+        <AuthProvider>
+          <EpisodesProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
                 <NotificationListener />
                 <AppRoutes />
-              </TooltipProvider>
-            </EpisodesProvider>
-          </AuthProvider>
-        </BrowserRouter>
+              </BrowserRouter>
+            </TooltipProvider>
+          </EpisodesProvider>
+        </AuthProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );
