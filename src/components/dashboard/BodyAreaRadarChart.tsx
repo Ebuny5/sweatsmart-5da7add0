@@ -106,9 +106,9 @@ export const BodyAreaRadarChart = ({
   return (
     <div className="px-4 pt-2 pb-5">
       {/* Radar */}
-      <div className="h-80">
+      <div className="h-56">
         <ResponsiveContainer width="100%" height="100%">
-          <RadarChart cx="50%" cy="50%" outerRadius="72%" data={data}>
+          <RadarChart cx="50%" cy="50%" outerRadius="68%" data={data}>
             <PolarGrid
               stroke="#E5E7EB"
               strokeDasharray="3 3"
@@ -122,13 +122,23 @@ export const BodyAreaRadarChart = ({
             <Radar
               name="Episodes"
               dataKey="pct"
-              stroke="#7C3AED"
-              fill="#8B5CF6"
-              fillOpacity={0.75}
-              strokeWidth={2.5}
-              dot={{ r: 4, fill: "#EC4899", strokeWidth: 0 }}
+              stroke="url(#radarStroke)"
+              fill="url(#radarFill)"
+              fillOpacity={0.55}
+              strokeWidth={2}
+              dot={{ r: 3, fill: "#8B5CF6", strokeWidth: 0 }}
             />
             <Tooltip content={<CustomTooltip />} />
+            <defs>
+              <linearGradient id="radarFill" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#8B5CF6" />
+                <stop offset="100%" stopColor="#EC4899" />
+              </linearGradient>
+              <linearGradient id="radarStroke" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#7C3AED" />
+                <stop offset="100%" stopColor="#DB2777" />
+              </linearGradient>
+            </defs>
           </RadarChart>
         </ResponsiveContainer>
       </div>
