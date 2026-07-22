@@ -115,7 +115,7 @@ export default function NewIndex() {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-2">
               <Droplets className="w-8 h-8 text-blue-600" />
-              <span className="text-2xl font-bold text-blue-600">SweatSmart</span>
+              <span className="text-2xl font-bold text-blue-600">HidroAlly</span>
             </div>
             <div className="hidden md:flex items-center space-x-8">
               <a href="#features" className="text-gray-700 hover:text-blue-600 transition">Features</a>
@@ -214,10 +214,10 @@ export default function NewIndex() {
         </div>
       </section>
 
-      {/* How SweatSmart Empowers You Section */}
+      {/* How HidroAlly Empowers You Section */}
       <section id="how-it-works" className="py-20 px-4 bg-sky-200">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-4xl font-bold text-center text-gray-900 mb-4">How SweatSmart Empowers You</h2>
+          <h2 className="text-4xl font-bold text-center text-gray-900 mb-4">How HidroAlly Empowers You</h2>
           <p className="text-lg text-gray-600 text-center mb-12">Utilize cutting-edge tools designed to give you clarity and control over your condition.</p>
           
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
@@ -313,7 +313,7 @@ export default function NewIndex() {
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl font-bold text-gray-900 mb-6">Ready to take control of your hyperhidrosis?</h2>
           <p className="text-lg text-gray-700 mb-8">
-            Join thousands of users who trust SweatSmart for comprehensive tracking, AI-powered insights, and a supportive community. It's time to find clarity and relief.
+            Join thousands of users who trust HidroAlly for comprehensive tracking, AI-powered insights, and a supportive community. It's time to find clarity and relief.
           </p>
           <button onClick={handleGetStarted} className="bg-purple-600 text-white px-10 py-4 rounded-lg text-lg font-semibold hover:bg-purple-700 transition shadow-lg">
             Start Your Journey Free
@@ -328,7 +328,7 @@ export default function NewIndex() {
             <div>
               <div className="flex items-center space-x-2 mb-4">
                 <Droplets className="w-8 h-8 text-blue-400" />
-                <span className="text-xl font-bold">SweatSmart</span>
+                <span className="text-xl font-bold">HidroAlly</span>
               </div>
               <p className="text-gray-400">AI-powered hyperhidrosis management for a better life.</p>
             </div>
@@ -358,7 +358,7 @@ export default function NewIndex() {
             </div>
           </div>
           <div className="border-t border-gray-800 pt-8 text-center text-gray-400">
-            <p>&copy; 2025 SweatSmart by Giftovate Therapeutics Ltd. All rights reserved.</p>
+            <p>&copy; 2025 HidroAlly by Giftovate Therapeutics Ltd. All rights reserved.</p>
           </div>
         </div>
       </footer>

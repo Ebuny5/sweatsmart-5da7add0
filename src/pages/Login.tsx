@@ -77,7 +77,7 @@ const Login = () => {
         } else {
           toast({
             title: "Login successful",
-            description: "Welcome back to SweatSmart!",
+            description: "Welcome back to HidroAlly!",
           });
           navigate("/home");
         }

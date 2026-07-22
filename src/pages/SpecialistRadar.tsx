@@ -153,7 +153,7 @@ const CareGapCard = ({ onWiden }: { onWiden: () => void }) => (
       <span className="text-xs font-bold text-red-400">Care Gap Detected</span>
     </div>
     <p className="text-xs text-white/55 leading-relaxed mb-3">
-      No certified hyperhidrosis specialists are registered near you yet. This is a known gap across many African cities — SweatSmart is actively working to map specialist availability across the continent.
+      No certified hyperhidrosis specialists are registered near you yet. This is a known gap across many African cities — HidroAlly is actively working to map specialist availability across the continent.
     </p>
     <div className="flex gap-2">
       <button onClick={onWiden}
@@ -573,9 +573,9 @@ const SpecialistRadar = () => {
 
   // ── Share warrior report ────────────────────────────────────────────────
   const handleShare = (doctor: Doctor) => {
-    const msg = `Hi, I'm a patient managing hyperhidrosis. I use SweatSmart to track my condition and would like to share my data before our consultation.\n\nMy HDSS score: ${hdss.toFixed(1)}/4\nEpisode count (recent): ${episodes?.length || 0}\nPrimary concern: Palmar/Plantar hyperhidrosis\n\nI will bring my full SweatSmart Warrior Report to our ${doctor.isTelehealth ? 'virtual' : 'in-person'} appointment.\n\nKind regards`;
+    const msg = `Hi, I'm a patient managing hyperhidrosis. I use HidroAlly to track my condition and would like to share my data before our consultation.\n\nMy HDSS score: ${hdss.toFixed(1)}/4\nEpisode count (recent): ${episodes?.length || 0}\nPrimary concern: Palmar/Plantar hyperhidrosis\n\nI will bring my full HidroAlly Warrior Report to our ${doctor.isTelehealth ? 'virtual' : 'in-person'} appointment.\n\nKind regards`;
     if (navigator.share) {
-      navigator.share({ title: 'SweatSmart Warrior Report', text: msg }).catch(() => {});
+      navigator.share({ title: 'HidroAlly Warrior Report', text: msg }).catch(() => {});
     } else {
       navigator.clipboard.writeText(msg);
       toast.success('Pre-consultation message copied — send it to your doctor 💙');
@@ -776,7 +776,7 @@ const SpecialistRadar = () => {
           </a>
 
           <p className="text-[10px] text-white/18 text-center leading-relaxed px-4 mb-4">
-            Data from SweatSmart curated database, Google Places & IHS directory. Always verify credentials before booking. Not medical advice.
+            Data from HidroAlly curated database, Google Places & IHS directory. Always verify credentials before booking. Not medical advice.
           </p>
         </div>
       </div>

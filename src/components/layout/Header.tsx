@@ -84,18 +84,13 @@ const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
             onClick={() => navigate(user ? "/home" : "/")}
           >
             <div className="flex items-center justify-center">
-              <span className="text-2xl drop-shadow-md">🏅</span>
+              <span className="text-2xl drop-shadow-md">🤖</span>
             </div>
             <div className="brand-container">
               <h1 className="text-white drop-shadow-md brand-title">
                 HidroAlly
               </h1>
-              <p className="text-[#E0E0E0] drop-shadow-md brand-subtitle-1">
-                Hyperhidrosis
-              </p>
-              <p className="text-[#B3B3B3] drop-shadow-md brand-subtitle-2">
-                Companion
-              </p>
+              <p className="text-[#E0E0E0] drop-shadow-md brand-subtitle-1 -ml-0.5">Hyperhidrosis Companion</p>
             </div>
           </div>
 

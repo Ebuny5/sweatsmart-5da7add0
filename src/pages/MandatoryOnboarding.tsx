@@ -52,7 +52,7 @@ const MandatoryOnboarding = () => {
       if (success) {
         toast({
           title: "Profile setup complete ✨",
-          description: "Welcome to SweatSmart!",
+          description: "Welcome to HidroAlly, your hyperhidrosis digital companion 😊",
         });
         navigate("/home", { replace: true });
       } else {
@@ -79,7 +79,7 @@ const MandatoryOnboarding = () => {
               <Sparkles className="h-8 w-8 text-white" />
             </div>
             <CardTitle className="text-2xl font-black text-gray-800">
-              Welcome to SweatSmart
+              Welcome to HidroAlly
             </CardTitle>
             <CardDescription className="text-sm leading-relaxed text-gray-600">
               To personalize your experience and insights, please tell us a little bit about yourself.

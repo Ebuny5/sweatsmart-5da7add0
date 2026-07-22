@@ -307,7 +307,7 @@ const WarriorLaunchpad = () => {
       {/* ── HERO GREETING ───────────────────────────────────────────── */}
       <div className="px-6 pt-8 pb-16 rounded-b-[2.5rem] shadow-lg shadow-purple-200" style={{ backgroundColor: "#7c3aed" }}>
         <p className="text-purple-200 text-xs font-semibold uppercase tracking-widest mb-1">
-          SweatSmart {greeting.emoji}
+          HidroAlly {greeting.emoji}
         </p>
         <h1 className="text-white text-2xl font-black tracking-tight leading-tight">
           {greeting.text}, {firstName}!
