@@ -13,6 +13,9 @@ import {
   Settings,
   Sparkles,
   MapPin,
+  Heart,
+  HelpCircle,
+  Mail,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -108,9 +111,27 @@ const menuItems = [
     iconBg: "bg-emerald-100",
   },
   {
-    path: "/contact",
-    icon: MessageSquare,
+    path: "/feedback",
+    icon: Heart,
     label: "Feedback",
+    activeGradient: "from-blue-400 to-indigo-500",
+    activeBg: "bg-blue-50",
+    activeText: "text-blue-700",
+    iconBg: "bg-blue-100",
+  },
+  {
+    path: "/faqs",
+    icon: HelpCircle,
+    label: "FAQs",
+    activeGradient: "from-rose-400 to-pink-500",
+    activeBg: "bg-rose-50",
+    activeText: "text-rose-700",
+    iconBg: "bg-rose-100",
+  },
+  {
+    path: "/contact",
+    icon: Mail,
+    label: "Contact",
     activeGradient: "from-violet-400 to-purple-500",
     activeBg: "bg-violet-50",
     activeText: "text-violet-700",

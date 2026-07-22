@@ -32,6 +32,8 @@ import AuthCallback from "./pages/AuthCallback";
 import PalmScanner from "./pages/PalmScanner";
 import Home from "./pages/Home";
 import Contact from "./pages/Contact";
+import Feedback from "./pages/Feedback";
+import FAQ from "./pages/FAQ";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import About from "./pages/About";
@@ -215,6 +217,8 @@ const AppRoutes = () => {
       </ProtectedRoute>
     } />
     <Route path="/contact" element={<Contact />} />
+    <Route path="/feedback" element={<Feedback />} />
+    <Route path="/faqs" element={<FAQ />} />
     <Route path="/privacy" element={<Privacy />} />
     <Route path="/terms" element={<Terms />} />
     <Route path="/about" element={<About />} />
