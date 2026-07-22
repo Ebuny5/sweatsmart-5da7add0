@@ -368,7 +368,7 @@ const LogEpisode = () => {
           <div className="flex items-start justify-between mb-2">
             <div>
               <p className="text-blue-100 text-xs font-semibold uppercase tracking-widest mb-1">
-                SweatSmart
+                HidroAlly
               </p>
               <h1 className="text-white text-2xl font-black tracking-tight leading-tight">
                 Log Sweating<br />Episode 💧

@@ -1,5 +1,5 @@
 /**
- * PersonalizedInsights.tsx — SweatSmart
+ * PersonalizedInsights.tsx — HidroAlly
  *
  * Pattern analysis engine based on logged episodes.
  * Plain-language output only — no medical jargon visible to users.
@@ -405,7 +405,7 @@ function analyzeEpisodes(episodes: Episode[]): WarriorInsight[] {
       pillText: "Severity",
       detail: `${highSevEps.length} episodes at severity 4–5 puts you firmly in the range where prescription treatments aren't just an option — they're genuinely indicated. Medical guidelines describe this level as sweating that is "barely tolerable to intolerable and frequently to always getting in the way of daily life." Many GPs aren't aware of how many options now exist for this, which means patients at your severity often go years without the treatment they could access. You have the data to make a case.`,
       action: `Take your episode log to your next doctor's appointment. You can say directly: "I've been tracking my sweating episodes and I consistently score 4–5 out of 5 on severity. I'd like to discuss prescription treatment options — specifically botulinum toxin or topical anticholinergics." Having your data ready removes the guesswork from the appointment.`,
-      clinicalNote: `Your logged data is objective evidence for treatment escalation. At HDSS 3-4, prescription options like Botox or Sofdra are indicated because they 'block the acetylcholine signal' at the gland level. Use SweatSmart's "Export for Clinician" feature to share this HDSS documentation with your dermatologist.`,
+      clinicalNote: `Your logged data is objective evidence for treatment escalation. At HDSS 3-4, prescription options like Botox or Sofdra are indicated because they 'block the acetylcholine signal' at the gland level. Use HidroAlly's "Export for Clinician" feature to share this HDSS documentation with your dermatologist.`,
     });
   }
 

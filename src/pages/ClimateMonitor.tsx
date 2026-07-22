@@ -397,7 +397,7 @@ const ClimateMonitor = () => {
             ? '11+'
             : weatherData.uvIndex.toFixed(1);
       void sendClimateAlert(
-        `SweatSmart Alert — ${risk.message}`,
+        `HidroAlly Alert — ${risk.message}`,
         `${risk.description} (Temp ${weatherData.temperature.toFixed(1)}°C, Humidity ${weatherData.humidity.toFixed(0)}%, UV ${uvLabel})`,
         risk.level as 'low' | 'moderate' | 'high' | 'extreme',
         `climate:${risk.level}:${new Date().toISOString().slice(0, 13)}`,
@@ -483,7 +483,7 @@ const ClimateMonitor = () => {
           <div className="flex flex-col relative w-full overflow-hidden mb-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
               <div className="flex-1 min-w-0">
-                <h1 className="text-[20px] leading-tight font-extrabold text-[#22c55e] tracking-tight">SweatSmart Climate Alerts</h1>
+                <h1 className="text-[20px] leading-tight font-extrabold text-[#22c55e] tracking-tight">HidroAlly Climate Alerts</h1>
                 <p className="text-[13px] leading-snug font-medium text-[#4ade80] mt-0.5">
                   Real-time weather monitoring and personalized alerts
                 </p>

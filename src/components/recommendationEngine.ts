@@ -1,5 +1,5 @@
 /**
- * SweatSmart — HidroAlly Recommendation Engine (Definitive Edition)
+ * HidroAlly — HidroAlly Recommendation Engine (Definitive Edition)
  * ─────────────────────────────────────────────────────────────────────────────
  * This is the SINGLE engine. Do not create additional engines alongside this.
  *
@@ -710,7 +710,7 @@ function buildTreatments(
   // ── Prescription topicals for HDSS 3
   if (sv.isPresThreshold && !sv.isBotoxLevel && options.length < 2) {
     options.push(pick([
-      `At HDSS 3, prescription-strength topical treatments are clinically appropriate and represent a meaningful step beyond what aluminium chloride can achieve. Qbrexza wipes and Sofdra gel both work by reducing the nerve signal that activates your sweat glands — a different mechanism that is more effective for many warriors at your severity level. Your dermatologist or general practitioner (GP) can prescribe these; bringing your SweatSmart episode log to the appointment provides objective severity and frequency data that supports the prescription request. Most warriors see meaningful improvement within two to four weeks of consistent use. 🛡️`,
+      `At HDSS 3, prescription-strength topical treatments are clinically appropriate and represent a meaningful step beyond what aluminium chloride can achieve. Qbrexza wipes and Sofdra gel both work by reducing the nerve signal that activates your sweat glands — a different mechanism that is more effective for many warriors at your severity level. Your dermatologist or general practitioner (GP) can prescribe these; bringing your HidroAlly episode log to the appointment provides objective severity and frequency data that supports the prescription request. Most warriors see meaningful improvement within two to four weeks of consistent use. 🛡️`,
       `Given your HDSS 3 severity, prescription topical treatments are worth pursuing rather than limiting to over-the-counter options. Glycopyrronium-based treatments such as Qbrexza or Sofdra target the activation signal to your sweat glands — a mechanism upstream of what aluminium chloride addresses. Discuss this specifically with a dermatologist; your logged episode history from this app demonstrates the frequency and impact of your condition clearly, which is exactly the kind of objective evidence that supports a prescription recommendation. 🛡️`,
     ], seed+1));
   }
@@ -724,7 +724,7 @@ function buildTreatments(
         : areaList;
 
     options.push(pick([
-      `Botulinum toxin injections for your ${btxTarget} — this is the most effective intervention at your severity level and should be pursued as a priority, not deferred. The treatment works by blocking nerve signals directly at the sweat gland, producing four to six months of dramatically reduced sweating per treatment session. It is available through NHS dermatology referral or privately. When you see your dermatologist or general practitioner (GP), be specific: "I have hyperhidrosis affecting my ${btxTarget} at HDSS 4 severity — I would like to discuss botulinum toxin treatment and a referral to dermatology." Your SweatSmart episode log is objective evidence that makes this conversation more productive.`,
+      `Botulinum toxin injections for your ${btxTarget} — this is the most effective intervention at your severity level and should be pursued as a priority, not deferred. The treatment works by blocking nerve signals directly at the sweat gland, producing four to six months of dramatically reduced sweating per treatment session. It is available through NHS dermatology referral or privately. When you see your dermatologist or general practitioner (GP), be specific: "I have hyperhidrosis affecting my ${btxTarget} at HDSS 4 severity — I would like to discuss botulinum toxin treatment and a referral to dermatology." Your HidroAlly episode log is objective evidence that makes this conversation more productive.`,
       `At HDSS 4, botulinum toxin is the clinically appropriate and most impactful treatment for your ${btxTarget}. It does not merely reduce output — for most warriors at this severity level, it transforms daily life during the four to six months of each treatment cycle. Do not put this off: bring your episode log to your next medical appointment and ask directly for a dermatology referral for botulinum toxin. The data you have logged makes the clinical case clearly.`,
     ], seed));
 
@@ -919,7 +919,7 @@ function buildMedical(
 
   if (redFlags.length > 0) {
     return pick([
-      `A clinical appointment is recommended here — ${redFlags.join("; and ")}. In most cases the findings will be reassuring, but confirming them directs you to the right treatment. When you see your dermatologist or general practitioner (GP), say: "I have significant sweating affecting ${areaList} and I am also experiencing ${redFlags.map(f=>f.split(" ").slice(0,4).join(" ")).join(", ")}. I would like to discuss the full picture and rule out any secondary causes." Your SweatSmart episode history provides the clinical context to make that conversation efficient.`,
+      `A clinical appointment is recommended here — ${redFlags.join("; and ")}. In most cases the findings will be reassuring, but confirming them directs you to the right treatment. When you see your dermatologist or general practitioner (GP), say: "I have significant sweating affecting ${areaList} and I am also experiencing ${redFlags.map(f=>f.split(" ").slice(0,4).join(" ")).join(", ")}. I would like to discuss the full picture and rule out any secondary causes." Your HidroAlly episode history provides the clinical context to make that conversation efficient.`,
     ], seed);
   }
 

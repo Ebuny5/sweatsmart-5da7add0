@@ -261,7 +261,7 @@ const Settings = () => {
                 await notificationManager.send({
                   channel: 'system',
                   kind: 'extreme',
-                  title: "SweatSmart Climate Alert",
+                  title: "HidroAlly Climate Alert",
                   body: "High sweat risk! Temperature is exceeding your threshold.",
                   dedupKey: `test-climate-${Date.now()}`
                 });
@@ -289,7 +289,7 @@ const Settings = () => {
 
         {/* App Information */}
         <Card className="p-6 bg-zinc-900 border-zinc-800">
-          <h3 className="text-lg font-bold mb-4 text-white uppercase tracking-wider">About SweatSmart</h3>
+          <h3 className="text-lg font-bold mb-4 text-white uppercase tracking-wider">About HidroAlly</h3>
           <div className="space-y-3 text-sm text-zinc-400">
             <p>
               <strong className="text-zinc-200">Version:</strong> 1.0.0

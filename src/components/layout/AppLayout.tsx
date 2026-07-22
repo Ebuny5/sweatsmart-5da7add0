@@ -30,7 +30,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, isAuthenticated }) => {
             <span className="text-violet-600 font-black text-lg">S</span>
           </div>
         </div>
-        <p className="mt-4 text-sm font-semibold text-purple-400">Loading SweatSmart…</p>
+        <p className="mt-4 text-sm font-semibold text-purple-400">Loading HidroAlly…</p>
       </div>
     );
   }

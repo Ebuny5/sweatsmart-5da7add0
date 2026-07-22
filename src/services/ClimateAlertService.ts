@@ -104,7 +104,7 @@ class ClimateAlertService {
       notificationManager.send({
         channel: 'climate',
         kind: risk.level as any,
-        title: `SweatSmart Alert — ${risk.message}`,
+        title: `HidroAlly Alert — ${risk.message}`,
         body: `${risk.description} (Temp ${weatherData.temperature.toFixed(1)}°C, Humidity ${weatherData.humidity.toFixed(0)}%, UV ${uvLabel})`,
         dedupKey: `climate:${risk.level}:${new Date().toISOString().slice(0, 13)}`,
         url: '/climate',

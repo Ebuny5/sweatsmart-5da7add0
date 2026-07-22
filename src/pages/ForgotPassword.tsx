@@ -80,7 +80,7 @@ const ForgotPassword = () => {
               <Alert className="border-blue-200 bg-blue-50">
                 <Info className="h-4 w-4 text-blue-600" />
                 <AlertDescription className="text-blue-800">
-                  <strong>Next steps:</strong> Look for an email from SweatSmart with a "Reset Password" button or link. 
+                  <strong>Next steps:</strong> Look for an email from HidroAlly with a "Reset Password" button or link.
                   Click it to safely reset your password.
                 </AlertDescription>
               </Alert>
@@ -96,7 +96,7 @@ const ForgotPassword = () => {
               <div className="space-y-2 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-green-600" />
-                  Look for an email from SweatSmart
+                  Look for an email from HidroAlly
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-green-600" />

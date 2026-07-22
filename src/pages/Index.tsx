@@ -222,13 +222,15 @@ const HidroAllyLanding = () => {
     .logo-text {
       font-family: 'Syne', sans-serif;
       font-weight: 800;
-      font-size: 22px;
+      font-size: 15px;
       letter-spacing: -0.5px;
       background: linear-gradient(135deg, #a78bfa 0%, #f0abfc 50%, #7c3aed 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
       text-shadow: 0 0 24px rgba(167,139,250,0.35);
+      margin-top: 4px;
+      margin-left: -4px;
     }
 
     .nav-links {
@@ -1048,7 +1050,7 @@ const HidroAllyLanding = () => {
       }
       
       .logo-text {
-        font-size: 16px;
+        font-size: 15px;
         letter-spacing: -0.3px;
       }
 
@@ -1146,12 +1148,8 @@ const HidroAllyLanding = () => {
 
       {/* NAV */}
       <nav className={scrolled ? 'scrolled' : ''}>
-        <a href="/" className="logo">
-          <img
-            src="/sweatsmart-logo.png"
-            alt="HidroAlly Logo"
-            className="logo-img"
-          />
+        <a href="/" className="logo" style={{ textDecoration: 'none' }}>
+          <span style={{ fontSize: '24px', marginRight: '8px' }}>🤖</span>
           <span className="logo-text">HidroAlly</span>
         </a>
         <div className="nav-links">
@@ -1196,7 +1194,7 @@ const HidroAllyLanding = () => {
           <div className="hero-visual">
             <div className="mock-phone">
               <div className="mock-header">
-                <div className="mock-greeting">SWEATSMART · GOOD EVENING</div>
+                <div className="mock-greeting">HIDROALLY · GOOD EVENING</div>
                 <div className="mock-title">Tyla's Dashboard 💧</div>
                 <div className="mock-stats">
                   <div className="mock-stat">
@@ -1369,11 +1367,7 @@ const HidroAllyLanding = () => {
       <footer>
         <div className="footer-top">
           <a href="/" className="logo" style={{ textDecoration: 'none' }}>
-            <img
-              src="/sweatsmart-logo.png"
-              alt="HidroAlly Logo"
-              className="footer-logo-img"
-            />
+            <span style={{ fontSize: '24px', marginRight: '8px' }}>🤖</span>
             <span className="logo-text" style={{ fontSize: 16 }}>HidroAlly</span>
           </a>
           <div className="footer-links">

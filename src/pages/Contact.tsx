@@ -36,7 +36,7 @@ const Contact = () => {
         <div className="text-center space-y-4">
           <h1 className="text-4xl font-bold text-foreground">Contact Us</h1>
           <p className="text-xl text-professional-gray max-w-2xl mx-auto">
-            Have questions about SweatSmart? We're here to help you on your hyperhidrosis management journey.
+            Have questions about HidroAlly? We're here to help you on your hyperhidrosis management journey.
           </p>
         </div>
 
@@ -207,7 +207,7 @@ const Contact = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-professional-gray">
-              Your voice matters to us! We're constantly working to improve SweatSmart and make it the best tool for managing hyperhidrosis. Whether it's a feature request, a suggestion, or just sharing your experience — we'd love to hear from you.
+              Your voice matters to us! We're constantly working to improve HidroAlly and make it the best tool for managing hyperhidrosis. Whether it's a feature request, a suggestion, or just sharing your experience — we'd love to hear from you.
             </p>
             <p className="text-sm text-professional-gray">
               Every piece of feedback helps us build a better community and a more supportive experience for everyone living with hyperhidrosis.
@@ -234,7 +234,7 @@ const Contact = () => {
               <div>
                 <h3 className="font-semibold text-foreground mb-2">How do I track my hyperhidrosis episodes?</h3>
                 <p className="text-professional-gray text-sm">
-                  Simply log into your SweatSmart dashboard and click "Log Episode" to record details about your hyperhidrosis episodes, including triggers, severity, and affected areas.
+                  Simply log into your HidroAlly dashboard and click "Log Episode" to record details about your hyperhidrosis episodes, including triggers, severity, and affected areas.
                 </p>
               </div>
               <div>
@@ -260,7 +260,7 @@ const Contact = () => {
             For urgent medical concerns, please consult with your healthcare provider or contact emergency services.
           </p>
           <p className="text-sm text-professional-gray">
-            SweatSmart is a tracking and management tool and should not replace professional medical advice.
+            HidroAlly is a tracking and management tool and should not replace professional medical advice.
           </p>
         </div>
 

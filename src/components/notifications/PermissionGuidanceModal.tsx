@@ -78,7 +78,7 @@ export const PermissionGuidanceModal = () => {
 
         <p className="text-zinc-400 text-center text-sm mb-6 leading-relaxed">
           {isNotif
-            ? 'To receive health alerts and reminders, go to Settings and enable notifications for SweatSmart.'
+            ? 'To receive health alerts and reminders, go to Settings and enable notifications for HidroAlly.'
             : 'To receive real-time climate alerts for your area, go to Settings and enable location permissions.'}
         </p>
 
@@ -89,7 +89,7 @@ export const PermissionGuidanceModal = () => {
           <div className="space-y-2">
             <div className="flex items-center gap-3 text-sm text-zinc-300">
               <div className="w-5 h-5 rounded-full bg-zinc-700 flex items-center justify-center text-[10px] font-bold">1</div>
-              <span>Settings → Apps → SweatSmart</span>
+              <span>Settings → Apps → HidroAlly</span>
             </div>
             <div className="flex items-center gap-3 text-sm text-zinc-300">
               <div className="w-5 h-5 rounded-full bg-zinc-700 flex items-center justify-center text-[10px] font-bold">2</div>
@@ -115,7 +115,7 @@ export const PermissionGuidanceModal = () => {
 
         <div className="mt-6 flex items-center gap-2 justify-center text-[10px] text-zinc-600 font-bold uppercase tracking-tighter">
           <AlertCircle className="w-3 h-3" />
-          <span>SweatSmart PWA Warrior Engine</span>
+          <span>HidroAlly PWA Warrior Engine</span>
         </div>
       </div>
     </div>

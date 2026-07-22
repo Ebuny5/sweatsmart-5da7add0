@@ -204,7 +204,7 @@ const Profile = () => {
             <div>
               <p className="text-blue-100 text-sm font-medium tracking-wide uppercase">My Profile</p>
               <h1 className="text-white text-2xl font-black tracking-tight leading-tight">
-                SweatSmart
+                HidroAlly
               </h1>
             </div>
             {!isEditing && (
