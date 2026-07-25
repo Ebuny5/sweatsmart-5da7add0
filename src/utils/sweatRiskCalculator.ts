@@ -257,14 +257,25 @@ export function shouldTriggerAlert(
   if (isSimulated) return { shouldAlert: false, triggers: [], level: 'safe' };
 
   const risk = calculateSweatRiskV2({ temperature, humidity, uvIndex, sky });
+  const triggers: string[] = [];
 
-  if (risk.level === 'safe' || risk.level === 'low') {
+  if (temperature >= thresholds.temperature) {
+    triggers.push(`Temperature exceeds ${thresholds.temperature}°C`);
+  }
+  if (humidity >= thresholds.humidity) {
+    triggers.push(`Humidity exceeds ${thresholds.humidity}%`);
+  }
+  if (uvIndex !== null && uvIndex !== undefined && uvIndex >= thresholds.uvIndex) {
+    triggers.push(`UV Index exceeds ${thresholds.uvIndex}`);
+  }
+
+  if (triggers.length === 0) {
     return { shouldAlert: false, triggers: [], level: risk.level };
   }
 
   return {
     shouldAlert: true,
-    triggers: risk.triggers,
-    level: risk.level,
+    triggers: triggers,
+    level: risk.level === 'safe' || risk.level === 'low' ? 'moderate' : risk.level, // Bump level so it gets alerted
   };
 }

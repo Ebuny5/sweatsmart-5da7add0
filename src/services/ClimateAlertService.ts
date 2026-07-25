@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { calculateSweatRisk } from '@/utils/sweatRiskCalculator';
+import { calculateSweatRisk, shouldTriggerAlert } from '@/utils/sweatRiskCalculator';
 import { notificationManager } from './NotificationManager';
 
 const WEATHER_REFRESH_INTERVAL = 15 * 60 * 1000; // 15 minutes
@@ -69,6 +69,19 @@ class ClimateAlertService {
   }
 
   private processWeatherUpdate(weatherData: any): void {
+    const defaultThresholds = { temperature: 30, humidity: 65, uvIndex: 6 };
+    const savedThresholdsStr = localStorage.getItem('sweatSmartThresholds');
+    const thresholds = savedThresholdsStr ? JSON.parse(savedThresholdsStr) : defaultThresholds;
+
+    const alertResult = shouldTriggerAlert(
+      weatherData.temperature,
+      weatherData.humidity,
+      weatherData.uvIndex,
+      thresholds,
+      false,
+      (weatherData as any).sky ?? 'unknown'
+    );
+
     const risk = calculateSweatRisk(
       weatherData.temperature,
       weatherData.humidity,
@@ -86,13 +99,13 @@ class ClimateAlertService {
       extreme: 'extreme',
     };
 
-    const currentAlertType = riskToAlertType[risk.level];
+    const currentAlertType = alertResult.shouldAlert ? riskToAlertType[alertResult.level] || 'moderate' : 'optimal';
     const settings = localStorage.getItem('climateAppSettings');
     const soundEnabled = settings ? JSON.parse(settings).soundAlerts !== false : true;
 
     if (
       soundEnabled &&
-      currentAlertType !== 'optimal'
+      alertResult.shouldAlert
     ) {
       const uvLabel =
         weatherData.uvIndex == null
