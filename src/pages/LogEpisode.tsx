@@ -109,9 +109,13 @@ const LogEpisode = () => {
   // ── All original logic ─────────────────────────────────────────────────────
   const handleSubmit = useCallback(async (e?: React.FormEvent, manualNotes?: string, manualBodyAreas?: BodyArea[], manualTriggers?: Trigger[], manualSeverity?: SeverityLevel) => {
     if (e) e.preventDefault();
+    if (severity === null && !isDryDay && !manualSeverity) {
+        toast({ title: "Validation Error", description: "Please select an HDSS level.", variant: "destructive" });
+        return;
+    }
     const finalBodyAreas = manualBodyAreas ?? bodyAreas;
     const finalTriggers = manualTriggers ?? triggers;
-    const finalSeverity = manualSeverity ?? severity;
+    const finalSeverity = manualSeverity ?? severity ?? 3; // Fallback to 3 only if dry day
 
     if (!user) {
       toast({ title: "Authentication required", description: "Please log in to save episodes.", variant: "destructive" });
@@ -534,8 +538,11 @@ const LogEpisode = () => {
               <div className="flex items-center gap-3">
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="flex-[2] py-3.5 rounded-xl bg-[#4B0082] hover:opacity-90 disabled:opacity-60 text-white font-bold transition-all shadow-md text-sm flex items-center justify-center gap-2"
+                  disabled={isSubmitting || (severity === null && !isDryDay)}
+                  className={cn(
+                    "flex-[2] py-3.5 rounded-xl bg-[#4B0082] hover:opacity-90 disabled:opacity-60 text-white font-bold transition-all shadow-md text-sm flex items-center justify-center gap-2",
+                    severity === null && !isDryDay && "opacity-50 cursor-not-allowed"
+                  )}
                 >
                   {isSubmitting ? (
                     <>

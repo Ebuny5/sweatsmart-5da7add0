@@ -470,12 +470,12 @@ const ClimateMonitor = () => {
   return (
     <PageTransition>
       {/* Warrior Glass background — matches Wearable Simulator */}
-      <div className="min-h-[100dvh] w-full max-w-[100vw] overflow-x-hidden bg-gradient-to-br from-[#2d1b69] via-[#6d28d9] to-[#be185d] p-6 space-y-6 relative">
+      <div className="min-h-[100dvh] w-full max-w-[100vw] overflow-x-hidden bg-slate-900 p-6 space-y-6 relative">
 
         {/* Ambient glow overlays */}
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl" />
-          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-pink-500/20 rounded-full blur-3xl" />
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-slate-800/50 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-slate-800/50 rounded-full blur-3xl" />
         </div>
 
         <div className="relative z-10 space-y-6 max-w-4xl mx-auto">

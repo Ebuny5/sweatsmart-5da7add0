@@ -1,7 +1,7 @@
 import { SeverityLevel } from "@/types";
 
 interface SeveritySelectorProps {
-  value: SeverityLevel;
+  value: SeverityLevel | null;
   onChange: (value: SeverityLevel) => void;
 }
 

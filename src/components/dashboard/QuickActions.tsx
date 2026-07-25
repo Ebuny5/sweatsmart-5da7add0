@@ -226,7 +226,7 @@ const WarriorLaunchpad = () => {
 
   const [tipIndex] = useState(() => Math.floor(Math.random() * COMMUNITY_TIPS.length));
   const [quickLogOpen, setQuickLogOpen] = useState(false);
-  const [quickHDSS, setQuickHDSS] = useState<SeverityLevel>(3);
+  const [quickHDSS, setQuickHDSS] = useState<SeverityLevel | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const displayName = profile?.display_name || user?.email?.split("@")[0] || "Warrior";
@@ -253,7 +253,7 @@ const WarriorLaunchpad = () => {
   const tip = COMMUNITY_TIPS[tipIndex];
 
   const handleQuickSave = async () => {
-    if (!user) return;
+    if (!user || quickHDSS === null) return;
     setIsSaving(true);
     try {
       const now = new Date();
@@ -475,7 +475,7 @@ const WarriorLaunchpad = () => {
               </Button>
               <Button
                 onClick={handleQuickSave}
-                disabled={isSaving}
+                disabled={isSaving || quickHDSS === null}
                 className="rounded-xl font-black bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-200"
               >
                 {isSaving ? (
