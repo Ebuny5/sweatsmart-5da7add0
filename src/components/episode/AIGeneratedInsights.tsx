@@ -182,7 +182,9 @@ Always consult with a healthcare provider for personalized medical advice.
           </div>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground leading-relaxed">{insights.clinicalAnalysis}</p>
+          <div className="text-muted-foreground leading-relaxed whitespace-pre-wrap font-medium">
+            {insights.clinicalAnalysis}
+          </div>
         </CardContent>
       </Card>
 
