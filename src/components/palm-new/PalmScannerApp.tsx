@@ -6,6 +6,7 @@ import JsonOutput from './JsonOutput';
 import ModeInfo from './ModeInfo';
 import StatusDisplay from './StatusDisplay';
 import PalmScannerModal from './PalmScannerModal';
+import { ChevronLeft } from 'lucide-react';
 import { HeartIcon, EdaIcon, MODE_DETAILS } from './constants';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -164,13 +165,30 @@ const PalmScannerApp: React.FC = () => {
         </div>
 
         <div className="max-w-4xl mx-auto relative z-10">
-          <header className="text-center mb-8 relative">
-            <h1 className="text-4xl sm:text-5xl font-extrabold text-[#22c55e] mb-2 drop-shadow-lg tracking-tight">
-              Wearable Sensor Simulator
-            </h1>
-            <p className="text-[#4ade80] text-base max-w-2xl mx-auto">
-              Generate sensor data and use multimodal analysis to assess stress levels.
-            </p>
+          <header className="mb-8 relative flex flex-col items-center">
+            <div className="w-full flex items-center justify-between mb-4">
+              <button
+                onClick={() => {
+                  if (window.history.length > 2) {
+                    navigate(-1);
+                  } else {
+                    navigate('/home');
+                  }
+                }}
+                className="w-10 h-10 rounded-xl flex items-center justify-center transition-all bg-white/5 border border-white/10"
+              >
+                <ChevronLeft className="h-5 w-5 text-white/70" />
+              </button>
+              <div className="flex-1" />
+            </div>
+            <div className="text-center">
+              <h1 className="text-4xl sm:text-5xl font-extrabold text-[#22c55e] mb-2 drop-shadow-lg tracking-tight">
+                Wearable Sensor Simulator
+              </h1>
+              <p className="text-[#4ade80] text-base max-w-2xl mx-auto">
+                Generate sensor data and use multimodal analysis to assess stress levels.
+              </p>
+            </div>
           </header>
 
           <main className="flex-grow space-y-6">

@@ -600,6 +600,9 @@ const SpecialistRadar = () => {
         {/* Header */}
         <div className="px-4 pt-4 pb-3 shrink-0" style={{ background: 'rgba(7,11,26,0.92)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
           <div className="flex items-center gap-3 mb-3">
+            <button onClick={handleBack} className="w-10 h-10 rounded-xl flex items-center justify-center transition-all bg-white/5 border border-white/10 shrink-0">
+              <ChevronLeft className="h-5 w-5 text-white/70" />
+            </button>
             <div className="flex-1">
               <h1 className="text-lg font-bold text-white">Specialist Radar</h1>
               <p className="text-[11px] text-white/35">AI-matched dermatologists · Hyperhidrosis experts</p>
