@@ -39,6 +39,7 @@ import Terms from "./pages/Terms";
 import About from "./pages/About";
 import Cookies from "./pages/Cookies";
 import Legal from "./pages/Legal";
+import Survey from "./pages/Survey";
 import ClimateMonitor from "./pages/ClimateMonitor";
 import ClimateHistory from "./pages/ClimateHistory";
 import HidroAlly from "./pages/HidroAlly";
@@ -224,6 +225,7 @@ const AppRoutes = () => {
     <Route path="/about" element={<About />} />
     <Route path="/cookies" element={<Cookies />} />
     <Route path="/legal" element={<Legal />} />
+    <Route path="/survey" element={<Survey />} />
     <Route path="*" element={<NotFound />} />
   </Routes>
   </AnimatePresence>

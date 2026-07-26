@@ -16,6 +16,7 @@ import {
   Heart,
   HelpCircle,
   Mail,
+  ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -109,6 +110,15 @@ const menuItems = [
     activeBg: "bg-emerald-50",
     activeText: "text-emerald-700",
     iconBg: "bg-emerald-100",
+  },
+  {
+    path: "/survey",
+    icon: ClipboardList,
+    label: "Survey",
+    activeGradient: "from-violet-400 to-purple-500",
+    activeBg: "bg-violet-50",
+    activeText: "text-violet-700",
+    iconBg: "bg-violet-100",
   },
   {
     path: "/feedback",
