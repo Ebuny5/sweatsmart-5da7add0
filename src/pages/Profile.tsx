@@ -9,6 +9,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useProfile } from "@/hooks/useProfile";
 import { useEpisodes } from "@/hooks/useEpisodes";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { NativeBiometric } from "@capgo/capacitor-native-biometric";
+import { Capacitor } from "@capacitor/core";
 
 // ── Avatar emoji options ────────────────────────────────────────────────────
 const AVATAR_EMOJIS = [
@@ -48,6 +52,67 @@ const Profile = () => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [biometricSupported, setBiometricSupported] = useState(false);
+
+  // Initialize biometric state from localStorage
+  useEffect(() => {
+    const isEnabled = localStorage.getItem("app_biometric_unlock") === "true";
+    setBiometricEnabled(isEnabled);
+
+    // Check if biometric is supported
+    const checkBiometric = async () => {
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const result = await NativeBiometric.isAvailable();
+          setBiometricSupported(result.isAvailable);
+        } catch (e) {
+          console.error("Biometric check error", e);
+          setBiometricSupported(false);
+        }
+      } else {
+        // Fallback for web testing (optional, usually false on web)
+        setBiometricSupported(true);
+      }
+    };
+    checkBiometric();
+  }, []);
+
+  const toggleBiometric = async (checked: boolean) => {
+    if (checked) {
+      if (Capacitor.isNativePlatform()) {
+        try {
+          await NativeBiometric.verifyIdentity({
+            reason: "For app unlock",
+            title: "Enable App Unlock",
+            subtitle: "Authenticate to enable biometric unlock",
+            description: "Verify your identity to enable biometric unlock",
+          });
+          // If successful
+          setBiometricEnabled(true);
+          localStorage.setItem("app_biometric_unlock", "true");
+          toast({ title: "App Unlock Enabled", description: "Biometric unlock has been enabled." });
+        } catch (error) {
+          console.error("Biometric verification failed", error);
+          toast({
+            title: "Authentication Failed",
+            description: "Could not verify identity.",
+            variant: "destructive"
+          });
+          setBiometricEnabled(false);
+        }
+      } else {
+        // Web fallback for testing
+        setBiometricEnabled(true);
+        localStorage.setItem("app_biometric_unlock", "true");
+        toast({ title: "App Unlock Enabled", description: "(Web Demo) Biometric unlock has been enabled." });
+      }
+    } else {
+      setBiometricEnabled(false);
+      localStorage.setItem("app_biometric_unlock", "false");
+      toast({ title: "App Unlock Disabled", description: "Biometric unlock has been disabled." });
+    }
+  };
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
   // Avatar: emoji string OR base64 image URL
@@ -314,7 +379,13 @@ const Profile = () => {
         </div>
 
         <div className="space-y-4 px-4">
+          <Tabs defaultValue="profile" className="w-full">
+            <TabsList className="w-full grid grid-cols-2 bg-gray-100 rounded-xl mb-6 p-1">
+              <TabsTrigger value="profile" className="rounded-lg py-2.5 text-sm font-semibold">Profile</TabsTrigger>
+              <TabsTrigger value="security" className="rounded-lg py-2.5 text-sm font-semibold">Security</TabsTrigger>
+            </TabsList>
 
+            <TabsContent value="profile" className="space-y-4 mt-0 focus-visible:outline-none focus-visible:ring-0">
           {/* ── PERSONAL INFORMATION ───────────────────────────────────── */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-5 pt-5 pb-2">
@@ -558,7 +629,100 @@ const Profile = () => {
               Logout
             </Button>
           </div>
+            </TabsContent>
 
+            <TabsContent value="security" className="space-y-4 mt-0 focus-visible:outline-none focus-visible:ring-0 pb-8">
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="px-5 pt-5 pb-2 border-b border-gray-50">
+                  <h3 className="text-base font-bold text-gray-800">Login & Security</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">Manage your authentication methods</p>
+                </div>
+                <div className="flex flex-col">
+                  {/* Email address */}
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold text-gray-800">Email address</span>
+                      <span className="text-xs text-gray-400">{user?.email}</span>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                  </div>
+
+                  {/* Phone number */}
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold text-gray-800">Phone number</span>
+                      <span className="text-xs text-gray-400">Not set</span>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                  </div>
+
+                  {/* Authenticator app */}
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold text-gray-800">Authenticator app</span>
+                      <span className="text-xs text-gray-400">Add an authenticator app</span>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                  </div>
+
+                  {/* 2-factor authentication */}
+                  <div className="flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors cursor-pointer group">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold text-gray-800">2-factor authentication</span>
+                      <span className="text-xs text-gray-400">Off</span>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="px-5 pt-5 pb-2 border-b border-gray-50">
+                  <h3 className="text-base font-bold text-gray-800">Devices & Access</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">Manage connected devices</p>
+                </div>
+                <div className="flex flex-col">
+                  {/* Device management */}
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold text-gray-800">Device management</span>
+                      <span className="text-xs text-gray-400">1 active device</span>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                  </div>
+
+                  {/* App unlock */}
+                  <div className="flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold text-gray-800">App unlock</span>
+                      <span className="text-xs text-gray-400">
+                        {biometricSupported ? "Require biometrics to open app" : "Biometrics not supported on this device"}
+                      </span>
+                    </div>
+                    <Switch
+                      checked={biometricEnabled}
+                      disabled={!biometricSupported}
+                      onCheckedChange={toggleBiometric}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl shadow-sm border border-red-100 overflow-hidden mt-6">
+                <div className="flex flex-col">
+                  {/* Delete account */}
+                  <div className="flex items-center justify-between px-5 py-4 hover:bg-red-50 transition-colors cursor-pointer group">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold text-red-600">Delete account</span>
+                      <span className="text-xs text-red-400">Permanently remove your data</span>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-red-400 group-hover:text-red-600 transition-colors" />
+                  </div>
+                </div>
+              </div>
+
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </AppLayout>
