@@ -13,6 +13,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { NativeBiometric } from "@capgo/capacitor-native-biometric";
 import { Capacitor } from "@capacitor/core";
+import { MFASetupDialog } from "@/components/profile/MFASetupDialog";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // ── Avatar emoji options ────────────────────────────────────────────────────
 const AVATAR_EMOJIS = [
@@ -54,6 +66,55 @@ const Profile = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [biometricSupported, setBiometricSupported] = useState(false);
+
+  const [mfaEnabled, setMfaEnabled] = useState(false);
+  const [showMfaDialog, setShowMfaDialog] = useState(false);
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Check MFA Status on load
+  useEffect(() => {
+    const checkMFAStatus = async () => {
+      try {
+        const { data, error } = await supabase.auth.mfa.listFactors();
+        if (error) throw error;
+
+        const totpFactor = data.totp.find(factor => factor.status === 'verified');
+        if (totpFactor) {
+          setMfaEnabled(true);
+          setMfaFactorId(totpFactor.id);
+        } else {
+          setMfaEnabled(false);
+          setMfaFactorId(null);
+        }
+      } catch (err) {
+        console.error("Failed to check MFA status:", err);
+      }
+    };
+
+    checkMFAStatus();
+  }, []);
+
+  const handleToggleMfa = async () => {
+    if (mfaEnabled && mfaFactorId) {
+      // Disable MFA
+      try {
+        const { error } = await supabase.auth.mfa.unenroll({ factorId: mfaFactorId });
+        if (error) throw error;
+
+        setMfaEnabled(false);
+        setMfaFactorId(null);
+        toast({ title: "2FA Disabled", description: "Two-factor authentication has been turned off." });
+      } catch (err: any) {
+        toast({ title: "Error", description: err.message || "Failed to disable 2FA", variant: "destructive" });
+      }
+    } else {
+      // Enable MFA
+      setShowMfaDialog(true);
+    }
+  };
 
   // Initialize biometric state from localStorage
   useEffect(() => {
@@ -111,6 +172,27 @@ const Profile = () => {
       setBiometricEnabled(false);
       localStorage.setItem("app_biometric_unlock", "false");
       toast({ title: "App Unlock Disabled", description: "Biometric unlock has been disabled." });
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase.rpc('delete_user');
+      if (error) throw error;
+
+      toast({ title: "Account Deleted", description: "Your account and data have been permanently removed." });
+      await signOut();
+      navigate("/login");
+    } catch (err: any) {
+      console.error("Delete account error:", err);
+      toast({
+        title: "Error",
+        description: err.message || "Failed to delete account. Please try again or contact support.",
+        variant: "destructive"
+      });
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
     }
   };
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
@@ -656,22 +738,24 @@ const Profile = () => {
                     <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
                   </div>
 
-                  {/* Authenticator app */}
-                  <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group">
+                  {/* Authenticator app & 2-factor authentication grouped */}
+                  <div
+                    onClick={handleToggleMfa}
+                    className="flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors cursor-pointer group"
+                  >
                     <div className="flex flex-col">
-                      <span className="text-sm font-semibold text-gray-800">Authenticator app</span>
-                      <span className="text-xs text-gray-400">Add an authenticator app</span>
+                      <span className="text-sm font-semibold text-gray-800">2-Factor Authentication (Authenticator App)</span>
+                      <span className="text-xs text-gray-400">
+                        {mfaEnabled ? "Enabled - Tap to disable" : "Off - Tap to set up with authenticator app"}
+                      </span>
                     </div>
-                    <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
-                  </div>
-
-                  {/* 2-factor authentication */}
-                  <div className="flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors cursor-pointer group">
-                    <div className="flex flex-col">
-                      <span className="text-sm font-semibold text-gray-800">2-factor authentication</span>
-                      <span className="text-xs text-gray-400">Off</span>
+                    <div className="flex items-center">
+                      <Switch
+                        checked={mfaEnabled}
+                        onCheckedChange={handleToggleMfa}
+                        className="mr-2"
+                      />
                     </div>
-                    <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
                   </div>
                 </div>
               </div>
@@ -711,7 +795,10 @@ const Profile = () => {
               <div className="bg-white rounded-2xl shadow-sm border border-red-100 overflow-hidden mt-6">
                 <div className="flex flex-col">
                   {/* Delete account */}
-                  <div className="flex items-center justify-between px-5 py-4 hover:bg-red-50 transition-colors cursor-pointer group">
+                  <div
+                    onClick={() => setShowDeleteDialog(true)}
+                    className="flex items-center justify-between px-5 py-4 hover:bg-red-50 transition-colors cursor-pointer group"
+                  >
                     <div className="flex flex-col">
                       <span className="text-sm font-semibold text-red-600">Delete account</span>
                       <span className="text-xs text-red-400">Permanently remove your data</span>
@@ -724,6 +811,47 @@ const Profile = () => {
             </TabsContent>
           </Tabs>
         </div>
+          <MFASetupDialog
+            isOpen={showMfaDialog}
+            onClose={() => setShowMfaDialog(false)}
+            onSuccess={() => {
+              // Re-check MFA status to update UI
+              const checkMFAStatus = async () => {
+                const { data } = await supabase.auth.mfa.listFactors();
+                const totpFactor = data?.totp.find(factor => factor.status === 'verified');
+                if (totpFactor) {
+                  setMfaEnabled(true);
+                  setMfaFactorId(totpFactor.id);
+                }
+              };
+              checkMFAStatus();
+            }}
+          />
+
+          <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete your account
+                  and remove your data from our servers.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleDeleteAccount();
+                  }}
+                  className="bg-red-600 hover:bg-red-700 focus:ring-red-600 text-white"
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? "Deleting..." : "Delete Account"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
       </div>
     </AppLayout>
   );
