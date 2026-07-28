@@ -50,6 +50,7 @@ export type BodyArea =
   | 'chest'
   | 'trunk'
   | 'groin'
+  | 'thighs'
   | 'entire_body';
 
 export interface BodyAreaDetail {
