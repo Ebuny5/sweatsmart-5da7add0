@@ -33,7 +33,7 @@ interface Doctor {
   isTelehealth: boolean;
   distance?: string | null;
   distanceMeters?: number | null;
-  tier: 'curated' | 'google' | 'telehealth';
+  tier: 'curated' | 'external' | 'telehealth';
   rating?: number | null;
   reviewCount?: number | null;
   openNow?: boolean | null;
@@ -43,7 +43,7 @@ interface Doctor {
 interface SearchMeta {
   total: number;
   curatedCount: number;
-  googleCount: number;
+  externalCount: number;
   telehealthCount: number;
   careGap: boolean;
 }
@@ -115,7 +115,7 @@ const AIGreeting = ({ profile, hdss, meta, city, onDismiss }: {
 }) => {
   const name = profile?.name?.split(' ')[0] || 'Warrior';
   const hdssText = hdss > 0 ? `HDSS ${hdss.toFixed(1)} severity` : 'your hyperhidrosis profile';
-  const physCount = meta ? meta.curatedCount + meta.googleCount : 0;
+  const physCount = meta ? meta.curatedCount + meta.externalCount : 0;
 
   return (
     <div className="relative rounded-2xl overflow-hidden mb-4 p-4"
@@ -145,7 +145,7 @@ const AIGreeting = ({ profile, hdss, meta, city, onDismiss }: {
 };
 
 // ── Care Gap card ──────────────────────────────────────────────────────────
-const CareGapCard = ({ onWiden }: { onWiden: () => void }) => (
+const CareGapCard = ({ onWiden, hideWiden }: { onWiden: () => void, hideWiden?: boolean }) => (
   <div className="rounded-2xl p-4 mb-4"
     style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.25)' }}>
     <div className="flex items-center gap-2 mb-2">
@@ -156,10 +156,10 @@ const CareGapCard = ({ onWiden }: { onWiden: () => void }) => (
       No certified hyperhidrosis specialists are registered near you yet. This is a known gap across many African cities — HidroAlly is actively working to map specialist availability across the continent.
     </p>
     <div className="flex gap-2">
-      <button onClick={onWiden}
+      {!hideWiden && <button onClick={onWiden}
         className="flex-1 py-2.5 rounded-xl text-xs font-bold text-teal-300 border border-teal-500/40 bg-teal-500/10 transition-all active:scale-95">
         Widen to Country / Continent
-      </button>
+      </button>}
       <a href="https://www.sweathelp.org/find-a-provider.html" target="_blank" rel="noreferrer"
         className="flex-1 py-2.5 rounded-xl text-xs font-bold text-violet-300 border border-violet-500/40 bg-violet-500/10 text-center transition-all active:scale-95">
         IHS Global Directory
@@ -523,7 +523,7 @@ const SpecialistRadar = () => {
           city, state, country, countryCode, continent, scope,
         }),
       });
-      if (!res.ok) throw new Error('Search failed');
+      if (!res.ok) { const errData = await res.json().catch(() => ({})); if (res.status === 429) { toast.error(errData.message || 'Daily limit reached for this scope'); return; } throw new Error(errData.error || 'Search failed'); }
       const { doctors: results, meta: resMeta } = await res.json();
       setDoctors(results || []);
       setMeta(resMeta || null);
@@ -701,7 +701,7 @@ const SpecialistRadar = () => {
 
           {/* Care gap */}
           {!isLoading && meta?.careGap && physical.length === 0 && (
-            <CareGapCard onWiden={() => setScope(scope === 'city' ? 'country' : 'continent')} />
+            <CareGapCard onWiden={() => setScope(scope === 'city' ? 'country' : 'continent')} hideWiden={scope === 'continent'} />
           )}
 
           {/* Loading */}
@@ -713,7 +713,7 @@ const SpecialistRadar = () => {
                 <Sparkles className="absolute inset-0 m-auto h-5 w-5 text-teal-400" />
               </div>
               <p className="text-sm font-bold text-white/50">Finding specialists near you...</p>
-              <p className="text-xs text-white/25 mt-1">Checking curated database + Google Places</p>
+              <p className="text-xs text-white/25 mt-1">Checking curated database + Geoapify Places</p>
             </div>
           )}
 
@@ -779,7 +779,7 @@ const SpecialistRadar = () => {
           </a>
 
           <p className="text-[10px] text-white/18 text-center leading-relaxed px-4 mb-4">
-            Data from HidroAlly curated database, Google Places & IHS directory. Always verify credentials before booking. Not medical advice.
+            Data from HidroAlly curated database, Geoapify Places & IHS directory. Always verify credentials before booking. Not medical advice.
           </p>
         </div>
       </div>

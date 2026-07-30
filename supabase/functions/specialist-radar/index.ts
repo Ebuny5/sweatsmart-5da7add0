@@ -133,7 +133,7 @@ serve(async (req) => {
 
     const cacheAgeHours = cached ? (Date.now() - new Date(cached.created_at).getTime()) / 36e5 : Infinity;
 
-    if (cached && cacheAgeHours < CACHE_TTL_HOURS) {
+    if (cached && cacheAgeHours < CACHE_TTL_HOURS && !(cached.meta?.externalCount === 0 && Deno.env.get('GEOAPIFY_API_KEY'))) {
       return new Response(JSON.stringify({
         doctors: cached.doctors, meta: { ...cached.meta, fromCache: true },
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -144,8 +144,8 @@ serve(async (req) => {
       .from('radar_search_log').select('id')
       .eq('user_id', user.id).eq('scope', scope).eq('search_date', today).maybeSingle();
 
-    if (existingLog) {
-      if (cached) {
+    if (existingLog && !(cached?.meta?.externalCount === 0 && Deno.env.get('GEOAPIFY_API_KEY'))) {
+      if (cached && !(cached?.meta?.externalCount === 0 && Deno.env.get('GEOAPIFY_API_KEY'))) {
         return new Response(JSON.stringify({
           doctors: cached.doctors, meta: { ...cached.meta, fromCache: true, stale: true },
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -214,7 +214,7 @@ serve(async (req) => {
                           : Math.min(radius, 2000000);
 
       const url = new URL('https://api.geoapify.com/v2/places');
-      url.searchParams.set('categories', 'healthcare');
+      url.searchParams.set('categories', 'healthcare,healthcare.clinic_or_praxis.dermatology');
       url.searchParams.set('filter', `circle:${lng},${lat},${searchRadius}`);
       url.searchParams.set('bias', `proximity:${lng},${lat}`);
       url.searchParams.set('limit', '100');
