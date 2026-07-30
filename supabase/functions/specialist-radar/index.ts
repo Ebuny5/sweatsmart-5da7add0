@@ -123,17 +123,17 @@ serve(async (req) => {
       status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
-    const cacheKey =
+    const cacheKey = 'v2:' + (
       scope === 'city'      ? `city:${city.toLowerCase()}` :
       scope === 'country'   ? `country:${countryCode.toLowerCase() || country.toLowerCase()}` :
-                               `continent:${continent.toLowerCase()}`;
+                               `continent:${continent.toLowerCase()}`);
 
     const { data: cached } = await supabase
       .from('radar_cache').select('*').eq('cache_key', cacheKey).eq('scope', scope).maybeSingle();
 
     const cacheAgeHours = cached ? (Date.now() - new Date(cached.created_at).getTime()) / 36e5 : Infinity;
 
-    if (cached && cacheAgeHours < CACHE_TTL_HOURS && !(cached.meta?.externalCount === 0 && Deno.env.get('GEOAPIFY_API_KEY'))) {
+    if (cached && cacheAgeHours < CACHE_TTL_HOURS) {
       return new Response(JSON.stringify({
         doctors: cached.doctors, meta: { ...cached.meta, fromCache: true },
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -144,8 +144,8 @@ serve(async (req) => {
       .from('radar_search_log').select('id')
       .eq('user_id', user.id).eq('scope', scope).eq('search_date', today).maybeSingle();
 
-    if (existingLog && !(cached?.meta?.externalCount === 0 && Deno.env.get('GEOAPIFY_API_KEY'))) {
-      if (cached && !(cached?.meta?.externalCount === 0 && Deno.env.get('GEOAPIFY_API_KEY'))) {
+    if (existingLog) {
+      if (cached) {
         return new Response(JSON.stringify({
           doctors: cached.doctors, meta: { ...cached.meta, fromCache: true, stale: true },
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
