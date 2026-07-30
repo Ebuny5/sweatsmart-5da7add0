@@ -25,6 +25,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 // ── Avatar emoji options ────────────────────────────────────────────────────
 const AVATAR_EMOJIS = [
@@ -73,6 +81,14 @@ const Profile = () => {
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const [showPhoneDialog, setShowPhoneDialog] = useState(false);
+  const [newPhone, setNewPhone] = useState("");
+  const [isUpdatingPhone, setIsUpdatingPhone] = useState(false);
+
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
 
   // Check MFA Status on load
   useEffect(() => {
@@ -132,12 +148,59 @@ const Profile = () => {
           setBiometricSupported(false);
         }
       } else {
-        // Fallback for web testing (optional, usually false on web)
-        setBiometricSupported(true);
+        setBiometricSupported(false);
       }
     };
     checkBiometric();
   }, []);
+
+  const handleUpdatePhone = async () => {
+    setIsUpdatingPhone(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        phone: newPhone
+      });
+      if (error) throw error;
+
+      toast({
+        title: "Phone updated",
+        description: "You may need to verify this number depending on the project configuration.",
+      });
+      setShowPhoneDialog(false);
+    } catch (err: any) {
+      toast({
+        title: "Error updating phone",
+        description: err.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsUpdatingPhone(false);
+    }
+  };
+
+  const handleUpdateEmail = async () => {
+    setIsUpdatingEmail(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        email: newEmail
+      });
+      if (error) throw error;
+
+      toast({
+        title: "Email update requested",
+        description: "Please check your new email address for a confirmation link.",
+      });
+      setShowEmailDialog(false);
+    } catch (err: any) {
+      toast({
+        title: "Error updating email",
+        description: err.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsUpdatingEmail(false);
+    }
+  };
 
   const toggleBiometric = async (checked: boolean) => {
     if (checked) {
@@ -163,10 +226,8 @@ const Profile = () => {
           setBiometricEnabled(false);
         }
       } else {
-        // Web fallback for testing
-        setBiometricEnabled(true);
-        localStorage.setItem("app_biometric_unlock", "true");
-        toast({ title: "App Unlock Enabled", description: "(Web Demo) Biometric unlock has been enabled." });
+        setBiometricEnabled(false);
+        toast({ title: "Not Supported", description: "Biometric unlock is only available on native mobile devices.", variant: "destructive" });
       }
     } else {
       setBiometricEnabled(false);
@@ -721,7 +782,13 @@ const Profile = () => {
                 </div>
                 <div className="flex flex-col">
                   {/* Email address */}
-                  <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group">
+                  <div
+                    onClick={() => {
+                      setNewEmail(user?.email || "");
+                      setShowEmailDialog(true);
+                    }}
+                    className="flex items-center justify-between px-5 py-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group"
+                  >
                     <div className="flex flex-col">
                       <span className="text-sm font-semibold text-gray-800">Email address</span>
                       <span className="text-xs text-gray-400">{user?.email}</span>
@@ -730,19 +797,22 @@ const Profile = () => {
                   </div>
 
                   {/* Phone number */}
-                  <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group">
+                  <div
+                    onClick={() => {
+                      setNewPhone(user?.phone || "");
+                      setShowPhoneDialog(true);
+                    }}
+                    className="flex items-center justify-between px-5 py-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group"
+                  >
                     <div className="flex flex-col">
                       <span className="text-sm font-semibold text-gray-800">Phone number</span>
-                      <span className="text-xs text-gray-400">Not set</span>
+                      <span className="text-xs text-gray-400">{user?.phone || "Not set"}</span>
                     </div>
                     <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
                   </div>
 
                   {/* Authenticator app & 2-factor authentication grouped */}
-                  <div
-                    onClick={handleToggleMfa}
-                    className="flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors cursor-pointer group"
-                  >
+                  <div className="flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors">
                     <div className="flex flex-col">
                       <span className="text-sm font-semibold text-gray-800">2-Factor Authentication (Authenticator App)</span>
                       <span className="text-xs text-gray-400">
@@ -767,12 +837,11 @@ const Profile = () => {
                 </div>
                 <div className="flex flex-col">
                   {/* Device management */}
-                  <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group">
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
                     <div className="flex flex-col">
                       <span className="text-sm font-semibold text-gray-800">Device management</span>
                       <span className="text-xs text-gray-400">1 active device</span>
                     </div>
-                    <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
                   </div>
 
                   {/* App unlock */}
@@ -827,6 +896,62 @@ const Profile = () => {
               checkMFAStatus();
             }}
           />
+
+          <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Update Email Address</DialogTitle>
+                <DialogDescription>
+                  Enter your new email address. You will need to verify it.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                <Label htmlFor="email">New Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="your@email.com"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  className="mt-2"
+                />
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowEmailDialog(false)}>Cancel</Button>
+                <Button onClick={handleUpdateEmail} disabled={isUpdatingEmail}>
+                  {isUpdatingEmail ? "Saving..." : "Save Email"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={showPhoneDialog} onOpenChange={setShowPhoneDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Update Phone Number</DialogTitle>
+                <DialogDescription>
+                  Enter your phone number in E.164 format (e.g. +1234567890).
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                <Label htmlFor="phone">Phone Number</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="+1234567890"
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value)}
+                  className="mt-2"
+                />
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowPhoneDialog(false)}>Cancel</Button>
+                <Button onClick={handleUpdatePhone} disabled={isUpdatingPhone}>
+                  {isUpdatingPhone ? "Saving..." : "Save Phone"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
             <AlertDialogContent>
