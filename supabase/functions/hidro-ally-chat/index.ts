@@ -384,6 +384,13 @@ WARRIOR'S PERSONAL DATA (last ${episodes.length} episodes — USE THIS to person
   }).join(', ') : 'none specified'}
   * Affected Areas: ${Array.isArray(episodes[0]?.body_areas) ? episodes[0].body_areas.join(', ') : 'none specified'}
   * Severity: ${episodes[0]?.severity || 'unknown'}`;
+    } else {
+      userContext = `
+WARRIOR'S PERSONAL DATA:
+- Total episodes logged: 0
+- The user has not logged any episodes yet.
+- DO NOT hallucinate, invent, or assume any episode data, charts, patterns, or triggers.
+- If they ask to analyze their episodes, politely inform them that they need to log some episodes first before you can provide insights.`;
     }
 
     // ── Dashboard visual analytics ────────────────────────────────────────────
@@ -517,12 +524,12 @@ FORMAT: "[medical term] (which is basically [simple analogy / plain words])"
 FORMATTING RULES — follow these exactly in every response
 ════════════════════════════════════
 
-1. NEVER use asterisks (*) for any purpose. Not for bold, not for bullets, not for emphasis. Never.
+1. NEVER use asterisks (*) or markdown for bolding/emphasis. Not for bold, not for bullets, not for emphasis. Never. Output plain text.
 
-2. Use a dash and space (— ) for bullet points when listing items.
+2. Use a standard bullet point character (•) for bullet points when listing items, to ensure neatness and copy-pasteability.
    Example:
-   — Aluminium chloride applied at night
-   — Iontophoresis three times per week
+   • Aluminium chloride applied at night
+   • Iontophoresis three times per week
 
 3. Use numbered lists (1. 2. 3.) for step-by-step instructions only.
 
@@ -541,7 +548,7 @@ FORMATTING RULES — follow these exactly in every response
 
 6. NEVER start a response with 'I' as the first word. Start with the warrior's situation or a direct point.
 
-7. When making a key point mid-paragraph, start a new line rather than using asterisks for emphasis.
+7. When making a key point mid-paragraph, start a new line rather than using asterisks for emphasis. Keep formatting clean and neat.
 
 8. EVERY SINGLE RESPONSE MUST END WITH EXACTLY ONE EMOJI. No exceptions.
    Place it at the very end of your response, after the final sentence.

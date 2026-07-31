@@ -246,8 +246,6 @@ const HistorySidebar = ({
   open: boolean; conversations: Conversation[]; currentId: string | null;
   onLoad: (id: string) => void; onDelete: (id: string) => void; onClose: () => void;
 }) => {
-  const [editMode, setEditMode] = useState(false);
-
   return (
     <div
       className={`fixed inset-y-0 right-0 w-72 z-50 transition-transform duration-300 ${open ? 'translate-x-0' : 'translate-x-full'}`}
@@ -260,18 +258,8 @@ const HistorySidebar = ({
       <div className="flex items-center justify-between p-4 border-b border-white/10">
         <h3 className="font-bold text-white text-sm">Chat History</h3>
         <div className="flex items-center gap-2">
-          {conversations.length > 0 && (
-            <button
-              onClick={() => setEditMode(e => !e)}
-              className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-colors ${
-                editMode ? 'text-teal-300 bg-teal-500/20' : 'text-white/40 hover:text-white/70'
-              }`}
-            >
-              {editMode ? 'Done' : 'Edit'}
-            </button>
-          )}
           <button
-            onClick={() => { setEditMode(false); onClose(); }}
+            onClick={() => onClose()}
             className="p-1.5 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors"
           >✕</button>
         </div>
@@ -283,23 +271,21 @@ const HistorySidebar = ({
         {conversations.map(conv => (
           <div
             key={conv.id}
-            onClick={() => { if (!editMode) { setEditMode(false); onLoad(conv.id); } }}
-            className={`flex items-center gap-2 p-3 rounded-xl transition-all ${
+            onClick={() => onLoad(conv.id)}
+            className={`flex items-center gap-2 p-3 rounded-xl transition-all cursor-pointer ${
               currentId === conv.id ? 'bg-teal-500/20 border border-teal-500/30' : 'hover:bg-white/5'
-            } ${!editMode ? 'cursor-pointer' : 'cursor-default'}`}
+            }`}
           >
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-white/80 truncate">{conv.title}</p>
               <p className="text-[10px] text-white/30 mt-0.5">{format(new Date(conv.updated_at), 'MMM d, yyyy')}</p>
             </div>
-            {editMode && (
-              <button
-                onClick={e => { e.stopPropagation(); onDelete(conv.id); }}
-                className="w-7 h-7 rounded-full bg-red-500 flex items-center justify-center shrink-0 transition-all active:scale-95"
-              >
-                <Trash2 className="h-3.5 w-3.5 text-white" />
-              </button>
-            )}
+            <button
+              onClick={e => { e.stopPropagation(); onDelete(conv.id); }}
+              className="w-7 h-7 rounded-full bg-white/5 hover:bg-red-500/80 flex items-center justify-center shrink-0 transition-all active:scale-95 group"
+            >
+              <Trash2 className="h-3.5 w-3.5 text-white/40 group-hover:text-white transition-colors" />
+            </button>
           </div>
         ))}
       </div>
@@ -1408,25 +1394,25 @@ const HidroAlly = () => {
 
         {/* Header */}
         <div
-          className="shrink-0 flex items-center justify-between px-4 py-3 border-b"
+          className="shrink-0 flex items-center justify-between px-2 sm:px-4 py-3 border-b"
           style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'rgba(10,10,30,0.8)', backdropFilter: 'blur(20px)' }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3">
             <button
               onClick={() => navigate(-1)}
-              className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-white/50 hover:text-white"
+              className="p-1 sm:p-1.5 rounded-lg hover:bg-white/10 transition-colors text-white/50 hover:text-white -ml-1 sm:ml-0"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
             <div
-              className="w-8 h-8 rounded-full flex items-center justify-center neural-idle"
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center neural-idle shrink-0"
               style={{ background: 'linear-gradient(135deg, #00BCD4, #0097A7)', boxShadow: '0 0 16px rgba(0,188,212,0.5)' }}
             >
-              <Sparkles className="h-4 w-4 text-white" />
+              <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
             </div>
-            <div>
-              <p className="text-sm font-bold text-white">HidroAlly</p>
-              <p className="text-[10px] text-teal-400">Your hyperhidrosis companion</p>
+            <div className="truncate min-w-0">
+              <p className="text-sm font-bold text-white truncate">HidroAlly</p>
+              <p className="text-[9px] sm:text-[10px] text-teal-400 truncate">Your hyperhidrosis companion</p>
             </div>
           </div>
 
