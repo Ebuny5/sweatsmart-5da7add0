@@ -1410,9 +1410,9 @@ const HidroAlly = () => {
             >
               <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
             </div>
-            <div className="truncate min-w-0">
+            <div className="min-w-0">
               <p className="text-sm font-bold text-white truncate">HidroAlly</p>
-              <p className="text-[9px] sm:text-[10px] text-teal-400 truncate">Your hyperhidrosis companion</p>
+              <p className="text-[9px] sm:text-[10px] text-teal-400 leading-[1.1]">Your hyperhidrosis<br/>companion</p>
             </div>
           </div>
 
