@@ -272,7 +272,7 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ allEpisodes = [], t
       <div className="h-[380px] w-full">
         {chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={{ top: 16, right: 80, left: 40, bottom: 40 }}>
+            <ComposedChart data={chartData} margin={{ top: 16, right: 0, left: -20, bottom: 40 }}>
               <defs>
                 <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.9} />
@@ -285,10 +285,10 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ allEpisodes = [], t
               </defs>
               <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#ede9fe" strokeOpacity={0.7} />
               <XAxis dataKey="date" fontSize={9} tickLine={false} axisLine={false}
-                tick={{ fill: "#9ca3af", fontWeight: 600 }} interval={0} />
-              <YAxis yAxisId="left" orientation="left" fontSize={9} tickLine={false} axisLine={false} width={70}
-                tick={{ fill: "#a78bfa", dx: -20 }} allowDecimals={false} domain={[0, Math.ceil(maxCount * 1.3)]} />
-              <YAxis yAxisId="right" orientation="right" fontSize={10} tickLine={false} axisLine={false} width={50}
+                tick={{ fill: "#9ca3af", fontWeight: 600, angle: -45, textAnchor: 'end' }} height={60} interval="preserveStartEnd" />
+              <YAxis yAxisId="left" orientation="right" fontSize={9} tickLine={false} axisLine={false} width={25}
+                tick={{ fill: "#a78bfa" }} allowDecimals={false} domain={[0, Math.ceil(maxCount * 1.3)]} />
+              <YAxis yAxisId="right" orientation="right" fontSize={10} tickLine={false} axisLine={false} width={25}
                 domain={[1, 4]} ticks={[1, 2, 3, 4]} tick={{ fill: "#f472b6", fontWeight: 600 }} />
               <Tooltip content={<DualTooltip timeframe={timeframe} />} />
               <Bar yAxisId="left" dataKey="count" fill="url(#barGrad)" radius={[6, 6, 0, 0]} maxBarSize={28} name="Episodes" />
