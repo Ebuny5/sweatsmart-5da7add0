@@ -45,7 +45,7 @@ const GENDER_OPTIONS: { value: Gender; label: string; emoji: string }[] = [
 // ── Stat card ───────────────────────────────────────────────────────────────
 const StatCard = ({
   value, label, emoji, gradient,
-}: { value: number; label: string; emoji: string; gradient: string }) => (
+}: { value: number | string; label: string; emoji: string; gradient: string }) => (
   <div className={`rounded-2xl p-5 flex flex-col items-center gap-1 ${gradient}`}>
     <span className="text-2xl">{emoji}</span>
     <span className="text-4xl font-black text-gray-800 leading-none">{value}</span>
