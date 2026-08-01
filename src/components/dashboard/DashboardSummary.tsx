@@ -285,7 +285,7 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ allEpisodes = [], t
               </defs>
               <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#ede9fe" strokeOpacity={0.7} />
               <XAxis dataKey="date" fontSize={9} tickLine={false} axisLine={false}
-                tick={{ fill: "#9ca3af", fontWeight: 600, angle: -45, textAnchor: 'end' }} height={60} interval="preserveStartEnd" />
+                tick={{ fill: "#9ca3af", fontWeight: 600 }} angle={-45} textAnchor="end" height={60} interval="preserveStartEnd" />
               <YAxis yAxisId="left" orientation="right" fontSize={9} tickLine={false} axisLine={false} width={25}
                 tick={{ fill: "#a78bfa" }} allowDecimals={false} domain={[0, Math.ceil(maxCount * 1.3)]} />
               <YAxis yAxisId="right" orientation="right" fontSize={10} tickLine={false} axisLine={false} width={25}

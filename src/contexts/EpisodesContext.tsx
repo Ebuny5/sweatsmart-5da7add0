@@ -56,7 +56,7 @@ export const EpisodesProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       const processed: ProcessedEpisode[] = (data || []).map((ep) => {
         try {
-          let parsedTriggers: ProcessedEpisode["triggers"] = [];
+          let parsedTriggers: any[] = [];
           if (ep.triggers && Array.isArray(ep.triggers)) {
             parsedTriggers = ep.triggers.map((t: unknown) => {
               if (typeof t === "string") {

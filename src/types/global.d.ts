@@ -1,4 +1,21 @@
 declare global {
+
+  interface SpeechRecognition extends EventTarget {
+    lang: string;
+    continuous: boolean;
+    interimResults: boolean;
+    maxAlternatives: number;
+    start(): void;
+    stop(): void;
+    abort(): void;
+    onresult: ((event: any) => void) | null;
+    onerror: ((event: any) => void) | null;
+    onend: ((event: any) => void) | null;
+    onstart: ((event: any) => void) | null;
+  }
+
+  var SpeechRecognition: { prototype: SpeechRecognition; new (): SpeechRecognition };
+
   interface PushManager {
     getSubscription(): Promise<PushSubscription | null>;
     subscribe(options?: PushSubscriptionOptionsInit): Promise<PushSubscription>;
