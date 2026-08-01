@@ -29,7 +29,9 @@ export interface LogEntry {
   hdssLevel: HDSSLevel;
   weather: WeatherData;
   physiologicalData: PhysiologicalData;
+  is_dry_day?: boolean;
 }
+
 
 // Episode types
 export type SeverityLevel = 1 | 2 | 3 | 4 | 5;

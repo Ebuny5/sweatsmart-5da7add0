@@ -109,13 +109,9 @@ const LogEpisode = () => {
   // ── All original logic ─────────────────────────────────────────────────────
   const handleSubmit = useCallback(async (e?: React.FormEvent, manualNotes?: string, manualBodyAreas?: BodyArea[], manualTriggers?: Trigger[], manualSeverity?: SeverityLevel) => {
     if (e) e.preventDefault();
-    if (severity === null && !isDryDay && !manualSeverity) {
-        toast({ title: "Validation Error", description: "Please select an HDSS level.", variant: "destructive" });
-        return;
-    }
-    const finalBodyAreas = manualBodyAreas ?? bodyAreas;
-    const finalTriggers = manualTriggers ?? triggers;
-    const finalSeverity = manualSeverity ?? severity ?? 3; // Fallback to 3 only if dry day
+    const finalBodyAreas = isDryDay ? [] : (manualBodyAreas ?? bodyAreas);
+    const finalTriggers = isDryDay ? [] : (manualTriggers ?? triggers);
+    const finalSeverity = isDryDay ? (1 as SeverityLevel) : (manualSeverity ?? severity);
 
     if (!user) {
       toast({ title: "Authentication required", description: "Please log in to save episodes.", variant: "destructive" });
@@ -142,25 +138,26 @@ const LogEpisode = () => {
     const datetime = new Date(date);
     datetime.setHours(hours, minutes);
 
-    const finalNotes = manualNotes !== undefined ? manualNotes : notes;
+    const baseNotes = manualNotes !== undefined ? manualNotes : notes;
+    const finalNotes = isDryDay
+      ? (baseNotes?.trim() ? `Dry day / treatment — ${baseNotes.trim()}` : "Dry day / treatment logged")
+      : baseNotes;
 
     try {
-      const dbTriggers = isDryDay ? [] : (finalTriggers || []);
-      const triggerStrings = dbTriggers.map((trigger) =>
+      const triggerStrings = finalTriggers.map((trigger) =>
         JSON.stringify({ type: trigger.type, value: trigger.value, label: trigger.label })
       );
 
-      const dbSeverity = isDryDay ? 1 : finalSeverity;
-      const dbBodyAreas = isDryDay ? [] : finalBodyAreas;
       const { data, error } = await supabase.from("episodes").insert({
         user_id: user.id,
-        severity: dbSeverity,
-        is_dry_day: isDryDay,
-        body_areas: dbBodyAreas,
+        severity: finalSeverity,
+        body_areas: finalBodyAreas,
         triggers: triggerStrings,
         notes: finalNotes || null,
         date: datetime.toISOString(),
+        is_dry_day: isDryDay,
       }).select();
+
 
       if (error) throw error;
 
@@ -173,9 +170,9 @@ const LogEpisode = () => {
         const newLog = {
           id: data[0].id,
           datetime: datetime.toISOString(),
-          severityLevel: dbSeverity,
+          severityLevel: finalSeverity,
           is_dry_day: isDryDay,
-          hdssLevel: dbSeverity
+          hdssLevel: finalSeverity
         };
         localStorage.setItem("sweatSmartLogs", JSON.stringify([newLog, ...existingLogs]));
       }
@@ -192,8 +189,8 @@ const LogEpisode = () => {
         }));
 
         const insights = generateFallbackInsights(
-          dbSeverity,
-          dbBodyAreas,
+          finalSeverity,
+          finalBodyAreas,
           triggerData,
           finalNotes,
           undefined,
