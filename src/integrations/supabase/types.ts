@@ -115,6 +115,7 @@ export type Database = {
           created_at: string
           date: string
           id: string
+          is_dry_day: boolean
           notes: string | null
           severity: number
           triggers: Json | null
@@ -126,6 +127,7 @@ export type Database = {
           created_at?: string
           date: string
           id?: string
+          is_dry_day?: boolean
           notes?: string | null
           severity: number
           triggers?: Json | null
@@ -137,6 +139,7 @@ export type Database = {
           created_at?: string
           date?: string
           id?: string
+          is_dry_day?: boolean
           notes?: string | null
           severity?: number
           triggers?: Json | null
@@ -390,6 +393,57 @@ export type Database = {
         }
         Relationships: []
       }
+      radar_cache: {
+        Row: {
+          cache_key: string
+          created_at: string
+          doctors: Json
+          id: string
+          meta: Json
+          scope: string
+        }
+        Insert: {
+          cache_key: string
+          created_at?: string
+          doctors: Json
+          id?: string
+          meta: Json
+          scope: string
+        }
+        Update: {
+          cache_key?: string
+          created_at?: string
+          doctors?: Json
+          id?: string
+          meta?: Json
+          scope?: string
+        }
+        Relationships: []
+      }
+      radar_search_log: {
+        Row: {
+          created_at: string
+          id: string
+          scope: string
+          search_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          scope: string
+          search_date?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          scope?: string
+          search_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       specialist_reviews: {
         Row: {
           comment: string | null
@@ -565,6 +619,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_user: { Args: never; Returns: undefined }
       increment_notification_count: {
         Args: { p_date: string; p_user_id: string }
         Returns: undefined
