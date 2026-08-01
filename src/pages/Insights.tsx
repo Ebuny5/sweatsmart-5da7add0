@@ -388,6 +388,42 @@ const Insights = () => {
             </div>
           )}
 
+          {/* ── DRY DAY ENCOURAGEMENT ─────────────────────────────────── */}
+          {dryStats.total > 0 && (
+            <div className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg">✨</span>
+                <h3 className="font-black text-emerald-800 text-sm">Your Dry Days</h3>
+              </div>
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                <div className="rounded-xl bg-white/70 py-2 text-center">
+                  <p className="text-lg font-black text-emerald-700 leading-none">{dryStats.total}</p>
+                  <p className="text-[10px] text-emerald-600 font-semibold mt-1">Total dry days</p>
+                </div>
+                <div className="rounded-xl bg-white/70 py-2 text-center">
+                  <p className="text-lg font-black text-emerald-700 leading-none">{dryStats.last30Dry}</p>
+                  <p className="text-[10px] text-emerald-600 font-semibold mt-1">Last 30 days</p>
+                </div>
+                <div className="rounded-xl bg-white/70 py-2 text-center">
+                  <p className="text-lg font-black text-emerald-700 leading-none">{dryStats.streak}</p>
+                  <p className="text-[10px] text-emerald-600 font-semibold mt-1">Current streak</p>
+                </div>
+              </div>
+              <p className="text-xs text-emerald-800 leading-relaxed">
+                {dryStats.streak >= 3
+                  ? `${dryStats.streak} dry days in a row — whatever you are doing right now is working. Keep the same routine, treatment timing and clothing choices going. 💪`
+                  : dryStats.last7Dry > 0
+                  ? `You logged ${dryStats.last7Dry} dry day${dryStats.last7Dry !== 1 ? "s" : ""} this week. Dry days are real clinical progress — note what treatment or routine you used on those days and repeat it. 🌿`
+                  : `You have ${dryStats.total} dry day${dryStats.total !== 1 ? "s" : ""} on record. Each one is proof that control is possible — keep logging them alongside episodes so your dermatologist can see what works. 🌿`}
+              </p>
+              <p className="text-[10px] text-emerald-600/80 mt-2">
+                Dry days are excluded from severity and trigger analysis so they never distort your HDSS average.
+              </p>
+            </div>
+          )}
+
+
+
           {/* ── PERSONALISED INSIGHTS (from existing component) ────────── */}
           <Section emoji="🧠" title="Your Pattern Analysis" subtitle="Derived from your complete episode history">
             <PersonalizedInsights episodes={episodes} />
