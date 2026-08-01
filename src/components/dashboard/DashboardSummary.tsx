@@ -210,12 +210,14 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ allEpisodes = [], t
       .map(([date, d]) => ({
         date,
         count: d.count,
-        dryCount: d.dryCount,
-
+        // null (not 0) so the green dry-day marker only renders on days that
+        // actually have a dry-day log
+        dryCount: d.dryCount > 0 ? d.dryCount : null,
         severity: d.severities.length
           ? parseFloat((d.severities.reduce((a, b) => a + b, 0) / d.severities.length).toFixed(2))
-          : 0,
+          : null,
       }))
+
       .sort((a, b) => { try { return new Date(a.date).getTime() - new Date(b.date).getTime(); } catch { return 0; } })
       .slice(-cfg.maxPoints);
   }, [allEpisodes, timeframe]);
