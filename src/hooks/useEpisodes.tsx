@@ -79,6 +79,7 @@ export const useEpisodes = () => {
             createdAt: new Date(ep.created_at),
             updated_at: ep.updated_at,
             userId: ep.user_id,
+            is_dry_day: (ep as any).is_dry_day ?? false,
             is_dry_day: ep.is_dry_day || false,
           };
         } catch (error) {
@@ -97,6 +98,7 @@ export const useEpisodes = () => {
             createdAt: new Date(ep.created_at),
             updated_at: ep.updated_at,
             userId: ep.user_id,
+            is_dry_day: (ep as any).is_dry_day ?? false,
             is_dry_day: ep.is_dry_day || false,
           };
         }
