@@ -33,37 +33,41 @@ const DualTooltip = ({ active, payload, label, timeframe }: any) => {
   const freq = payload.find((p: any) => p.dataKey === "count");
   const dryCount = payload.find((p: any) => p.dataKey === "dryCount");
   const sev  = payload.find((p: any) => p.dataKey === "severity");
-  const isDryDay = (dryCount?.value > 0 && (!freq || freq.value === 0));
-  
+  const dryValue = Number(dryCount?.value) || 0;
+  const epValue = Number(freq?.value) || 0;
+
   return (
     <div className="bg-white rounded-2xl shadow-2xl border border-purple-100 px-4 py-3 text-xs min-w-[160px]">
       <p className="font-bold text-gray-500 mb-2">{TIMEFRAME_CONFIG[timeframe as Timeframe]?.tooltipLabel}: {label}</p>
-      {isDryDay ? (
+      {epValue > 0 && (
+        <div className="flex items-center gap-2 mb-1">
+          <div className="w-2.5 h-2.5 rounded-sm bg-violet-400" />
+          <span className="text-gray-700"><strong className="text-violet-700">{epValue}</strong> episode{epValue !== 1 ? "s" : ""}</span>
+        </div>
+      )}
+      {dryValue > 0 && (
         <div className="flex items-center gap-2 mb-1">
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-          <span className="text-gray-700"><strong className="text-emerald-700">Dry day</strong> — no episodes</span>
+          <span className="text-gray-700">
+            <strong className="text-emerald-700">{dryValue}</strong> dry day{dryValue !== 1 ? "s" : ""} — sweat-free 🎉
+          </span>
         </div>
-      ) : (
-        <>
-          {freq && freq.value > 0 && (
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-2.5 h-2.5 rounded-sm bg-violet-400" />
-              <span className="text-gray-700"><strong className="text-violet-700">{freq.value}</strong> episode{freq.value !== 1 ? "s" : ""}</span>
-            </div>
-          )}
-          {sev && sev.value > 0 && (
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-pink-500" />
-              <span className="text-gray-700">
-                HDSS avg <strong className={sev.value >= 3 ? "text-amber-600" : "text-sky-600"}>{Number(sev.value).toFixed(1)}</strong>
-              </span>
-            </div>
-          )}
-        </>
+      )}
+      {epValue > 0 && sev && Number(sev.value) > 0 && (
+        <div className="flex items-center gap-2">
+          <div className="w-2.5 h-2.5 rounded-full bg-pink-500" />
+          <span className="text-gray-700">
+            HDSS avg <strong className={Number(sev.value) >= 3 ? "text-amber-600" : "text-sky-600"}>{Number(sev.value).toFixed(1)}</strong>
+          </span>
+        </div>
+      )}
+      {epValue === 0 && dryValue === 0 && (
+        <span className="text-gray-400">No entries logged</span>
       )}
     </div>
   );
 };
+
 
 const generateInsight = (
   allEpisodesRaw: ProcessedEpisode[],
