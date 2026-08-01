@@ -338,7 +338,7 @@ serve(async (req) => {
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
-      .limit(15);
+      .limit(60);
 
     // Dry days (sweat-free / treatment logs) must NEVER be averaged into HDSS
     const dryDays = (episodes || []).filter((e: any) => e.is_dry_day);
