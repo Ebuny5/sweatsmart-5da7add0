@@ -340,11 +340,15 @@ serve(async (req) => {
       .order('created_at', { ascending: false })
       .limit(15);
 
-    if (episodes?.length) {
-      const avgSeverity = episodes.reduce((s: number, e: any) => s + e.severity, 0) / episodes.length;
+    // Dry days (sweat-free / treatment logs) must NEVER be averaged into HDSS
+    const dryDays = (episodes || []).filter((e: any) => e.is_dry_day);
+    const sweatEpisodes = (episodes || []).filter((e: any) => !e.is_dry_day);
+
+    if (sweatEpisodes.length) {
+      const avgSeverity = sweatEpisodes.reduce((s: number, e: any) => s + e.severity, 0) / sweatEpisodes.length;
       const triggerMap  = new Map<string, number>();
       const areaMap     = new Map<string, number>();
-      episodes.forEach((ep: any) => {
+      sweatEpisodes.forEach((ep: any) => {
         (ep.body_areas || []).forEach((a: string) => areaMap.set(a, (areaMap.get(a) || 0) + 1));
         (Array.isArray(ep.triggers) ? ep.triggers : []).forEach((t: any) => {
           let label = t;
@@ -368,22 +372,23 @@ serve(async (req) => {
 
       userContext = `
 
-WARRIOR'S PERSONAL DATA (last ${episodes.length} episodes — USE THIS to personalise every response):
-- Total episodes logged: ${episodes.length}
+WARRIOR'S PERSONAL DATA (last ${sweatEpisodes.length} sweat episodes — USE THIS to personalise every response):
+- Sweat episodes in this window: ${sweatEpisodes.length}
+- Dry days (sweat-free / treatment days) in this window: ${dryDays.length} — these are EXCLUDED from the HDSS average and should be acknowledged as progress
 - Average HDSS severity: ${hdssAvg}/4 — clinically ${hdssLabel}
 - Most common triggers: ${topTriggers.join(', ') || 'none yet'}
 - Most affected body areas: ${topAreas.join(', ') || 'none yet'}
 - Most recent episode details:
-  * Date: ${episodes[0]?.created_at ? new Date(episodes[0].created_at).toLocaleDateString() : 'unknown'}
-  * Triggers: ${Array.isArray(episodes[0]?.triggers) ? episodes[0].triggers.map((t: any) => {
+  * Date: ${sweatEpisodes[0]?.created_at ? new Date(sweatEpisodes[0].created_at).toLocaleDateString() : 'unknown'}
+  * Triggers: ${Array.isArray(sweatEpisodes[0]?.triggers) ? sweatEpisodes[0].triggers.map((t: any) => {
     let label = t;
     if (typeof t === 'string') {
       try { const parsed = JSON.parse(t); label = parsed.label || parsed.value || t; } catch (e) { label = t; }
     } else { label = t.label || t.value || t; }
     return label;
   }).join(', ') : 'none specified'}
-  * Affected Areas: ${Array.isArray(episodes[0]?.body_areas) ? episodes[0].body_areas.join(', ') : 'none specified'}
-  * Severity: ${episodes[0]?.severity || 'unknown'}`;
+  * Affected Areas: ${Array.isArray(sweatEpisodes[0]?.body_areas) ? sweatEpisodes[0].body_areas.join(', ') : 'none specified'}
+  * Severity: ${sweatEpisodes[0]?.severity || 'unknown'}`;
     } else {
       userContext = `
 WARRIOR'S PERSONAL DATA:
