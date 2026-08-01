@@ -170,9 +170,9 @@ const LogEpisode = () => {
         const newLog = {
           id: data[0].id,
           datetime: datetime.toISOString(),
-          severityLevel: dbSeverity,
+          severityLevel: finalSeverity,
           is_dry_day: isDryDay,
-          hdssLevel: dbSeverity
+          hdssLevel: finalSeverity
         };
         localStorage.setItem("sweatSmartLogs", JSON.stringify([newLog, ...existingLogs]));
       }
@@ -189,8 +189,8 @@ const LogEpisode = () => {
         }));
 
         const insights = generateFallbackInsights(
-          dbSeverity,
-          dbBodyAreas,
+          finalSeverity,
+          finalBodyAreas,
           triggerData,
           finalNotes,
           undefined,
