@@ -199,6 +199,29 @@ const Insights = () => {
 
   // ── Derived analytics from episode history ─────────────────────────────────
   const nonDryEpisodes = episodes.filter(e => !e.is_dry_day);
+  const dryEpisodes = episodes.filter(e => e.is_dry_day);
+
+  // Dry-day (sweat-free / treatment) stats — used for encouragement
+  const dryStats = useMemo(() => {
+    const toKey = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const dryKeys = new Set(dryEpisodes.map(e => toKey(new Date(e.date || e.created_at))));
+    const now = Date.now();
+    const last30Dry = [...dryKeys].filter(k => (now - new Date(k).getTime()) < 30 * 864e5).length;
+    const last7Dry = [...dryKeys].filter(k => (now - new Date(k).getTime()) < 7 * 864e5).length;
+
+    // current consecutive dry-day streak ending today or yesterday
+    let streak = 0;
+    for (let i = 0; i < 60; i++) {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() - i);
+      if (dryKeys.has(toKey(d))) streak++;
+      else if (i > 0) break;
+    }
+    return { total: dryKeys.size, last7Dry, last30Dry, streak };
+  }, [episodes]);
+
   const analytics = useMemo(() => {
     if (!nonDryEpisodes.length) return null;
 
