@@ -10,6 +10,7 @@ import { calculateSweatRisk, getRiskSeverity, type SweatRiskLevel } from '@/util
 import { notificationManager } from '@/services/NotificationManager';
 import { loggingReminderService } from '@/services/LoggingReminderService';
 import { useToast } from '@/hooks/use-toast';
+import { useEngagement } from '@/hooks/useEngagement';
 
 // --- Realistic Icons matching Gemini mockup ---
 
@@ -219,6 +220,7 @@ const DiagnosticsPanel: React.FC<{
 const ClimateMonitor = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { trackAction } = useEngagement();
   const [notificationPermission, setNotificationPermission] = useState<'prompt' | 'granted' | 'denied'>('prompt');
   const [locationPermission, setLocationPermission] = useState<'prompt' | 'granted' | 'denied'>('prompt');
   const [location, setLocation] = useState<GeolocationCoordinates | null>(null);
@@ -266,6 +268,7 @@ const ClimateMonitor = () => {
   }, []);
 
   useEffect(() => {
+    trackAction("climate_alert_checks");
     checkPermissions();
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(

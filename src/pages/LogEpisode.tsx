@@ -19,6 +19,7 @@ import { SeverityLevel, BodyArea, Trigger } from "@/types";
 import { CalendarIcon, Clock, Loader2, CheckCircle2, LayoutDashboard, History, Plus, Mic, MicOff, Droplets, Square, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useEngagement } from "@/hooks/useEngagement";
 import { useEpisodes } from "@/hooks/useEpisodes";
 import { generateFallbackInsights } from "@/components/recommendationEngine";
 import { loggingReminderService, LAST_LOG_TIME_KEY, CURRENT_HDSS_KEY } from "@/services/LoggingReminderService";
@@ -61,6 +62,7 @@ const LogEpisode = () => {
   const location = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { trackAction } = useEngagement();
   const { episodes } = useEpisodes();
   const searchParams = new URLSearchParams(location.search);
   const isNow = searchParams.get("now") === "true";
@@ -175,6 +177,13 @@ const LogEpisode = () => {
           hdssLevel: finalSeverity
         };
         localStorage.setItem("sweatSmartLogs", JSON.stringify([newLog, ...existingLogs]));
+      }
+
+      // Track actions based on log type
+      if (isDryDay) {
+        trackAction("dry_mode_entries");
+      } else {
+        trackAction("episodes_logged");
       }
 
       // Reschedule the next reminder 6 hours from now
