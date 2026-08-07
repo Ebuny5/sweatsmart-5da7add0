@@ -15,6 +15,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useClimateData } from '@/hooks/useClimateData';
 import { edaManager } from '@/utils/edaManager';
 import { speakProfessionally, stopProfessionalSpeech } from '@/utils/webSpeechVoice';
+import { useEngagement } from '@/hooks/useEngagement';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -300,6 +301,7 @@ const HidroAlly = () => {
   const { episodes: rawEpisodes } = useEpisodes();
   const { weather, sweatRisk } = useClimateData();
   const navigate = useNavigate();
+  const { trackAction } = useEngagement();
 
   // ── Core state ────────────────────────────────────────────────────────────
   const [messages, setMessages]           = useState<Message[]>([]);
@@ -1214,6 +1216,8 @@ const HidroAlly = () => {
     if (!text && !pendingImage) return;
     if (isLoading) return;
 
+    trackAction("hidroally_chat_uses");
+
     setInput('');
     setShowSuggestions(false);
     const capturedImage = pendingImage;
@@ -1302,7 +1306,7 @@ const HidroAlly = () => {
 
       setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
 
-      // eslint-disable-next-line no-constant-condition
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;

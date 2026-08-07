@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import PersonalizedInsights from "@/components/insights/PersonalizedInsights";
+import { useEngagement } from "@/hooks/useEngagement";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 type TreatmentTier = "first" | "second" | "third";
@@ -168,6 +169,11 @@ const Insights = () => {
   const navigate = useNavigate();
   const [episodes, setEpisodes] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { trackAction } = useEngagement();
+
+  useEffect(() => {
+    trackAction("growth_radar_views");
+  }, [trackAction]);
 
   // ── Original fetch logic — untouched ──────────────────────────────────────
   useEffect(() => {
