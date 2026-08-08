@@ -17,6 +17,7 @@ import {
   HelpCircle,
   Mail,
   ClipboardList,
+  Medal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -60,6 +61,7 @@ const primaryItems = [
 
 const moreItems = [
   { path: "/climate",      icon: CloudRainWind,    label: "Climate",    color: "text-cyan-600",    bg: "bg-cyan-50"    },
+  { path: "/achievements", icon: Medal,            label: "Achievements",color: "text-amber-600",  bg: "bg-amber-50"   },
   { path: "/palm-scanner", icon: Hand,             label: "Scanner",    color: "text-cyan-600",    bg: "bg-cyan-50"    },
   { path: "/specialist-radar", icon: MapPin,       label: "Specialist", color: "text-teal-600",    bg: "bg-teal-50"    },
   { path: "/hidro-ally",     icon: Sparkles,         label: "HidroAlly",  color: "text-amber-600",   bg: "bg-amber-50"   },

@@ -17,6 +17,7 @@ import {
   HelpCircle,
   Mail,
   ClipboardList,
+  Medal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -65,6 +66,15 @@ const menuItems = [
     activeBg: "bg-fuchsia-50",
     activeText: "text-fuchsia-700",
     iconBg: "bg-fuchsia-100",
+  },
+  {
+    path: "/achievements",
+    icon: Medal,
+    label: "Achievements",
+    activeGradient: "from-yellow-400 to-amber-500",
+    activeBg: "bg-yellow-50",
+    activeText: "text-yellow-700",
+    iconBg: "bg-yellow-100",
   },
   {
     path: "/climate",
