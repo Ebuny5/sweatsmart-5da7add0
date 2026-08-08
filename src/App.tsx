@@ -27,6 +27,7 @@ import Profile from "./pages/Profile";
 import Insights from "./pages/Insights";
 import Community from "./pages/Community";
 import Settings from "./pages/Settings";
+import Achievements from "./pages/Achievements";
 import NotFound from "./pages/NotFound";
 import AuthCallback from "./pages/AuthCallback";
 import PalmScanner from "./pages/PalmScanner";
@@ -184,6 +185,11 @@ const AppRoutes = () => {
     <Route path="/settings" element={
       <ProtectedRoute>
         <Settings />
+      </ProtectedRoute>
+    } />
+    <Route path="/achievements" element={
+      <ProtectedRoute>
+        <Achievements />
       </ProtectedRoute>
     } />
     <Route path="/palm-scanner" element={

@@ -335,7 +335,7 @@ const WarriorLaunchpad = () => {
 
           {/* Card 3: EDA (Skin Conductance) */}
           <div className="bg-orange-50 rounded-2xl p-3 flex flex-col items-center justify-center gap-1 shadow-sm border border-orange-100">
-            <Activity className="h-5 w-5 text-orange-500 mb-0.5" />
+            <Activity className="h-5 w-5 text-orange-500 mb-0.5 animate-pulse" />
             <span className="text-2xl font-black text-orange-700 leading-none">
               {edaData ? edaData.value.toFixed(1) : "—"}
             </span>
@@ -344,7 +344,7 @@ const WarriorLaunchpad = () => {
 
           {/* Card 4: Heart Rate */}
           <div className="bg-rose-50 rounded-2xl p-3 flex flex-col items-center justify-center gap-1 shadow-sm border border-rose-100">
-            <Heart className="h-5 w-5 text-rose-500 mb-0.5" />
+            <Heart className="h-5 w-5 text-rose-500 mb-0.5 animate-pulse" />
             <span className="text-2xl font-black text-rose-700 leading-none">
               {edaData?.hr || "—"}
             </span>
