@@ -74,7 +74,7 @@ async function generateVapidToken(
   const signingInput = `${encode(header)}.${encode(payload)}`;
 
   // Import private key
-  const privateKeyBytes = base64UrlToUint8Array(privateKeyB64);
+  let privateKeyBytes = base64UrlToUint8Array(privateKeyB64);
 
   // If it looks like PKCS8 (longer than 32 bytes), import as PKCS8
   let cryptoKey: CryptoKey;

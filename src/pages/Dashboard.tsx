@@ -10,7 +10,6 @@ import { TriggerFrequency, BodyAreaFrequency, BodyArea } from "@/types";
 import { useEpisodes } from "@/hooks/useEpisodes";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
-import { useEngagement } from "@/hooks/useEngagement";
 import { PlusCircle, TrendingUp, Sparkles, BookOpen, ChevronRight, CalendarDays } from "lucide-react";
 
 // ── Onboarding step card ─────────────────────────────────────────────────────
@@ -64,11 +63,6 @@ const Dashboard = () => {
   const { user } = useAuth();
   const { profile } = useProfile();
   const { episodes: rawEpisodes, loading: isLoading, error, refetch } = useEpisodes();
-  const { consistencyPercentage: trackingConsistencyPercentage, trackAction } = useEngagement();
-
-  useEffect(() => {
-    trackAction("sweat_journey_views");
-  }, [trackAction]);
 
   useEffect(() => {
     if (user) {
@@ -155,6 +149,35 @@ const Dashboard = () => {
   const avgSeverity = nonDryCount > 0
     ? (dashboardData.nonDryEpisodes.reduce((sum, e) => sum + e.severityLevel, 0) / nonDryCount).toFixed(1)
     : "—";
+
+  // Calendar week tracking consistency: unique days logged since Sunday (Day 1)
+  const calculateTrackingConsistency = () => {
+    if (!dashboardData.allEpisodes || dashboardData.allEpisodes.length === 0) return 0;
+
+    const toKey = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dayOfWeek = today.getDay(); // 0 is Sunday, 1 is Monday, etc.
+
+    const windowKeys = new Set<string>();
+    for (let i = 0; i <= dayOfWeek; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      windowKeys.add(toKey(d));
+    }
+
+    const loggedDays = new Set<string>();
+    for (const ep of dashboardData.allEpisodes) {
+      const key = toKey(new Date(ep.datetime));
+      if (windowKeys.has(key)) loggedDays.add(key);
+    }
+
+    // Calculate percentage based on a full 7-day week
+    return Math.round((loggedDays.size / 7) * 100);
+  };
+  const trackingConsistencyPercentage = calculateTrackingConsistency();
 
   const topTrigger = dashboardData.triggerFrequencies[0]?.name ?? "None yet";
 

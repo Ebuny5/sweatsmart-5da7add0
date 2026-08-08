@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useEpisodes } from '@/hooks/useEpisodes';
-import { useEngagement } from '@/hooks/useEngagement';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
@@ -365,11 +364,6 @@ const SpecialistRadar = () => {
   const { user }     = useAuth();
   const { profile }  = useProfile();
   const { episodes } = useEpisodes();
-  const { trackAction } = useEngagement();
-
-  useEffect(() => {
-    trackAction("specialist_radar_uses");
-  }, [trackAction]);
 
   const handleBack = () => {
     if (window.history.length > 2) {

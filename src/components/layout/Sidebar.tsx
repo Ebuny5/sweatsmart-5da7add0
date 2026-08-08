@@ -1,6 +1,7 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
 import {
+  Medal,
   Home,
   LayoutDashboard,
   PlusCircle,
@@ -92,6 +93,15 @@ const menuItems = [
     activeBg: "bg-teal-50",
     activeText: "text-teal-700",
     iconBg: "bg-teal-100",
+  },
+  {
+    path: "/achievements",
+    icon: Medal,
+    label: "Achievements",
+    activeGradient: "from-amber-400 to-yellow-500",
+    activeBg: "bg-amber-50",
+    activeText: "text-amber-700",
+    iconBg: "bg-amber-100",
   },
   {
     path: "/hidro-ally",

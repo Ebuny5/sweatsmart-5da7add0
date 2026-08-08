@@ -46,6 +46,7 @@ import HidroAlly from "./pages/HidroAlly";
 import KnowledgeBaseAdmin from "./pages/KnowledgeBaseAdmin";
 import SpecialistRadar from "./pages/SpecialistRadar";
 import SetupProfile from "./pages/SetupProfile";
+import Achievements from "./pages/Achievements";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -174,6 +175,11 @@ const AppRoutes = () => {
     <Route path="/insights" element={
       <ProtectedRoute>
         <Insights />
+      </ProtectedRoute>
+    } />
+    <Route path="/achievements" element={
+      <ProtectedRoute>
+        <Achievements />
       </ProtectedRoute>
     } />
     <Route path="/community" element={

@@ -11,15 +11,9 @@ import { HeartIcon, EdaIcon, MODE_DETAILS } from './constants';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { edaManager } from '@/utils/edaManager';
-import { useEngagement } from '@/hooks/useEngagement';
 
 const PalmScannerApp: React.FC = () => {
   const navigate = useNavigate();
-  const { trackAction } = useEngagement();
-
-  useEffect(() => {
-    trackAction("wearable_simulator_uses");
-  }, [trackAction]);
   const [searchParams] = useSearchParams();
   const returnTo = searchParams.get('returnTo');
   const initialMode = (searchParams.get('mode') as SimulationMode) || 'Resting';

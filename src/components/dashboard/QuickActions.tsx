@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
@@ -6,11 +6,9 @@ import { useEpisodes } from "@/hooks/useEpisodes";
 import { useClimateData } from "@/hooks/useClimateData";
 import { gaugeHDSS } from "@/utils/hdssGauger";
 import { CURRENT_HDSS_KEY, LAST_LOG_TIME_KEY } from "@/services/LoggingReminderService";
-import { Thermometer, Droplets, Sun, Wind, RefreshCw, ChevronRight, AlertTriangle, Shield, Loader2, Activity, Heart } from "lucide-react";
+import { Thermometer, Droplets, Sun, Wind, RefreshCw, ChevronRight, AlertTriangle, Shield, Loader2 } from "lucide-react";
 import WarriorBadge from "@/components/dashboard/WarriorBadge";
-import { edaManager } from "@/utils/edaManager";
 import { getWarriorInsight } from "@/utils/warriorLogic";
-import { useEngagement } from "@/hooks/useEngagement";
 import {
   Dialog,
   DialogContent,
@@ -195,32 +193,36 @@ const WarriorLaunchpad = () => {
   const { profile } = useProfile();
   const { episodes, refetch: refetchEpisodes } = useEpisodes();
   const { sweatRisk } = useClimateData();
-  const { consistencyPercentage: trackingConsistencyPercentage, trackAction } = useEngagement();
 
-  useEffect(() => {
-    trackAction("app_opens");
-  }, [trackAction]);
+  // Calendar week tracking consistency: unique days logged since Sunday (Day 1)
+  const calculateTrackingConsistency = () => {
+    if (!episodes || episodes.length === 0) return 0;
 
-  // Wearable EDA data for Dashboard
-  const [edaData, setEdaData] = useState<{ value: number; hr?: number; source: "wearable" | "simulator" } | null>(null);
+    const toKey = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-  useEffect(() => {
-    const fetchEda = () => {
-      const stored = edaManager.getEDA();
-      if (stored && edaManager.isFresh()) {
-        setEdaData({ value: stored.value, hr: stored.hr, source: stored.source });
-      } else {
-        // Fallback to simulator resting range if missing or stale
-        const simEda = (Math.random() * (5.0 - 2.0) + 2.0).toFixed(1);
-        const simHr = Math.floor(Math.random() * (72 - 60 + 1)) + 60;
-        setEdaData({ value: parseFloat(simEda), hr: simHr, source: "simulator" });
-      }
-    };
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dayOfWeek = today.getDay(); // 0 is Sunday, 1 is Monday, etc.
 
-    fetchEda();
-    const interval = setInterval(fetchEda, 30000); // refresh every 30 seconds
-    return () => clearInterval(interval);
-  }, []);
+    const windowKeys = new Set<string>();
+    for (let i = 0; i <= dayOfWeek; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      windowKeys.add(toKey(d));
+    }
+
+    const loggedDays = new Set<string>();
+    for (const ep of episodes) {
+      const key = toKey(new Date(ep.datetime));
+      if (windowKeys.has(key)) loggedDays.add(key);
+    }
+
+    // Calculate percentage based on a full 7-day week
+    return Math.round((loggedDays.size / 7) * 100);
+  };
+  const trackingConsistencyPercentage = calculateTrackingConsistency();
+
 
   const [tipIndex] = useState(() => Math.floor(Math.random() * COMMUNITY_TIPS.length));
   const [quickLogOpen, setQuickLogOpen] = useState(false);
@@ -234,27 +236,19 @@ const WarriorLaunchpad = () => {
     weekday: "long", day: "numeric", month: "long",
   });
 
-  const nonDryEpisodes = useMemo(() => episodes.filter(e => !e.is_dry_day), [episodes]);
-  const [showWarriorModal, setShowWarriorModal] = useState(false);
-
-  useEffect(() => {
-    if (nonDryEpisodes.length === 1) {
-      const hasSeen = localStorage.getItem("has_seen_first_episode_badge");
-      if (!hasSeen) {
-        setShowWarriorModal(true);
-        localStorage.setItem("has_seen_first_episode_badge", "true");
-      }
-    }
-  }, [nonDryEpisodes.length]);
-
-  const rawWarriorInsight = useMemo(() => getWarriorInsight(episodes), [episodes]);
-  const isMissedCheckIn = rawWarriorInsight.message.includes("missed your 6-hour check-in");
-
   const dynamicInsight = useMemo(() => {
+    const insight = getWarriorInsight(episodes);
+
+    // Priority 0: Missed check-in takes precedence over weather alerts
+    if (insight.message.includes("missed your 6-hour check-in")) {
+      return insight.message;
+    }
+
     if (sweatRisk === "extreme") return "⚠️ Extreme sweat risk today — consider rescheduling outdoor plans";
     if (sweatRisk === "high") return "🌡️ High humidity today — carry cooling wipes and stay hydrated";
-    return isMissedCheckIn ? "Check out your insights & recommendations today" : rawWarriorInsight.message;
-  }, [sweatRisk, isMissedCheckIn, rawWarriorInsight.message]);
+
+    return insight.message;
+  }, [sweatRisk, episodes]);
 
   const tip = COMMUNITY_TIPS[tipIndex];
 
@@ -312,44 +306,27 @@ const WarriorLaunchpad = () => {
 
       {/* ── HERO GREETING ───────────────────────────────────────────── */}
       <div className="px-6 pt-8 pb-16 rounded-b-[2.5rem] shadow-lg shadow-purple-200" style={{ backgroundColor: "#7c3aed" }}>
+        <p className="text-purple-200 text-xs font-semibold uppercase tracking-widest mb-1">
+          HidroAlly {greeting.emoji}
+        </p>
         <h1 className="text-white text-2xl font-black tracking-tight leading-tight">
           {greeting.text}, {firstName}!
         </h1>
         <p className="text-purple-100 text-xs mt-1">{today}</p>
 
         {/* ── STATS CARDS ──────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 gap-2 mt-5">
-          {/* Card 1: Episodes Logged */}
-          <div className="bg-purple-50 rounded-2xl p-3 flex flex-col items-center justify-center gap-1 shadow-sm border border-purple-100">
-            <span className="text-lg">📋</span>
-            <span className="text-2xl font-black text-purple-700 leading-none">{episodes.filter(e => !e.is_dry_day).length}</span>
-            <span className="text-[9px] font-bold text-purple-600/80 text-center uppercase tracking-wide">Episodes</span>
+        <div className="grid grid-cols-2 gap-3 mt-5">
+          <div className="bg-white rounded-2xl p-4 flex flex-col items-center gap-1 shadow-md border border-purple-100">
+            <span className="text-2xl">📋</span>
+            <span className="text-3xl font-black text-gray-800 leading-none">{episodes.filter(e => !e.is_dry_day).length}</span>
+            <span className="text-[11px] font-semibold text-gray-500 text-center uppercase tracking-wide">Episodes Logged</span>
+          </div>
+          <div className="bg-white rounded-2xl p-4 flex flex-col items-center gap-1 shadow-md border border-purple-100">
+            <span className="text-2xl">🗓️</span>
+            <span className="text-3xl font-black text-gray-800 leading-none">{trackingConsistencyPercentage}%</span>
+            <span className="text-[11px] font-semibold text-gray-500 text-center uppercase tracking-wide">Tracking Consistency</span>
           </div>
 
-          {/* Card 2: Tracking Consistency */}
-          <div className="bg-teal-50 rounded-2xl p-3 flex flex-col items-center justify-center gap-1 shadow-sm border border-teal-100">
-            <span className="text-lg">🗓️</span>
-            <span className="text-2xl font-black text-teal-700 leading-none">{trackingConsistencyPercentage}%</span>
-            <span className="text-[9px] font-bold text-teal-600/80 text-center uppercase tracking-wide">Consistency</span>
-          </div>
-
-          {/* Card 3: EDA (Skin Conductance) */}
-          <div className="bg-orange-50 rounded-2xl p-3 flex flex-col items-center justify-center gap-1 shadow-sm border border-orange-100">
-            <Activity className="h-5 w-5 text-orange-500 mb-0.5" />
-            <span className="text-2xl font-black text-orange-700 leading-none">
-              {edaData ? edaData.value.toFixed(1) : "—"}
-            </span>
-            <span className="text-[9px] font-bold text-orange-600/80 text-center uppercase tracking-wide">EDA (µS)</span>
-          </div>
-
-          {/* Card 4: Heart Rate */}
-          <div className="bg-rose-50 rounded-2xl p-3 flex flex-col items-center justify-center gap-1 shadow-sm border border-rose-100">
-            <Heart className="h-5 w-5 text-rose-500 mb-0.5" />
-            <span className="text-2xl font-black text-rose-700 leading-none">
-              {edaData?.hr || "—"}
-            </span>
-            <span className="text-[9px] font-bold text-rose-600/80 text-center uppercase tracking-wide">Heart Rate</span>
-          </div>
         </div>
 
         {/* Warrior Status Banner */}
@@ -449,19 +426,6 @@ const WarriorLaunchpad = () => {
               Join <ChevronRight className="h-3 w-3" />
             </button>
           </div>
-
-          {isMissedCheckIn && (
-            <div className="mb-3 bg-amber-50 rounded-2xl border border-amber-200 p-4 flex items-start gap-3 shadow-sm text-left">
-              <div className="text-xl shrink-0">⏰</div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-amber-900 leading-snug">{rawWarriorInsight.message}</p>
-                <button onClick={() => navigate("/log-episode")} className="text-[10px] text-amber-700 mt-1 font-bold underline hover:text-amber-800 transition-colors">
-                  Log now →
-                </button>
-              </div>
-            </div>
-          )}
-
           <button
             onClick={() => navigate("/community")}
             className="w-full bg-white rounded-2xl border border-purple-100 p-4 flex items-start gap-3 shadow-sm hover:shadow-md transition-all text-left"
@@ -527,32 +491,18 @@ const WarriorLaunchpad = () => {
           </DialogContent>
         </Dialog>
 
-        {/* ── WARRIOR BADGE (EVENT TRIGGERED) ────────────────────────── */}
-        <Dialog open={showWarriorModal} onOpenChange={setShowWarriorModal}>
-          <DialogContent className="max-w-[90vw] sm:max-w-md rounded-3xl p-6 flex flex-col gap-4">
-            <DialogHeader className="text-center">
-              <DialogTitle className="text-xl font-black text-gray-800 text-center">
-                Congratulations! You've logged your first episode 🎉
-              </DialogTitle>
-            </DialogHeader>
-            <div className="py-2">
-              <WarriorBadge
-                userName={displayName}
-                episodeCount={nonDryEpisodes.length}
-                episodes={episodes.map(e => ({ datetime: e.datetime }))}
-              />
-            </div>
-            <DialogFooter className="sm:justify-center">
-              <Button
-                variant="outline"
-                onClick={() => setShowWarriorModal(false)}
-                className="rounded-xl font-bold border-gray-200"
-              >
-                Close
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        {/* ── WARRIOR BADGE ─────────────────────────────────────────── */}
+        <div>
+          <div className="px-1 mb-3">
+            <p className="text-xs font-black text-gray-600 uppercase tracking-wide">🏅 Your Warrior Badge</p>
+            <p className="text-[10px] text-gray-400 mt-0.5">Download &amp; share your journey on social media</p>
+          </div>
+          <WarriorBadge
+            userName={displayName}
+            episodeCount={episodes.filter(e => !e.is_dry_day).length}
+            episodes={episodes.map(e => ({ datetime: e.datetime }))}
+          />
+        </div>
 
       </div>
     </div>
