@@ -561,9 +561,6 @@ const SpecialistRadar = () => {
 
     if (location) {
       if (userPin.current) userPin.current.remove();
-      const uIcon = L.divIcon({ html: glowPin(false, false, true), iconSize: [36, 44], iconAnchor: [18, 22], className: '' });
-      userPin.current = L.marker([location.lat, location.lng], { icon: uIcon }).addTo(mapInst.current)
-        .bindPopup('<div style="color:#fff;background:#1a1a2e;border:1px solid rgba(250,204,21,0.3);padding:6px 10px;border-radius:10px;font-size:12px;font-weight:bold;">You are here</div>', { className: 'radar-popup' });
       mapInst.current.setView([location.lat, location.lng], scope === 'city' ? 6 : scope === 'country' ? 4 : 2);
     }
 
