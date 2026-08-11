@@ -174,24 +174,24 @@ serve(async (req) => {
         if (!seenIds.has(row.id)) { doctors.push(normaliseCurated(row, lat, lng)); seenIds.add(row.id); }
       }
     }
-    if (doctors.length < 3 && state && (scope === 'country' || scope === 'continent')) {
+    if (state && (scope === 'country' || scope === 'continent')) {
       for (const row of await queryCurated({ state })) {
         if (!seenIds.has(row.id)) { doctors.push(normaliseCurated(row, lat, lng)); seenIds.add(row.id); }
       }
     }
-    if (doctors.length < 3 && countryCode && (scope === 'country' || scope === 'continent')) {
+    if (countryCode && (scope === 'country' || scope === 'continent')) {
       const { data } = await supabase.from('specialists').select('*').eq('is_telehealth', false).eq('country_code', countryCode);
       for (const row of (data || [])) {
         if (!seenIds.has(row.id)) { doctors.push(normaliseCurated(row, lat, lng)); seenIds.add(row.id); }
       }
     }
-    if (doctors.length < 3 && continent && scope === 'continent') {
+    if (continent && scope === 'continent') {
       const { data } = await supabase.from('specialists').select('*').eq('is_telehealth', false).eq('continent', continent);
       for (const row of (data || [])) {
         if (!seenIds.has(row.id)) { doctors.push(normaliseCurated(row, lat, lng)); seenIds.add(row.id); }
       }
     }
-    if (doctors.length < 3) {
+    if (doctors.length < 3 || scope === 'country' || scope === 'continent') {
       const { data: allCurated } = await supabase.from('specialists').select('*').eq('is_telehealth', false);
       for (const row of (allCurated || [])) {
         if (seenIds.has(row.id)) continue;
@@ -205,13 +205,13 @@ serve(async (req) => {
     // ════════════════════════════════════════════════════════════════
     const GEOAPIFY_KEY = Deno.env.get('GEOAPIFY_API_KEY');
 
-    if (doctors.length < 3 && GEOAPIFY_KEY) {
+    if ((doctors.length < 3 || scope === 'country' || scope === 'continent') && GEOAPIFY_KEY) {
       // Geoapify's circle filter isn't hard-capped like Google's, so the
       // same radius value can be reused directly for city/country/continent
       // scope — this is what actually makes "widen" work.
       const searchRadius = scope === 'city' ? Math.min(radius, 50000)
                           : scope === 'country' ? Math.min(radius, 500000)
-                          : Math.min(radius, 2000000);
+                          : Math.min(radius, 5000000);
 
       const url = new URL('https://api.geoapify.com/v2/places');
       url.searchParams.set('categories', 'healthcare,healthcare.clinic_or_praxis.dermatology');
@@ -237,7 +237,7 @@ serve(async (req) => {
       }
 
       console.log(`TIER 2 (Geoapify): ${features.length} raw, ${matched.length} matched`);
-    } else if (doctors.length < 3 && !GEOAPIFY_KEY) {
+    } else if ((doctors.length < 3 || scope === 'country' || scope === 'continent') && !GEOAPIFY_KEY) {
       console.warn('TIER 2 skipped — GEOAPIFY_API_KEY not configured');
     }
 
