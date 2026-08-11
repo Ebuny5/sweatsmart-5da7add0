@@ -383,6 +383,7 @@ const SpecialistRadar = () => {
   const [meta, setMeta]               = useState<SearchMeta | null>(null);
   const [isLoading, setIsLoading]     = useState(false);
   const [location, setLocation]       = useState<{ lat: number; lng: number } | null>(null);
+  const [isGeocoding, setIsGeocoding] = useState(false);
   const [city, setCity]               = useState('');
   const [state, setState]             = useState('');
   const [country, setCountry]         = useState('');
@@ -487,6 +488,8 @@ const SpecialistRadar = () => {
       } catch {
         setCity('your area');
         setGeoReady(true);
+      } finally {
+        setIsGeocoding(false);
       }
     };
 
@@ -495,10 +498,11 @@ const SpecialistRadar = () => {
     watchId = navigator.geolocation.watchPosition(
       pos => {
         const { latitude: lat, longitude: lng } = pos.coords;
-        setLocation({ lat, lng });
         setLocationError('');
+        setLocation({ lat, lng });
         if (!resolved) {
           resolved = true;
+          setIsGeocoding(true);
           doReverseGeocode(lat, lng);
           if (watchId !== null) navigator.geolocation.clearWatch(watchId);
         }
@@ -543,10 +547,10 @@ const SpecialistRadar = () => {
 
   // Auto-fetch: fires once geoReady + user auth available, and on scope changes
   useEffect(() => {
-    if (geoReady && location && user) {
+    if (geoReady && location && user && !isGeocoding) {
       fetchDoctors();
     }
-  }, [geoReady, user, scope]); // scope change = re-fetch; geoReady+user = initial fetch
+  }, [geoReady, user, scope, location?.lat, location?.lng, isGeocoding]); // scope change or location change (after geocoding completes) = re-fetch
 
   // ── Map markers ─────────────────────────────────────────────────────────
   useEffect(() => {
