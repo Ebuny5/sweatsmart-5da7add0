@@ -61,7 +61,7 @@ const TREATMENTS = [
 ];
 
 const SCOPE_RADII: Record<ScopeFilter, number> = {
-  city:      10000,
+  city:      50000,
   country:   300000,
   continent: 5000000,
 };
@@ -69,8 +69,10 @@ const SCOPE_RADII: Record<ScopeFilter, number> = {
 // ── Helpers ────────────────────────────────────────────────────────────────
 const computeHdss = (episodes: any[]): number => {
   if (!episodes?.length) return 0;
-  const recent = episodes.slice(0, 10);
-  return recent.reduce((s, e) => s + Number(e.severityLevel || 0), 0) / recent.length;
+  const filtered = episodes.filter(e => !e.is_dry_day);
+  if (!filtered.length) return 0;
+  const recent = filtered.slice(0, 10);
+  return recent.reduce((s, e) => s + Number(e.severityLevel || e.severity || 0), 0) / recent.length;
 };
 
 // ── Leaflet loader ─────────────────────────────────────────────────────────
@@ -442,7 +444,11 @@ const SpecialistRadar = () => {
       }
     } catch {}
 
-    if (!navigator.geolocation) { setLocationError('Geolocation not supported'); return; }
+    if (!navigator.geolocation) {
+      setLocationError('Geolocation not supported');
+      setIsGeocoding(false);
+      return;
+    }
 
     const doReverseGeocode = async (lat: number, lng: number) => {
       try {
@@ -495,6 +501,7 @@ const SpecialistRadar = () => {
 
     let watchId: number | null = null;
     let resolved = false;
+    setIsGeocoding(true);
     watchId = navigator.geolocation.watchPosition(
       pos => {
         const { latitude: lat, longitude: lng } = pos.coords;
@@ -502,13 +509,16 @@ const SpecialistRadar = () => {
         setLocation({ lat, lng });
         if (!resolved) {
           resolved = true;
-          setIsGeocoding(true);
           doReverseGeocode(lat, lng);
           if (watchId !== null) navigator.geolocation.clearWatch(watchId);
         }
       },
       err => {
-        if (!resolved) { setLocationError('Location access denied — please enable GPS'); console.error(err); }
+        if (!resolved) {
+          setLocationError('Location access denied — please enable GPS');
+          setIsGeocoding(false);
+          console.error(err);
+        }
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
     );
@@ -561,7 +571,7 @@ const SpecialistRadar = () => {
 
     if (location) {
       if (userPin.current) userPin.current.remove();
-      mapInst.current.setView([location.lat, location.lng], scope === 'city' ? 6 : scope === 'country' ? 4 : 2);
+      mapInst.current.setView([location.lat, location.lng], scope === 'city' ? 12 : scope === 'country' ? 5 : 2);
     }
 
     physical.forEach(doc => {
