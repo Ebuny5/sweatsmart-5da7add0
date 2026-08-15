@@ -1391,7 +1391,7 @@ const HidroAllyLanding = () => {
                   <img src="https://techbasedirectory.com/api/featured-embed" alt="HidroAlly | Techbasedirectory.com" width="200" height="60" />
                 </a>
                 <a href="https://www.f6s.com/giftovate-therapeutics-ltd" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity" style={{ backgroundColor: 'white', borderRadius: '8px', padding: '4px' }}>
-                  <img src="/f6s-award.png" alt="F6S Top Company AI" style={{ height: '46px', width: 'auto' }} />
+                  <img src="/f6s-award.png" alt="Recognized as 69th AI company in Nigeria" title="Recognized as 69th AI company in Nigeria" style={{ height: '46px', width: 'auto' }} />
                 </a>
               </div>
               {/* Second Set (for seamless looping) */}
@@ -1406,7 +1406,7 @@ const HidroAllyLanding = () => {
                   <img src="https://techbasedirectory.com/api/featured-embed" alt="HidroAlly | Techbasedirectory.com" width="200" height="60" />
                 </a>
                 <a href="https://www.f6s.com/giftovate-therapeutics-ltd" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity" style={{ backgroundColor: 'white', borderRadius: '8px', padding: '4px' }}>
-                  <img src="/f6s-award.png" alt="F6S Top Company AI" style={{ height: '46px', width: 'auto' }} />
+                  <img src="/f6s-award.png" alt="Recognized as 69th AI company in Nigeria" title="Recognized as 69th AI company in Nigeria" style={{ height: '46px', width: 'auto' }} />
                 </a>
               </div>
               {/* Third Set (for seamless looping on wide screens) */}
@@ -1421,7 +1421,7 @@ const HidroAllyLanding = () => {
                   <img src="https://techbasedirectory.com/api/featured-embed" alt="HidroAlly | Techbasedirectory.com" width="200" height="60" />
                 </a>
                 <a href="https://www.f6s.com/giftovate-therapeutics-ltd" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity" style={{ backgroundColor: 'white', borderRadius: '8px', padding: '4px' }}>
-                  <img src="/f6s-award.png" alt="F6S Top Company AI" style={{ height: '46px', width: 'auto' }} />
+                  <img src="/f6s-award.png" alt="Recognized as 69th AI company in Nigeria" title="Recognized as 69th AI company in Nigeria" style={{ height: '46px', width: 'auto' }} />
                 </a>
               </div>
               {/* Fourth Set (for seamless looping on ultra wide screens) */}
@@ -1436,7 +1436,7 @@ const HidroAllyLanding = () => {
                   <img src="https://techbasedirectory.com/api/featured-embed" alt="HidroAlly | Techbasedirectory.com" width="200" height="60" />
                 </a>
                 <a href="https://www.f6s.com/giftovate-therapeutics-ltd" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity" style={{ backgroundColor: 'white', borderRadius: '8px', padding: '4px' }}>
-                  <img src="/f6s-award.png" alt="F6S Top Company AI" style={{ height: '46px', width: 'auto' }} />
+                  <img src="/f6s-award.png" alt="Recognized as 69th AI company in Nigeria" title="Recognized as 69th AI company in Nigeria" style={{ height: '46px', width: 'auto' }} />
                 </a>
               </div>
             </div>
