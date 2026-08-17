@@ -1397,7 +1397,12 @@ const HidroAllyLanding = () => {
             <div className="hero-ctas">
               <a href="/register" className="btn-primary-lg">Start for free</a>
               <a href="/login" className="btn-outline-lg">Sign in</a>
+              <button type="button" className="btn-watch" onClick={() => setDemoOpen(true)}>
+                <Play fill="currentColor" />
+                Watch demo
+              </button>
             </div>
+
             <div className="hero-social-proof">
               <div className="avatars">
                 {['#7c3aed','#a855f7','#6d28d9','#9333ea'].map((c, i) => (
