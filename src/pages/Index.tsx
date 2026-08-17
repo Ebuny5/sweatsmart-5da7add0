@@ -1368,7 +1368,28 @@ const HidroAllyLanding = () => {
       <div className="orb" style={{ top: '-10%', left: '10%', width: 500, height: 500, background: 'rgba(124,58,237,0.15)' }} />
       <div className="orb" style={{ top: '40%', right: '-5%', width: 400, height: 400, background: 'rgba(217,70,239,0.12)' }} />
 
+      {/* DEMO MODAL */}
+      {demoOpen && (
+        <div className="demo-modal" onClick={() => setDemoOpen(false)} role="dialog" aria-modal="true" aria-label="Watch demo video">
+          <div className="demo-modal-box" onClick={(e) => e.stopPropagation()}>
+            <button className="demo-modal-close" onClick={() => setDemoOpen(false)} aria-label="Close demo">
+              <X size={22} />
+            </button>
+            <div className="demo-video-wrap">
+              <iframe
+                src="https://www.youtube.com/embed/JGOnddApZj0?si=3Ajtd1Ml6l3HVPxx&autoplay=1"
+                title="YouTube video player"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* NAV */}
+
       <nav className={scrolled ? 'scrolled' : ''}>
         <a href="/" className="logo" style={{ textDecoration: 'none' }}>
           <span style={{ fontSize: '24px', marginRight: '8px' }}>🤖</span>
