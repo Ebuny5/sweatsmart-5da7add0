@@ -1476,7 +1476,27 @@ const HidroAllyLanding = () => {
         </div>
       </section>
 
+      {/* DEMO SECTION */}
+      <section className="demo-section">
+        <div className="demo-inner">
+          <div className="demo-label">SEE IT IN ACTION</div>
+          <h2 className="demo-title">Watch the 60-second demo</h2>
+          <p className="demo-subtitle">
+            See how HidroAlly turns a quick log into a clinical-grade insight — triggers, severity, and personalized relief in seconds.
+          </p>
+          <div className="demo-thumbnail" onClick={() => setDemoOpen(true)} role="button" tabIndex={0} aria-label="Play demo video">
+            <div className="demo-thumb-overlay">
+              <div className="demo-play">
+                <Play fill="currentColor" />
+              </div>
+              <div className="demo-thumb-text">Click to watch the demo</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* FEATURES */}
+
       <section className="section-features">
         <div className="section-label">CORE FEATURES</div>
         <p className="section-subtitle">
