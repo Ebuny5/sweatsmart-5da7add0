@@ -575,6 +575,57 @@ export type Database = {
         }
         Relationships: []
       }
+      user_engagement_logs: {
+        Row: {
+          app_opens: number | null
+          climate_alert_checks: number | null
+          created_at: string | null
+          date: string
+          dry_mode_entries: number | null
+          episodes_logged: number | null
+          growth_radar_views: number | null
+          hidroally_chat_uses: number | null
+          id: string
+          specialist_radar_uses: number | null
+          sweat_journey_views: number | null
+          updated_at: string | null
+          user_id: string
+          wearable_simulator_uses: number | null
+        }
+        Insert: {
+          app_opens?: number | null
+          climate_alert_checks?: number | null
+          created_at?: string | null
+          date?: string
+          dry_mode_entries?: number | null
+          episodes_logged?: number | null
+          growth_radar_views?: number | null
+          hidroally_chat_uses?: number | null
+          id?: string
+          specialist_radar_uses?: number | null
+          sweat_journey_views?: number | null
+          updated_at?: string | null
+          user_id: string
+          wearable_simulator_uses?: number | null
+        }
+        Update: {
+          app_opens?: number | null
+          climate_alert_checks?: number | null
+          created_at?: string | null
+          date?: string
+          dry_mode_entries?: number | null
+          episodes_logged?: number | null
+          growth_radar_views?: number | null
+          hidroally_chat_uses?: number | null
+          id?: string
+          specialist_radar_uses?: number | null
+          sweat_journey_views?: number | null
+          updated_at?: string | null
+          user_id?: string
+          wearable_simulator_uses?: number | null
+        }
+        Relationships: []
+      }
       user_settings: {
         Row: {
           created_at: string
@@ -620,11 +671,13 @@ export type Database = {
     }
     Functions: {
       delete_user: { Args: never; Returns: undefined }
+      get_tracking_consistency: { Args: never; Returns: number }
       increment_notification_count: {
         Args: { p_date: string; p_user_id: string }
         Returns: undefined
       }
       keep_alive: { Args: never; Returns: undefined }
+      log_engagement_action: { Args: { action: string }; Returns: undefined }
       search_knowledge_base: {
         Args: {
           filter_category?: string
