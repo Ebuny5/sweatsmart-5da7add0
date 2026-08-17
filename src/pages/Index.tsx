@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { Play, X } from "lucide-react";
+
 
 const HidroAllyLanding = () => {
   const navigate = useNavigate();
@@ -8,7 +10,9 @@ const HidroAllyLanding = () => {
   const [scrolled, setScrolled] = useState(false);
   const [animatedBars, setAnimatedBars] = useState(false);
   const [typewriterText, setTypewriterText] = useState("");
+  const [demoOpen, setDemoOpen] = useState(false);
   const chartRef = useRef(null);
+
   
   // For feature card scroll animations
   const [visibleCards, setVisibleCards] = useState<boolean[]>(new Array(6).fill(false));
@@ -50,7 +54,17 @@ const HidroAllyLanding = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Close demo modal on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && demoOpen) setDemoOpen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [demoOpen]);
+
   // Observe each feature card
+
   useEffect(() => {
     const observers = cardRefs.current.map((ref, idx) => {
       if (!ref) return null;
@@ -1025,8 +1039,208 @@ const HidroAllyLanding = () => {
       color: var(--violet-light);
     }
 
+    /* DEMO SECTION */
+    .demo-section {
+      background: rgba(124,58,237,0.06);
+      border-top: 1px solid rgba(167,139,250,0.12);
+      border-bottom: 1px solid rgba(167,139,250,0.12);
+      padding: 80px 5%;
+    }
+
+    .demo-inner {
+      max-width: 1000px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .demo-label {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--violet-light);
+      margin-bottom: 16px;
+    }
+
+    .demo-title {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(28px, 4vw, 42px);
+      font-weight: 800;
+      color: #f5f3ff;
+      margin-bottom: 14px;
+      line-height: 1.2;
+    }
+
+    .demo-subtitle {
+      font-size: clamp(15px, 1.8vw, 18px);
+      color: var(--text-muted);
+      max-width: 600px;
+      margin: 0 auto 32px;
+      line-height: 1.65;
+    }
+
+    .demo-thumbnail {
+      position: relative;
+      max-width: 800px;
+      margin: 0 auto;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid rgba(167,139,250,0.25);
+      box-shadow: 0 20px 60px rgba(124,58,237,0.25);
+      cursor: pointer;
+      transition: transform 0.3s, box-shadow 0.3s;
+      aspect-ratio: 16 / 9;
+      background: linear-gradient(135deg, rgba(124,58,237,0.2), rgba(217,70,239,0.15));
+    }
+
+    .demo-thumbnail:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 30px 80px rgba(124,58,237,0.35);
+    }
+
+    .demo-thumb-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      background: rgba(10,6,20,0.35);
+      transition: background 0.3s;
+    }
+
+    .demo-thumbnail:hover .demo-thumb-overlay {
+      background: rgba(10,6,20,0.25);
+    }
+
+    .demo-play {
+      width: 84px;
+      height: 84px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #7c3aed, #d946ef);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 40px rgba(124,58,237,0.6);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .demo-play:hover {
+      transform: scale(1.08);
+      box-shadow: 0 0 60px rgba(124,58,237,0.8);
+    }
+
+    .demo-play svg {
+      width: 34px;
+      height: 34px;
+      color: white;
+      margin-left: 4px;
+    }
+
+    .demo-thumb-text {
+      font-size: 16px;
+      font-weight: 600;
+      color: #f5f3ff;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.5);
+    }
+
+    /* DEMO MODAL */
+    .demo-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(10,6,20,0.92);
+      backdrop-filter: blur(12px);
+      animation: fadeIn 0.25s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .demo-modal-box {
+      position: relative;
+      width: 100%;
+      max-width: 900px;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid rgba(167,139,250,0.25);
+      box-shadow: 0 30px 90px rgba(0,0,0,0.6);
+      background: #0a0614;
+    }
+
+    .demo-modal-close {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      z-index: 10;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(167,139,250,0.15);
+      color: #f5f3ff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    .demo-modal-close:hover {
+      background: rgba(167,139,250,0.3);
+    }
+
+    .demo-video-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+    }
+
+    .demo-video-wrap iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    .btn-watch {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 28px;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #f5f3ff;
+      background: rgba(167,139,250,0.12);
+      border: 1.5px solid rgba(167,139,250,0.5);
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .btn-watch:hover {
+      background: rgba(167,139,250,0.22);
+      border-color: rgba(167,139,250,0.8);
+      transform: translateY(-1px);
+    }
+
+    .btn-watch svg {
+      width: 20px;
+      height: 20px;
+    }
+
     /* RESPONSIVE */
     @media (max-width: 640px) {
+
       nav {
         height: 64px;
         padding: 0 20px;
@@ -1102,13 +1316,31 @@ const HidroAllyLanding = () => {
         margin-right: auto;
       }
       .btn-primary-lg,
-      .btn-outline-lg {
+      .btn-outline-lg,
+      .btn-watch {
         padding: 14px 32px;
         font-size: 15px;
         width: 100%;
         box-sizing: border-box;
         text-align: center;
+        justify-content: center;
       }
+
+      .btn-watch svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      .demo-play {
+        width: 64px;
+        height: 64px;
+      }
+
+      .demo-play svg {
+        width: 26px;
+        height: 26px;
+      }
+
 
       .features-grid {
         gap: 20px;
@@ -1146,7 +1378,28 @@ const HidroAllyLanding = () => {
       <div className="orb" style={{ top: '-10%', left: '10%', width: 500, height: 500, background: 'rgba(124,58,237,0.15)' }} />
       <div className="orb" style={{ top: '40%', right: '-5%', width: 400, height: 400, background: 'rgba(217,70,239,0.12)' }} />
 
+      {/* DEMO MODAL */}
+      {demoOpen && (
+        <div className="demo-modal" onClick={() => setDemoOpen(false)} role="dialog" aria-modal="true" aria-label="Watch demo video">
+          <div className="demo-modal-box" onClick={(e) => e.stopPropagation()}>
+            <button className="demo-modal-close" onClick={() => setDemoOpen(false)} aria-label="Close demo">
+              <X size={22} />
+            </button>
+            <div className="demo-video-wrap">
+              <iframe
+                src="https://www.youtube.com/embed/JGOnddApZj0?si=3Ajtd1Ml6l3HVPxx&autoplay=1"
+                title="YouTube video player"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* NAV */}
+
       <nav className={scrolled ? 'scrolled' : ''}>
         <a href="/" className="logo" style={{ textDecoration: 'none' }}>
           <span style={{ fontSize: '24px', marginRight: '8px' }}>🤖</span>
@@ -1175,7 +1428,12 @@ const HidroAllyLanding = () => {
             <div className="hero-ctas">
               <a href="/register" className="btn-primary-lg">Start for free</a>
               <a href="/login" className="btn-outline-lg">Sign in</a>
+              <button type="button" className="btn-watch" onClick={() => setDemoOpen(true)}>
+                <Play fill="currentColor" />
+                Watch demo
+              </button>
             </div>
+
             <div className="hero-social-proof">
               <div className="avatars">
                 {['#7c3aed','#a855f7','#6d28d9','#9333ea'].map((c, i) => (
@@ -1249,7 +1507,27 @@ const HidroAllyLanding = () => {
         </div>
       </section>
 
+      {/* DEMO SECTION */}
+      <section className="demo-section">
+        <div className="demo-inner">
+          <div className="demo-label">SEE IT IN ACTION</div>
+          <h2 className="demo-title">Watch the 60-second demo</h2>
+          <p className="demo-subtitle">
+            See how HidroAlly turns a quick log into a clinical-grade insight — triggers, severity, and personalized relief in seconds.
+          </p>
+          <div className="demo-thumbnail" onClick={() => setDemoOpen(true)} role="button" tabIndex={0} aria-label="Play demo video">
+            <div className="demo-thumb-overlay">
+              <div className="demo-play">
+                <Play fill="currentColor" />
+              </div>
+              <div className="demo-thumb-text">Click to watch the demo</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* FEATURES */}
+
       <section className="section-features">
         <div className="section-label">CORE FEATURES</div>
         <p className="section-subtitle">
