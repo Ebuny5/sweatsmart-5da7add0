@@ -10,7 +10,9 @@ const HidroAllyLanding = () => {
   const [scrolled, setScrolled] = useState(false);
   const [animatedBars, setAnimatedBars] = useState(false);
   const [typewriterText, setTypewriterText] = useState("");
+  const [demoOpen, setDemoOpen] = useState(false);
   const chartRef = useRef(null);
+
   
   // For feature card scroll animations
   const [visibleCards, setVisibleCards] = useState<boolean[]>(new Array(6).fill(false));
