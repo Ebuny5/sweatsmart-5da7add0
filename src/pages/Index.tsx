@@ -1306,13 +1306,31 @@ const HidroAllyLanding = () => {
         margin-right: auto;
       }
       .btn-primary-lg,
-      .btn-outline-lg {
+      .btn-outline-lg,
+      .btn-watch {
         padding: 14px 32px;
         font-size: 15px;
         width: 100%;
         box-sizing: border-box;
         text-align: center;
+        justify-content: center;
       }
+
+      .btn-watch svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      .demo-play {
+        width: 64px;
+        height: 64px;
+      }
+
+      .demo-play svg {
+        width: 26px;
+        height: 26px;
+      }
+
 
       .features-grid {
         gap: 20px;
