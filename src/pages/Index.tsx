@@ -54,7 +54,17 @@ const HidroAllyLanding = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Close demo modal on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && demoOpen) setDemoOpen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [demoOpen]);
+
   // Observe each feature card
+
   useEffect(() => {
     const observers = cardRefs.current.map((ref, idx) => {
       if (!ref) return null;
