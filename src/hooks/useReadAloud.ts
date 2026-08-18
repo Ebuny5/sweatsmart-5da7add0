@@ -12,8 +12,10 @@ import { speakProfessionally, stopProfessionalSpeech } from '@/utils/webSpeechVo
 export function useReadAloud() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [activeKey, setActiveKey] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const cacheRef = useRef<Map<string, string>>(new Map());
+
 
   const stop = useCallback(() => {
     if (audioRef.current) {
@@ -28,16 +30,18 @@ export function useReadAloud() {
     stopProfessionalSpeech();
     setIsSpeaking(false);
     setIsLoading(false);
+    setActiveKey(null);
   }, []);
 
   useEffect(() => () => stop(), [stop]);
 
   const speak = useCallback(
-    async (text: string) => {
+    async (text: string, key?: string) => {
       const clean = (text || '').replace(/\s+/g, ' ').trim();
       if (!clean) return;
 
       stop();
+      setActiveKey(key ?? clean.slice(0, 24));
       setIsLoading(true);
 
       const playDataUri = (uri: string) =>
@@ -46,6 +50,7 @@ export function useReadAloud() {
           audioRef.current = audio;
           audio.onended = () => {
             setIsSpeaking(false);
+            setActiveKey(null);
             audioRef.current = null;
             resolve();
           };
@@ -80,21 +85,24 @@ export function useReadAloud() {
         setIsSpeaking(true);
         await speakProfessionally(clean);
         setIsSpeaking(false);
+        setActiveKey(null);
       }
     },
     [stop],
   );
 
   const toggle = useCallback(
-    (text: string) => {
-      if (isSpeaking || isLoading) {
+    (text: string, key?: string) => {
+      const nextKey = key ?? (text || '').replace(/\s+/g, ' ').trim().slice(0, 24);
+      if ((isSpeaking || isLoading) && activeKey === nextKey) {
         stop();
         return;
       }
-      void speak(text);
+      void speak(text, nextKey);
     },
-    [isSpeaking, isLoading, speak, stop],
+    [isSpeaking, isLoading, activeKey, speak, stop],
   );
 
-  return { speak, stop, toggle, isSpeaking, isLoading };
+  return { speak, stop, toggle, isSpeaking, isLoading, activeKey };
 }
+
