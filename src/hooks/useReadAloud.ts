@@ -12,8 +12,10 @@ import { speakProfessionally, stopProfessionalSpeech } from '@/utils/webSpeechVo
 export function useReadAloud() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [activeKey, setActiveKey] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const cacheRef = useRef<Map<string, string>>(new Map());
+
 
   const stop = useCallback(() => {
     if (audioRef.current) {
