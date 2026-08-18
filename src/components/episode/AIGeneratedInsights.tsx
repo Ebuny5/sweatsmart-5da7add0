@@ -26,6 +26,8 @@ interface AIInsightsProps {
 const AIGeneratedInsights: React.FC<AIInsightsProps> = ({ insights }) => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { toggle, isSpeaking, isLoading: isAudioLoading } = useReadAloud();
+
 
   const handleCopyInsights = async () => {
     const insightsText = `
