@@ -10,6 +10,13 @@ import { useReadAloud } from '@/hooks/useReadAloud';
 import jsPDF from 'jspdf';
 import { cn } from '@/lib/utils';
 
+const cleanTextForPdf = (text: string): string => {
+  if (!text) return "";
+  return text
+    .replace(/[^\x00-\x7F]/g, "") // Strips non-ASCII characters that cause Ø=Þáþ artifacts
+    .trim();
+};
+
 interface AIInsightsProps {
   insights: {
     clinicalAnalysis: string;
@@ -124,6 +131,8 @@ Always consult with a healthcare provider for personalized medical advice.
       let y = 20;
 
       const addSection = (title: string, content: string | string[]) => {
+        title = cleanTextForPdf(title);
+        content = Array.isArray(content) ? content.map(cleanTextForPdf) : cleanTextForPdf(content);
         if (y > 250) { doc.addPage(); y = 20; }
         doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
@@ -147,11 +156,11 @@ Always consult with a healthcare provider for personalized medical advice.
 
       doc.setFontSize(18);
       doc.setFont('helvetica', 'bold');
-      doc.text('HidroAlly AI Insights', margin, y);
+      doc.text(cleanTextForPdf('HidroAlly AI Insights'), margin, y);
       y += 10;
       doc.setFontSize(9);
       doc.setFont('helvetica', 'italic');
-      const disc = doc.splitTextToSize('These insights are AI-generated for educational purposes only. Always consult a healthcare provider for personalized advice.', maxWidth);
+      const disc = doc.splitTextToSize(cleanTextForPdf('These insights are AI-generated for educational purposes only. Always consult a healthcare provider for personalized advice.'), maxWidth);
       doc.text(disc, margin, y);
       y += disc.length * 4 + 10;
 
