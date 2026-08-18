@@ -184,11 +184,27 @@ Always consult with a healthcare provider for personalized medical advice.
             <Badge variant="outline">AI-Generated</Badge>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <div className="text-muted-foreground leading-relaxed whitespace-pre-wrap font-medium">
             {insights.clinicalAnalysis}
           </div>
+          <Button
+            variant="outline"
+            onClick={() => toggle(insights.clinicalAnalysis)}
+            disabled={isAudioLoading}
+            className="min-h-[56px] w-full sm:w-auto rounded-xl"
+            aria-label={isSpeaking ? 'Stop reading clinical analysis aloud' : 'Listen to clinical analysis'}
+          >
+            {isAudioLoading ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Preparing audio…</>
+            ) : isSpeaking ? (
+              <><Square className="h-4 w-4 mr-2" /> Stop</>
+            ) : (
+              <><Volume2 className="h-4 w-4 mr-2" /> Listen</>
+            )}
+          </Button>
         </CardContent>
+
       </Card>
 
       {/* Immediate Relief */}
