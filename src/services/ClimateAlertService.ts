@@ -114,11 +114,13 @@ class ClimateAlertService {
             ? '11+'
             : weatherData.uvIndex.toFixed(1);
 
+      const rf = risk.realFeel ?? risk.heatIndex ?? weatherData.temperature;
+
       notificationManager.send({
         channel: 'climate',
         kind: risk.level as any,
         title: `HidroAlly Alert — ${risk.message}`,
-        body: `${risk.description} (Temp ${weatherData.temperature.toFixed(1)}°C, Humidity ${weatherData.humidity.toFixed(0)}%, UV ${uvLabel})`,
+        body: `${risk.description} (RealFeel ${rf.toFixed(1)}°C, Humidity ${weatherData.humidity.toFixed(0)}%, UV ${uvLabel})`,
         dedupKey: `climate:${risk.level}:${new Date().toISOString().slice(0, 13)}`,
         url: '/climate',
         toastVariant: risk.level === 'extreme' || risk.level === 'high' ? 'destructive' : 'default',

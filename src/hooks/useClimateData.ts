@@ -23,16 +23,16 @@ export interface ClimateSnapshot {
   loading: boolean;
   error: string | null;
   lastUpdated: number | null;
-  refresh: () => Promise<void>;
+  refresh: (options?: { bypassCache?: boolean }) => Promise<void>;
 }
 
 // ── Risk → friendly UI label map ──────────────────────────────────────────────
 const RISK_LABEL: Record<string, string> = {
-  safe:     "Great conditions — a good day to stay dry 💧",
-  low:      "Mild conditions — stay mindful of your triggers",
-  moderate: "Moderate risk — plan cool-down strategies",
-  high:     "High sweat risk — limit outdoor exposure today ⚠️",
-  extreme:  "Extreme risk — reschedule outdoor plans if possible 🔴",
+  safe:     "Optimal conditions. Normal baseline.",
+  low:      "Optimal conditions. Normal baseline.",
+  moderate: "Moderate sweat risk: Thermal threshold crossed. Stay hydrated.",
+  high:     "High sweat risk — limit outdoor exposure and prepare cooling strategies ⚠️",
+  extreme:  "Extreme risk — severe heat load, move to shaded/ventilated space 🔴",
 };
 
 const WEATHER_REFRESH_MS = 15 * 60 * 1000; // 15 min — same as ClimateMonitor
@@ -97,7 +97,7 @@ export function useClimateData(): ClimateSnapshot {
   }, [getCoords]);
 
   // ── Step 3: fetch weather via Supabase Edge Function ─────────────────────
-  const fetchWeather = useCallback(async (currentCoords?: GeolocationCoordinates) => {
+  const fetchWeather = useCallback(async (currentCoords?: GeolocationCoordinates, bypassCache = false) => {
     const activeCoords = currentCoords || coords;
     if (!activeCoords) return;
 
@@ -105,9 +105,12 @@ export function useClimateData(): ClimateSnapshot {
     setError(null);
 
     try {
-      // ── Same call ClimateMonitor makes ──────────────────────────────────
       const { data, error: fnError } = await supabase.functions.invoke("get-weather-data", {
-        body: { latitude: activeCoords.latitude, longitude: activeCoords.longitude },
+        body: {
+          latitude: activeCoords.latitude,
+          longitude: activeCoords.longitude,
+          bypassCache,
+        },
       });
 
       if (fnError) throw new Error(fnError.message);
@@ -115,13 +118,14 @@ export function useClimateData(): ClimateSnapshot {
 
       const w: WeatherData = {
         ...data,
-        // Pass UV through unchanged (null when API didn't provide one).
         uvIndex: typeof data.uvIndex === 'number' ? data.uvIndex : null,
         sky: data.sky ?? 'unknown',
+        heatIndex: data.heatIndex,
+        dewPoint: data.dewPoint,
+        realFeel: data.realFeel,
         lastUpdated: Date.now(),
       };
 
-      // Sweat risk via the shared utility — EDA intentionally not used in alerts.
       const risk = calculateSweatRisk(
         w.temperature,
         w.humidity,
@@ -152,7 +156,7 @@ export function useClimateData(): ClimateSnapshot {
       setWeather(w);
       setSweatRisk(risk.level);
       setRiskMessage(risk.message);
-      setRiskDescription(RISK_LABEL[risk.level] ?? risk.description);
+      setRiskDescription(risk.description || (RISK_LABEL[risk.level] ?? ""));
       setLastUpdated(Date.now());
     } catch (err: any) {
       setError(err.message || "Could not fetch weather data");
@@ -161,11 +165,11 @@ export function useClimateData(): ClimateSnapshot {
     }
   }, [coords]);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (options?: { bypassCache?: boolean }) => {
     if (!coords) {
       getCoords();
     } else {
-      await fetchWeather();
+      await fetchWeather(coords, options?.bypassCache ?? true);
     }
   }, [coords, getCoords, fetchWeather]);
 

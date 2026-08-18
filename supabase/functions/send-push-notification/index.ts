@@ -73,11 +73,8 @@ async function generateVapidToken(
 
   const signingInput = `${encode(header)}.${encode(payload)}`;
 
-  // Import private key
-  const privateKeyBytes = base64UrlToUint8Array(privateKeyB64);
-
-  // If it looks like PKCS8 (longer than 32 bytes), import as PKCS8
   let cryptoKey: CryptoKey;
+  const privateKeyBytes = base64UrlToUint8Array(privateKeyB64);
   if (privateKeyBytes.length > 32) {
     cryptoKey = await crypto.subtle.importKey(
       'pkcs8',
@@ -87,7 +84,6 @@ async function generateVapidToken(
       ['sign']
     );
   } else {
-    // Raw private key — wrap in JWK
     let pubBytes = base64UrlToUint8Array(publicKeyB64);
     if (pubBytes.length === 91) pubBytes = pubBytes.slice(26);
     if (pubBytes.length === 64) {
@@ -140,7 +136,6 @@ async function encryptPayload(
   const clientPublicKey = base64UrlToUint8Array(p256dh);
   const clientAuth = base64UrlToUint8Array(auth);
 
-  // Generate server key pair
   const serverKeyPair = await crypto.subtle.generateKey(
     { name: 'ECDH', namedCurve: 'P-256' },
     true,
@@ -151,7 +146,6 @@ async function encryptPayload(
     await crypto.subtle.exportKey('raw', serverKeyPair.publicKey)
   );
 
-  // Import client public key
   const clientKey = await crypto.subtle.importKey(
     'raw',
     clientPublicKey as unknown as ArrayBuffer,
@@ -160,7 +154,6 @@ async function encryptPayload(
     []
   );
 
-  // ECDH
   const sharedSecret = await crypto.subtle.deriveBits(
     { name: 'ECDH', public: clientKey },
     serverKeyPair.privateKey,
@@ -169,7 +162,6 @@ async function encryptPayload(
 
   const salt = crypto.getRandomValues(new Uint8Array(16));
 
-  // HKDF for PRK
   const prk = await hkdf(
     new Uint8Array(sharedSecret),
     clientAuth,
@@ -177,7 +169,6 @@ async function encryptPayload(
     32
   );
 
-  // HKDF for CEK and nonce
   const context = buildContext(clientPublicKey, serverPublicKeyRaw);
   const cekInfo = concat(new TextEncoder().encode('Content-Encoding: aesgcm\0'), context);
   const nonceInfo = concat(new TextEncoder().encode('Content-Encoding: nonce\0'), context);
@@ -185,7 +176,6 @@ async function encryptPayload(
   const cek = await hkdf(prk, salt, cekInfo, 16);
   const nonce = await hkdf(prk, salt, nonceInfo, 12);
 
-  // Encrypt
   const aesKey = await crypto.subtle.importKey('raw', cek as unknown as ArrayBuffer, 'AES-GCM', false, ['encrypt']);
   const payloadBytes = new TextEncoder().encode(payload);
   const padded = new Uint8Array(payloadBytes.length + 2);
@@ -298,18 +288,53 @@ async function logNotification(supabase: any, subscriptionId: string, userId: st
   });
 }
 
-// ── Hyperhidrosis-sensitive risk calculation — temperature is primary ──
-function calculateSweatRisk(temp: number, humidity: number, uv: number) {
-  const tempScore = temp >= 38 ? 55 : temp >= 35 ? 48 : temp >= 32 ? 40 : temp >= 29 ? 30 : temp >= 26 ? 18 : 5;
-  const humidityScore = humidity >= 85 ? 20 : humidity >= 70 ? 15 : humidity >= 55 ? 9 : 3;
-  const uvScore = uv >= 12 ? 15 : uv >= 9 ? 12 : uv >= 6 ? 8 : uv >= 3 ? 4 : 0;
-  const score = tempScore + humidityScore + uvScore;
+function calculateHeatIndex(tempC: number, humidity: number): number {
+  const T = (tempC * 9) / 5 + 32;
+  const R = Math.max(0, Math.min(100, humidity));
 
-  if (temp >= 38 || score >= 68) return 'extreme';
-  if (temp >= 32 || score >= 52) return 'high';
-  if (temp >= 28 || score >= 36) return 'moderate';
-  if (temp >= 25 || score >= 24) return 'low';
-  return 'normal';
+  let hiF = 0.5 * (T + 61.0 + (T - 68.0) * 1.2 + R * 0.094);
+  if (hiF >= 80) {
+    hiF =
+      -42.379 +
+      2.04901523 * T +
+      10.14333127 * R -
+      0.22475541 * T * R -
+      0.00683783 * T * T -
+      0.05481717 * R * R +
+      0.00122874 * T * T * R +
+      0.00085282 * T * R * R -
+      0.00000199 * T * T * R * R;
+
+    if (R < 13 && T >= 80 && T <= 112) {
+      hiF -= ((13 - R) / 4) * Math.sqrt((17 - Math.abs(T - 95)) / 17);
+    } else if (R > 85 && T >= 80 && T <= 87) {
+      hiF += ((R - 85) / 10) * ((87 - T) / 5);
+    }
+  }
+
+  const hiC = ((hiF - 32) * 5) / 9;
+  return Math.round(Math.max(tempC, hiC) * 10) / 10;
+}
+
+function calculateRealFeel(tempC: number, humidity: number, uvIndex?: number | null): number {
+  const hi = calculateHeatIndex(tempC, humidity);
+  let solarAdj = 0;
+  if (uvIndex != null && !isNaN(uvIndex) && uvIndex > 6) {
+    solarAdj = 2.5;
+  }
+  return Math.round((hi + solarAdj) * 10) / 10;
+}
+
+// ── Upgraded 4-Tier Sweat Risk Evaluator ──
+function calculateSweatRisk(temp: number, humidity: number, uv: number) {
+  const heatIndex = calculateHeatIndex(temp, humidity);
+  const realFeel = calculateRealFeel(temp, humidity, uv);
+  const isHighUv = uv > 6;
+
+  if (realFeel >= 35 || (heatIndex >= 32 && isHighUv)) return 'extreme';
+  if (realFeel >= 30) return 'high';
+  if (realFeel >= 27) return 'moderate';
+  return 'low';
 }
 
 // ── Main handler ──
@@ -467,7 +492,7 @@ serve(async (req) => {
               .eq('user_id', sub.user_id)
               .order('created_at', { ascending: false })
               .limit(1)
-              .maybeSingle(); // maybeSingle instead of single to avoid error if no episodes
+              .maybeSingle();
 
             if (lastEpisode) {
               const lastLogTime = new Date(lastEpisode.created_at).getTime();
@@ -488,7 +513,6 @@ serve(async (req) => {
           let reminderTitle = LOG_REMINDER_TITLE;
           let reminderBody = LOG_REMINDER_BODY;
 
-          // If it's been more than 6.5 hours, it's a "missed" reminder
           if (sub.user_id) {
              const { data: lastEpisode } = await supabase
               .from('episodes')
@@ -583,31 +607,27 @@ serve(async (req) => {
             } catch { /* optional */ }
           }
 
-          const userTempThreshold = sub.temperature_threshold || 28;
-          const userHumidityThreshold = sub.humidity_threshold || 70;
-          const userUvThreshold = sub.uv_threshold || 6;
-
           const risk = calculateSweatRisk(temp, humidity, uv);
-          if (risk === 'normal') { skipped++; continue; }
+          // Dispatch automatic push notifications ONLY for High Risk and Extreme Risk (RealFeel >= 30°C)
+          if (risk !== 'high' && risk !== 'extreme') { skipped++; continue; }
 
-          const thresholdsExceeded = temp >= userTempThreshold || humidity >= userHumidityThreshold || uv >= userUvThreshold;
-          if (!thresholdsExceeded) { skipped++; continue; }
-
-          const notifType = risk === 'extreme' ? 'climate_extreme' : 'climate_moderate';
+          const notifType = risk === 'extreme' ? 'climate_extreme' : 'climate_high';
           const todayCount = await getNotificationCountToday(supabase, sub.id, notifType);
           if (todayCount >= 3) { skipped++; continue; }
 
-          const totalToday = await getNotificationCountToday(supabase, sub.id, 'climate_moderate') +
+          const totalToday = await getNotificationCountToday(supabase, sub.id, 'climate_high') +
             await getNotificationCountToday(supabase, sub.id, 'climate_extreme');
           if (totalToday >= 6) { skipped++; continue; }
 
-          const title = risk === 'extreme'
-            ? '🚨 SweatSmart: Extreme Heat Risk'
-            : risk === 'high'
-              ? '⚠️ SweatSmart: High Heat Risk'
-              : '💧 SweatSmart: Moderate Heat Risk';
+          const realFeel = calculateRealFeel(temp, humidity, uv);
 
-          const body = `Temp ${temp.toFixed(0)}°C, humidity ${humidity}% — ${risk === 'extreme' ? 'stay indoors with AC!' : 'prepare cooling aids and stay hydrated.'}`;
+          const title = risk === 'extreme'
+            ? '🚨 SweatSmart: Extreme Flare Hazard'
+            : '⚠️ SweatSmart: High Sweat Alert';
+
+          const body = risk === 'extreme'
+            ? `Extreme Flare Hazard: Severe heat load (RealFeel ${realFeel.toFixed(1)}°C). Move to cool/shaded environment.`
+            : `High Sweat Alert: RealFeel ${realFeel.toFixed(1)}°C with high humidity (${humidity}%). Prepare cool-down strategies.`;
 
           const result = await sendWebPush(
             { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
