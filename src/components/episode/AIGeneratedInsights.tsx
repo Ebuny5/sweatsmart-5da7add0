@@ -3,9 +3,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Lightbulb, Stethoscope, Heart, Activity, AlertCircle, Copy, Download } from 'lucide-react';
+import { Lightbulb, Stethoscope, Heart, Activity, AlertCircle, Copy, Download, Volume2, Square, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { useReadAloud } from '@/hooks/useReadAloud';
 import jsPDF from 'jspdf';
 import { cn } from '@/lib/utils';
 
@@ -25,6 +26,8 @@ interface AIInsightsProps {
 const AIGeneratedInsights: React.FC<AIInsightsProps> = ({ insights }) => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { toggle, isSpeaking, isLoading: isAudioLoading } = useReadAloud();
+
 
   const handleCopyInsights = async () => {
     const insightsText = `
@@ -181,11 +184,27 @@ Always consult with a healthcare provider for personalized medical advice.
             <Badge variant="outline">AI-Generated</Badge>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <div className="text-muted-foreground leading-relaxed whitespace-pre-wrap font-medium">
             {insights.clinicalAnalysis}
           </div>
+          <Button
+            variant="outline"
+            onClick={() => toggle(insights.clinicalAnalysis)}
+            disabled={isAudioLoading}
+            className="min-h-[56px] w-full sm:w-auto rounded-xl"
+            aria-label={isSpeaking ? 'Stop reading clinical analysis aloud' : 'Listen to clinical analysis'}
+          >
+            {isAudioLoading ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Preparing audio…</>
+            ) : isSpeaking ? (
+              <><Square className="h-4 w-4 mr-2" /> Stop</>
+            ) : (
+              <><Volume2 className="h-4 w-4 mr-2" /> Listen</>
+            )}
+          </Button>
         </CardContent>
+
       </Card>
 
       {/* Immediate Relief */}
