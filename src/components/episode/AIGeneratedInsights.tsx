@@ -26,7 +26,53 @@ interface AIInsightsProps {
 const AIGeneratedInsights: React.FC<AIInsightsProps> = ({ insights }) => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { toggle, isSpeaking, isLoading: isAudioLoading } = useReadAloud();
+  const { toggle, stop, isSpeaking, isLoading: isAudioLoading, activeKey } = useReadAloud();
+
+  const ListenButton = ({
+    text,
+    sectionKey,
+    label,
+    full = false,
+  }: { text: string; sectionKey: string; label: string; full?: boolean }) => {
+    const active = activeKey === sectionKey;
+    const loading = active && isAudioLoading;
+    const playing = active && isSpeaking;
+    return (
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => toggle(text, sectionKey)}
+        className={cn(
+          'min-h-[44px] rounded-xl shrink-0',
+          full && 'w-full sm:w-auto min-h-[56px]',
+          playing && 'border-primary text-primary',
+        )}
+        aria-label={playing ? `Stop reading ${label}` : `Listen to ${label}`}
+      >
+        {loading ? (
+          <><Loader2 className="h-4 w-4 sm:mr-2 animate-spin" /><span className="hidden sm:inline">Preparing…</span></>
+        ) : playing ? (
+          <><Square className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Stop</span></>
+        ) : (
+          <><Volume2 className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Listen</span></>
+        )}
+      </Button>
+    );
+  };
+
+  const listify = (title: string, items: string[]) =>
+    `${title}. ${items.map((item, i) => `${i + 1}. ${item}`).join(' ')}`;
+
+  const fullText = [
+    insights.emotionalSupport,
+    `Clinical analysis. ${insights.clinicalAnalysis}`,
+    listify('Immediate relief strategies', insights.immediateRelief),
+    listify('Treatment recommendations', insights.treatmentOptions),
+    listify('Lifestyle modifications', insights.lifestyleModifications),
+    `When to seek medical attention. ${insights.medicalAttention}`,
+  ].filter(Boolean).join(' ');
+
 
 
   const handleCopyInsights = async () => {
