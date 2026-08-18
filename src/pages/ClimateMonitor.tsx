@@ -71,17 +71,6 @@ const SweatingHandIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   </svg>
 );
 
-const BellIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-  <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-  </svg>
-);
-const MapPinIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-  <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-  </svg>
-);
 const RefreshIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356-2A8.001 8.001 0 004 12c0 2.127.766 4.047 2.031 5.488M16 20v-5h.582m-15.356 2A8.001 8.001 0 0020 12c0-2.127-.766-4.047-2.031-5.488" />
@@ -93,8 +82,6 @@ const ZapIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   </svg>
 );
 
-const TESTING_MODE = false;
-const LOG_CHECK_INTERVAL = 30000;
 const WEATHER_REFRESH_INTERVAL = 15 * 60 * 1000;
 
 const WeatherErrorCard: React.FC<{ error: string; onRetry: () => void; isFetching: boolean }> = ({ error, onRetry, isFetching }) => (
@@ -128,7 +115,9 @@ const CurrentStatusCard: React.FC<{
     return `${Math.floor(diff / 3600)}h ago`;
   };
 
-  const displayUV = Math.min(11, weather.uvIndex);
+  const displayUV = weather.uvIndex == null ? null : Math.min(11, weather.uvIndex);
+  const realFeelVal = weather.realFeel ?? weather.heatIndex ?? weather.temperature;
+  const dewPointVal = weather.dewPoint;
 
   return (
     <div className="relative bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl p-6 space-y-4 shadow-2xl">
@@ -149,22 +138,26 @@ const CurrentStatusCard: React.FC<{
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {/* Temperature */}
+        {/* Temperature & RealFeel */}
         <div className="bg-black/20 border border-white/10 p-4 rounded-xl text-center">
           <ThermometerIcon className="w-12 h-12 mx-auto mb-2" />
           <p className="text-2xl font-bold text-amber-300">{weather.temperature.toFixed(1)}°C</p>
-          <p className="text-xs text-purple-200/70 mt-1">Temperature</p>
+          <p className="text-xs text-purple-200/90 font-medium mt-1">RealFeel: {realFeelVal.toFixed(1)}°C</p>
         </div>
-        {/* Humidity */}
+        {/* Humidity & Dew Point */}
         <div className="bg-black/20 border border-white/10 p-4 rounded-xl text-center">
           <DropletIcon className="w-12 h-12 mx-auto mb-2" />
           <p className="text-2xl font-bold text-sky-300">{weather.humidity.toFixed(0)}%</p>
-          <p className="text-xs text-purple-200/70 mt-1">Humidity</p>
+          <p className="text-xs text-purple-200/90 font-medium mt-1">
+            {dewPointVal != null ? `Dew Point: ${dewPointVal.toFixed(1)}°C` : 'Humidity'}
+          </p>
         </div>
         {/* UV Index */}
         <div className="bg-black/20 border border-white/10 p-4 rounded-xl text-center">
           <UVSunIcon className="w-12 h-12 mx-auto mb-2" />
-          <p className="text-2xl font-bold text-yellow-300">{displayUV.toFixed(1)}</p>
+          <p className="text-2xl font-bold text-yellow-300">
+            {displayUV != null ? displayUV.toFixed(1) : 'N/A'}
+          </p>
           <p className="text-xs text-purple-200/70 mt-1">UV Index</p>
         </div>
         {/* EDA */}
@@ -219,7 +212,6 @@ const DiagnosticsPanel: React.FC<{
 
 const ClimateMonitor = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { trackAction } = useEngagement();
   const [notificationPermission, setNotificationPermission] = useState<'prompt' | 'granted' | 'denied'>('prompt');
   const [locationPermission, setLocationPermission] = useState<'prompt' | 'granted' | 'denied'>('prompt');
@@ -229,23 +221,10 @@ const ClimateMonitor = () => {
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [lastWeatherFetch, setLastWeatherFetch] = useState<number | null>(null);
   const [physiologicalData, setPhysiologicalData] = useState<PhysiologicalData>({ eda: 2.5 });
-  const [thresholds, setThresholds] = useState<Thresholds>(() => {
-    const saved = localStorage.getItem('sweatSmartThresholds');
-    return saved ? JSON.parse(saved) : { temperature: 28, humidity: 70, uvIndex: 6 };
-  });
-  const [logs, setLogs] = useState<LogEntry[]>(() => {
-    const saved = localStorage.getItem('sweatSmartLogs');
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [nextLogTime, setNextLogTime] = useState<number | null>(null);
   const [alertStatus, setAlertStatus] = useState("Waiting for real weather data...");
   const [lastAlertType, setLastAlertType] = useState<string | null>(() =>
     localStorage.getItem('climateLastAlertType')
   );
-  const [lastLogTime, setLastLogTime] = useState<number | null>(() => {
-    const s = localStorage.getItem('sweatsmart_last_log_time');
-    return s ? parseInt(s, 10) : null;
-  });
 
   const edaIsWearableAndFresh = edaManager.isWearableAndFresh();
   const arePermissionsGranted = locationPermission === 'granted' && notificationPermission === 'granted';
@@ -287,7 +266,7 @@ const ClimateMonitor = () => {
         { enableHighAccuracy: false, timeout: 20000, maximumAge: 60000 }
       );
     }
-  }, [checkPermissions]);
+  }, [checkPermissions, trackAction]);
 
   useEffect(() => {
     const storedEDA = edaManager.getEDA();
@@ -296,20 +275,17 @@ const ClimateMonitor = () => {
     }
   }, []);
 
-  useEffect(() => { localStorage.setItem('sweatSmartThresholds', JSON.stringify(thresholds)); }, [thresholds]);
-  useEffect(() => { localStorage.setItem('sweatSmartLogs', JSON.stringify(logs)); }, [logs]);
-
-  const fetchWeatherData = useCallback(async (coords: GeolocationCoordinates) => {
+  const fetchWeatherData = useCallback(async (coords: GeolocationCoordinates, bypassCache = false) => {
     setIsFetchingWeather(true);
     setWeatherError(null);
     try {
       const { data, error } = await supabase.functions.invoke('get-weather-data', {
-        body: { latitude: coords.latitude, longitude: coords.longitude }
+        body: { latitude: coords.latitude, longitude: coords.longitude, bypassCache }
       });
       if (error) throw new Error(error.message);
       if (data.simulated) throw new Error(data.error || 'Weather API unavailable — no real data received.');
       const now = Date.now();
-      setWeatherData({ ...data, uvIndex: data.uvIndex ?? data.uvi ?? 0, lastUpdated: now });
+      setWeatherData({ ...data, uvIndex: data.uvIndex ?? data.uvi ?? null, lastUpdated: now });
       setLastWeatherFetch(now);
       setWeatherError(null);
     } catch (err: any) {
@@ -335,14 +311,6 @@ const ClimateMonitor = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const playAlertSound = useCallback(
-    (severity: 'CRITICAL' | 'WARNING' | 'MODERATE' | 'LOW' | 'OPTIMAL' | 'REMINDER' = 'WARNING') => {
-      soundManager.triggerMedicalAlert(severity);
-    }, []
-  );
-
-  // All climate alerts now go through the central NotificationManager so they
-  // share dedup/cooldown with reminders and never collide.
   const sendClimateAlert = useCallback(
     async (
       title: string,
@@ -369,7 +337,7 @@ const ClimateMonitor = () => {
 
     const settings = localStorage.getItem('climateAppSettings');
     const soundEnabled = settings ? JSON.parse(settings).soundAlerts !== false : true;
-    // Pass UV through unmodified — calculator handles 11+ correctly.
+
     const risk = calculateSweatRisk(
       weatherData.temperature,
       weatherData.humidity,
@@ -386,12 +354,9 @@ const ClimateMonitor = () => {
 
     setAlertStatus(`${risk.message}: ${risk.description}`);
 
-    // Fire alerts on real escalations (not safe/low).
-    // We let notificationManager handle the 30min cooldown via dedupKey,
-    // so we can re-attempt delivery every time the weather data refreshes (15m).
     if (
       soundEnabled &&
-      currentAlertType !== 'optimal'
+      (risk.level === 'high' || risk.level === 'extreme')
     ) {
       const uvLabel =
         weatherData.uvIndex == null
@@ -401,8 +366,8 @@ const ClimateMonitor = () => {
             : weatherData.uvIndex.toFixed(1);
       void sendClimateAlert(
         `HidroAlly Alert — ${risk.message}`,
-        `${risk.description} (Temp ${weatherData.temperature.toFixed(1)}°C, Humidity ${weatherData.humidity.toFixed(0)}%, UV ${uvLabel})`,
-        risk.level as 'low' | 'moderate' | 'high' | 'extreme',
+        `${risk.description} (RealFeel ${weatherData.realFeel?.toFixed(1) ?? weatherData.temperature.toFixed(1)}°C, Humidity ${weatherData.humidity.toFixed(0)}%, UV ${uvLabel})`,
+        risk.level as 'high' | 'extreme',
         `climate:${risk.level}:${new Date().toISOString().slice(0, 13)}`,
       );
     }
@@ -412,70 +377,10 @@ const ClimateMonitor = () => {
     setLastAlertType(currentAlertType);
   }, [weatherData, sendClimateAlert, arePermissionsGranted, lastAlertType, hasRealWeather]);
 
-  const updateNextLogTime = useCallback((anchor?: number) => {
-    const base = anchor ?? (parseInt(localStorage.getItem('sweatsmart_last_log_time') || '0', 10) || Date.now());
-    const nextTime = base + 6 * 60 * 60 * 1000;
-    setNextLogTime(nextTime);
-    localStorage.setItem('climateNextLogTime', nextTime.toString());
-  }, []);
-
-  useEffect(() => {
-    const stored = localStorage.getItem('climateNextLogTime');
-    const storedTime = stored ? parseInt(stored, 10) : NaN;
-    if (storedTime && storedTime > Date.now()) setNextLogTime(storedTime);
-    else updateNextLogTime();
-  }, [updateNextLogTime]);
-
-  useEffect(() => {
-    const handler = (e: any) => {
-      // Only act on reminder notifications AND only if user is currently on /climate
-      // This prevents the handler from hijacking navigation when user went to palm-scanner
-      if (arePermissionsGranted && e.detail?.channel === 'reminder' && window.location.pathname === '/climate') {
-        navigate('/log-episode');
-      }
-    };
-    window.addEventListener('sweatsmart-notification', handler);
-    return () => window.removeEventListener('sweatsmart-notification', handler);
-  }, [arePermissionsGranted, navigate]);
-
-  // Log reminders are handled globally by LoggingReminderService — we no longer
-  // duplicate that loop here. ClimateMonitor only listens for the
-  // 'sweatsmart-log-reminder' event to open the in-app logging modal.
-
-  const requestNotificationPermission = async () => {
-    if (locationPermission !== 'granted') return;
-    const permission = await Notification.requestPermission();
-    setNotificationPermission(permission === 'default' ? 'prompt' : permission);
-  };
-
-  const handleRequestLocation = () => {
-    setIsFetchingWeather(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocation(position.coords);
-        setLocationPermission('granted');
-        if (notificationPermission === 'prompt') requestNotificationPermission();
-      },
-      (error) => {
-        console.warn('📍 handleRequestLocation error:', error);
-        if (error.code === error.PERMISSION_DENIED) setLocationPermission('denied');
-        else setWeatherError(`Location error: ${error.message}`);
-        setIsFetchingWeather(false);
-      },
-      { enableHighAccuracy: false, timeout: 20000 }
-    );
-  };
-
-  const handleThresholdChange = (key: keyof Thresholds, value: number) => {
-    setThresholds(prev => ({ ...prev, [key]: value }));
-  };
-
   return (
     <PageTransition>
-      {/* Warrior Glass background — matches Wearable Simulator */}
       <div className="min-h-[100dvh] w-full max-w-[100vw] overflow-x-hidden bg-slate-900 p-6 space-y-6 relative">
 
-        {/* Ambient glow overlays */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-0 left-1/4 w-96 h-96 bg-slate-800/50 rounded-full blur-3xl" />
           <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-slate-800/50 rounded-full blur-3xl" />
@@ -510,7 +415,7 @@ const ClimateMonitor = () => {
               {location && (
                 <Button
                   className="bg-white/20 border border-white/30 text-white hover:bg-white/30 transition-colors shadow-none shrink-0"
-                  onClick={() => fetchWeatherData(location)}
+                  onClick={() => fetchWeatherData(location, true)}
                   disabled={isFetchingWeather}
                 >
                   <RefreshIcon className={`h-4 w-4 mr-2 ${isFetchingWeather ? 'animate-spin' : ''}`} />
@@ -522,7 +427,7 @@ const ClimateMonitor = () => {
 
           <div className={`space-y-6 transition-opacity duration-500 ${arePermissionsGranted ? 'opacity-100' : 'opacity-40 blur-sm'}`}>
             {weatherError && (
-              <WeatherErrorCard error={weatherError} onRetry={() => location && fetchWeatherData(location)} isFetching={isFetchingWeather} />
+              <WeatherErrorCard error={weatherError} onRetry={() => location && fetchWeatherData(location, true)} isFetching={isFetchingWeather} />
             )}
             {hasRealWeather && weatherData && (
               <CurrentStatusCard weather={weatherData} physiological={physiologicalData} alertStatus={alertStatus} isFetching={isFetchingWeather} edaIsWearableAndFresh={edaIsWearableAndFresh} />
@@ -568,7 +473,6 @@ const ClimateMonitor = () => {
                 <ZapIcon className="w-5 h-5" /> Go to Scanner
               </button>
             </div>
-
 
             <DiagnosticsPanel
               locationPermission={locationPermission}

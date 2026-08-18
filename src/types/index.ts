@@ -6,6 +6,12 @@ export interface WeatherData {
   uvIndex: number | null;
   /** Sky condition derived server-side from cloud cover + weather code. */
   sky?: 'sunny' | 'partly_cloudy' | 'overcast' | 'unknown';
+  /** Calculated Rothfusz Heat Index (°C) */
+  heatIndex?: number;
+  /** Calculated Magnus Dew Point (°C) */
+  dewPoint?: number;
+  /** RealFeel temperature considering solar radiation / UV index (°C) */
+  realFeel?: number;
   lastUpdated?: number;
   description?: string;
   location?: string;
