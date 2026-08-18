@@ -3,9 +3,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Lightbulb, Stethoscope, Heart, Activity, AlertCircle, Copy, Download } from 'lucide-react';
+import { Lightbulb, Stethoscope, Heart, Activity, AlertCircle, Copy, Download, Volume2, Square, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { useReadAloud } from '@/hooks/useReadAloud';
 import jsPDF from 'jspdf';
 import { cn } from '@/lib/utils';
 
