@@ -7,14 +7,14 @@ import { supabase } from '@/integrations/supabase/client';
 
 // Type helper: pushManager exists on ServiceWorkerRegistration at runtime
 // but may not be in TS DOM lib depending on version
-function getPushManager(reg: ServiceWorkerRegistration): any {
-  return (reg as any).pushManager;
+function getPushManager(reg: ServiceWorkerRegistration): PushManager {
+  return (reg as ServiceWorkerRegistration & { pushManager: PushManager }).pushManager;
 }
 
 // VAPID public key is safe to expose in client code.
 // We keep a fallback value, but prefer fetching the *current* public key from the
 // edge function so it always matches the server-side VAPID private key.
-const FALLBACK_VAPID_PUBLIC_KEY = 'BLg3PxY0fWoqQ2kVlxXfTnXFV9JXHDTMqNvVXzQLJqhz7mGnPsH8eY_kZVJQJxFdKhEfQTbNqPmRvXYqVqxQfQE';
+const FALLBACK_VAPID_PUBLIC_KEY = 'BBEfnIOqmJdK5XmJp1ch7b2j1H_oVg7EE4jtIVY0dGeuEKWeXW1wivGt4-Iwy8A26cRuglF3clYdjtHJXJyX-pg';
 
 const LS_VAPID_PUBLIC_KEY = 'sweatsmart:webpush:vapid_public_key';
 
@@ -35,7 +35,7 @@ class WebPushService {
     return WebPushService.instance;
   }
 
-/**
+  /**
    * Check if push notifications are supported
    */
   isSupported(): boolean {
@@ -232,8 +232,6 @@ class WebPushService {
       }
 
       console.log('📱 Push subscription stored in database successfully');
-
-      console.log('📱 Push subscription stored in database');
       this.setStoredVapidPublicKey(vapidPublicKey);
       return this.subscription;
     } catch (error) {
