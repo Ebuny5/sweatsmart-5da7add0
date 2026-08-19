@@ -1,4 +1,6 @@
 import { notificationManager } from './NotificationManager';
+import { webPushService } from './WebPushService';
+import { supabase } from '@/integrations/supabase/client';
 
 export const PRODUCTION_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
 export const LAST_LOG_TIME_KEY = 'sweatsmart_last_log_time';
@@ -8,7 +10,7 @@ export const CURRENT_HDSS_KEY = 'sweatsmart_current_hdss';
 class LoggingReminderService {
   private static instance: LoggingReminderService;
   private isInitialized = false;
-  private checkInterval: NodeJS.Timeout | null = null;
+  private checkInterval: ReturnType<typeof setInterval> | null = null;
 
   private constructor() {
     this.initialize();
@@ -26,7 +28,6 @@ class LoggingReminderService {
 
     console.log('📅 Logging Reminder Service initializing...');
 
-    // Set onboarding time if not exists
     if (!localStorage.getItem(ONBOARDING_TIME_KEY)) {
       localStorage.setItem(ONBOARDING_TIME_KEY, Date.now().toString());
     }
@@ -37,13 +38,11 @@ class LoggingReminderService {
   }
 
   private startLogChecker(): void {
-    // Initial check and schedule
     this.checkForDueLog();
 
-    // Check periodically in case localStorage was updated elsewhere
     this.checkInterval = setInterval(() => {
       this.checkForDueLog();
-    }, 5 * 60 * 1000); // Check every 5 minutes
+    }, 5 * 60 * 1000);
 
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
@@ -52,9 +51,6 @@ class LoggingReminderService {
     });
   }
 
-  /**
-   * Calculates when the next log is due based on a baseline.
-   */
   static calculateNextLogTime(baselineMs: number): number {
     let nextTime = baselineMs + PRODUCTION_INTERVAL_MS;
     const now = Date.now();
@@ -68,14 +64,9 @@ class LoggingReminderService {
     return nextTime;
   }
 
-  /**
-   * Calculates when the next log is due (6 hours after last log or onboarding).
-   */
   getNextScheduledTime(): number {
     const lastLog = parseInt(localStorage.getItem(LAST_LOG_TIME_KEY) || '0', 10);
     const onboarding = parseInt(localStorage.getItem(ONBOARDING_TIME_KEY) || '0', 10);
-
-    // Prioritize lastLog. If neither exists, use now as baseline.
     const baseline = lastLog || onboarding || Date.now();
     return LoggingReminderService.calculateNextLogTime(baseline);
   }
@@ -89,7 +80,6 @@ class LoggingReminderService {
 
     console.log(`📅 Next log due at: ${new Date(nextTime).toLocaleString()}`);
 
-    // 1. Schedule/Send the upcoming/current reminder
     await notificationManager.scheduleReminder(
       new Date(nextTime),
       '⏰ Time for Your Six-Hour Check-In',
@@ -108,18 +98,13 @@ class LoggingReminderService {
       });
     }
 
-    // 2. Handle missed check-in logic for the PREVIOUS window
-    // If the next due time is 14:00, the one we might have missed was 08:00.
     const previousDueTime = nextTime - PRODUCTION_INTERVAL_MS;
-
-    // We missed it if our last log was before that previous due time
     const missedWindow = lastInteraction < previousDueTime;
 
     if (missedWindow) {
       const missed30m = previousDueTime + (30 * 60 * 1000);
       const missed2h = previousDueTime + (2 * 60 * 60 * 1000);
 
-      // +30m Reminder
       if (now >= missed30m && now - missed30m < 15 * 60 * 1000) {
         await notificationManager.send({
           channel: 'reminder',
@@ -131,7 +116,6 @@ class LoggingReminderService {
         });
       }
 
-      // +2h Reminder
       if (now >= missed2h && now - missed2h < 15 * 60 * 1000) {
         await notificationManager.send({
           channel: 'reminder',
@@ -145,7 +129,6 @@ class LoggingReminderService {
     }
   }
 
-  /** Called by LogEpisode.tsx when a log is successfully saved */
   handleLogSaved(): void {
     const now = Date.now();
     localStorage.setItem(LAST_LOG_TIME_KEY, now.toString());
@@ -157,78 +140,105 @@ class LoggingReminderService {
     this.checkForDueLog();
   }
 
+  /**
+   * Schedule a test reminder.
+   * On web: uses real Web Push via the edge function (works even when app is closed).
+   * On native Android: schedules an OS-level local notification.
+   */
   async scheduleTestReminder(delayMs: number): Promise<void> {
     const at = new Date(Date.now() + delayMs);
-    // Use a unique ID for test reminders to avoid colliding with production ones
-    const testId = 999999;
+    const minutes = Math.round(delayMs / 60000);
 
-    // Pass the unique testId to scheduleNativeReminder via the bridge
     const { scheduleNativeReminder, showNativeNotification, isNativeApp } = await import('./NativeNotificationBridge');
     const isNative = await isNativeApp();
 
     if (isNative) {
-      // Also trigger an immediate "Scheduled" confirmation notification for the user
+      // Android/iOS: use OS-level scheduled notification
       await showNativeNotification({
-        title: "🧪 Test Scheduled",
-        body: `Your ${Math.round(delayMs / 60000)}-minute test is set for ${at.toLocaleTimeString()}`,
-        channelId: 'reminder'
+        title: '🧪 Test Scheduled',
+        body: `Your ${minutes}-minute test is set for ${at.toLocaleTimeString()}`,
+        channelId: 'reminder',
       });
 
       await scheduleNativeReminder({
-        id: testId,
+        id: 999999,
         at,
         title: '⏰ Time for Your Six-Hour Check-In',
         body: "It's time for your six-hour check-in 💧",
         url: '/log-episode',
-        channelId: 'reminder'
+        channelId: 'reminder',
       });
-      console.log(`🧪 Test reminder scheduled for ${at.toLocaleString()} (delay: ${delayMs}ms) with ID ${testId}`);
-    } else {
-      let scheduledViaSW = false;
-      if ('serviceWorker' in navigator) {
-        try {
-          const reg = await navigator.serviceWorker.ready;
-          if ('showTrigger' in Notification.prototype) {
-            // @ts-ignore
-            await reg.showNotification('⏰ Time for Your Six-Hour Check-In', {
-              body: "It's time for your six-hour check-in 💧",
-              icon: '/favicon.ico',
-              badge: '/favicon.ico',
-              tag: 'logging-reminder-test',
-              data: { url: '/log-episode' },
-              requireInteraction: true,
-              // @ts-ignore
-              showTrigger: new TimestampTrigger(at.getTime())
-            });
-            scheduledViaSW = true;
-          }
-        } catch (e) {
-          console.warn('Failed to schedule via SW showTrigger', e);
-        }
-      }
 
+      console.log(`🧪 Native test reminder scheduled for ${at.toLocaleString()}`);
+      return;
+    }
+
+    // Web: schedule via edge function using Web Push so it fires even when closed
+    const subscription = await webPushService.getSubscription();
+
+    if (subscription) {
+      // Confirm to user that it's scheduled
       await notificationManager.send({
         channel: 'system',
         kind: 'reminder',
-        title: "🧪 Test Scheduled",
-        body: scheduledViaSW
-          ? `Your ${Math.round(delayMs / 60000)}-minute test is set for ${at.toLocaleTimeString()} (Web)`
-          : `App must remain open! Web scheduling not supported. Your ${Math.round(delayMs / 60000)}-minute test is set.`,
-        dedupKey: `test-sched-${Date.now()}`
+        title: '🧪 Test Scheduled',
+        body: `Web Push test set for ${at.toLocaleTimeString()}. You can close the app — it will still arrive.`,
+        dedupKey: `test-sched-${Date.now()}`,
       });
 
-      if (!scheduledViaSW) {
-        setTimeout(() => {
-          notificationManager.send({
+      // Wait the delay, then fire via edge function (real push, app can be closed)
+      setTimeout(async () => {
+        try {
+          await supabase.functions.invoke('send-push-notification', {
+            body: {
+              action: 'send_to_endpoint',
+              endpoint: subscription.endpoint,
+              notification: {
+                title: '⏰ Time for Your Six-Hour Check-In',
+                body: "It's time for your six-hour check-in 💧",
+                tag: 'logging-reminder-test',
+                type: 'reminder',
+                kind: 'reminder',
+                url: '/log-episode',
+              },
+            },
+          });
+          console.log('🧪 Web Push test reminder delivered via edge function');
+        } catch (err) {
+          console.error('🧪 Web Push test failed:', err);
+          // Fallback: in-app notification if push failed
+          await notificationManager.send({
             channel: 'system',
             kind: 'reminder',
             title: '⏰ Time for Your Six-Hour Check-In',
             body: "It's time for your six-hour check-in 💧",
-            dedupKey: `test-rem-${Date.now()}`,
+            dedupKey: `test-rem-fallback-${Date.now()}`,
             url: '/log-episode',
           });
-        }, delayMs);
-      }
+        }
+      }, delayMs);
+
+      console.log(`🧪 Web Push test scheduled for ${at.toLocaleString()} (${delayMs}ms)`);
+    } else {
+      // No push subscription — fall back to in-app timer with a clear message
+      await notificationManager.send({
+        channel: 'system',
+        kind: 'reminder',
+        title: '🧪 Test Scheduled (App Must Stay Open)',
+        body: `No Web Push subscription found. Keep the app open — reminder fires in ${minutes} min. Enable Background Notifications first for true background delivery.`,
+        dedupKey: `test-sched-nopush-${Date.now()}`,
+      });
+
+      setTimeout(() => {
+        notificationManager.send({
+          channel: 'system',
+          kind: 'reminder',
+          title: '⏰ Time for Your Six-Hour Check-In',
+          body: "It's time for your six-hour check-in 💧",
+          dedupKey: `test-rem-${Date.now()}`,
+          url: '/log-episode',
+        });
+      }, delayMs);
     }
   }
 
