@@ -130,7 +130,7 @@ const ClimateCard = ({ onNavigate }: { onNavigate: () => void }) => {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={refresh}
+            onClick={() => { void refresh({ bypassCache: true }); }}
             disabled={loading}
             className={`p-2 rounded-xl ${cfg.badge} hover:opacity-80 transition-all disabled:opacity-50`}
             title="Refresh"
