@@ -234,10 +234,40 @@ serve(async (req: Request) => {
 
     const tempC = Math.round(weatherData.main.temp * 10) / 10;
     const humidity = weatherData.main.humidity;
-    const formattedUv = uvIndex == null ? null : Math.round(uvIndex * 10) / 10;
+
+    // --- UV realism correction -------------------------------------------
+    // OpenWeather returns a largely clear-sky UV value. Under cloud cover the
+    // real surface UV is far lower, and at night it is zero. Correct both so
+    // users never see "UV 7.8" while it is overcast or dark.
+    const nowSec = Math.floor(Date.now() / 1000);
+    const sunrise: number | undefined = weatherData.sys?.sunrise;
+    const sunset: number | undefined = weatherData.sys?.sunset;
+    const isNight =
+      typeof sunrise === 'number' && typeof sunset === 'number'
+        ? nowSec < sunrise || nowSec > sunset
+        : false;
+
+    let correctedUv: number | null = uvIndex;
+    if (correctedUv != null) {
+      if (isNight) {
+        correctedUv = 0;
+      } else {
+        // WMO-style cloud attenuation: UV_eff = UV * (1 - 0.75 * cloudFraction^3.4)
+        const cloudFraction = Math.max(0, Math.min(100, clouds)) / 100;
+        const attenuation = 1 - 0.75 * Math.pow(cloudFraction, 3.4);
+        correctedUv = correctedUv * attenuation;
+        // Precipitation / thunderstorm / heavy cloud codes cut UV further
+        if (weatherId >= 200 && weatherId < 800) {
+          correctedUv = correctedUv * 0.6;
+        }
+      }
+    }
+
+    const formattedUv = correctedUv == null ? null : Math.round(Math.max(0, correctedUv) * 10) / 10;
     const heatIndex = calculateHeatIndex(tempC, humidity);
     const dewPoint = calculateDewPoint(tempC, humidity);
     const realFeel = calculateRealFeel(tempC, humidity, formattedUv);
+
 
     const result: WeatherResult = {
       temperature: tempC,

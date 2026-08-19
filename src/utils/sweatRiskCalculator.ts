@@ -179,7 +179,6 @@ export function calculateSweatRiskV2(input: SweatRiskInput): SweatRiskResult {
   let description = '';
   switch (level) {
     case 'low':
-    case 'safe':
       description = 'Optimal conditions. Normal baseline.';
       break;
     case 'moderate':
