@@ -2,7 +2,7 @@
  * NotificationManager — FIXED for Android + PWA
  * NOW INCLUDES: Service Worker registration + push subscription
  * Handles:
- *   - Service Worker registration (MISSING before!)
+ *   - Service Worker registration
  *   - Push subscription to receive notifications
  *   - Web/PWA notifications with Android support
  *   - Deduplication & cooldowns
@@ -71,11 +71,11 @@ function readState(): PersistedState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { lastByKey: {}, lastByChannel: {}, lastGlobal: 0 };
-    const parsed = JSON.parse(raw);
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
     return {
-      lastByKey: parsed.lastByKey || {},
-      lastByChannel: parsed.lastByChannel || {},
-      lastGlobal: parsed.lastGlobal || 0,
+      lastByKey: (parsed.lastByKey as Record<string, number>) || {},
+      lastByChannel: (parsed.lastByChannel as Partial<Record<NotificationChannel, number>>) || {},
+      lastGlobal: (parsed.lastGlobal as number) || 0,
     };
   } catch {
     return { lastByKey: {}, lastByChannel: {}, lastGlobal: 0 };
@@ -104,8 +104,7 @@ class NotificationManager {
   }
 
   /**
-   * CRITICAL FIX #1: Service Worker Registration
-   * This was completely missing and is why Android can't receive notifications!
+   * Service Worker Registration + auto push subscription sync
    */
   private async initServiceWorker(): Promise<void> {
     if (this.swInitialized) return;
@@ -117,24 +116,20 @@ class NotificationManager {
     }
 
     try {
-      // Register the service worker
       const registration = await navigator.serviceWorker.register('/sw.js', {
         scope: '/',
-        updateViaCache: 'none', // Force fresh SW on every check
+        updateViaCache: 'none',
       });
 
       this.swRegistration = registration;
       console.log('✅ Service Worker registered successfully');
-
-      // Mark as registered for Android settings
       localStorage.setItem(SW_REGISTERED_KEY, 'true');
 
-      // Listen for updates
       registration.addEventListener('updatefound', () => {
         console.log('📦 Service Worker update found');
       });
 
-      // AUTOMATIC PUSH SYNC: If permission is already granted, ensure subscription is active and fresh
+      // If permission already granted, ensure subscription is fresh
       if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
         console.log('🔔 Permission already granted, ensuring push subscription...');
         try {
@@ -165,7 +160,6 @@ class NotificationManager {
         console.log('🔔 Notification permission:', permission);
         
         if (permission === 'granted') {
-          // After permission granted, ensure SW and push are ready
           await this.initServiceWorker();
           return true;
         }
@@ -265,9 +259,6 @@ class NotificationManager {
       return;
     }
     console.log('📅 Reminder scheduled:', at.toLocaleString(), title);
-    // Native (Android/iOS): schedule an OS-level local notification.
-    // Uses a stable id derived from the target timestamp so re-scheduling
-    // the same time replaces rather than duplicates.
     const id = Math.floor((at.getTime() / 60000) % 2147483647);
     await scheduleNativeReminder({ id, at, title, body, url });
   }
@@ -290,15 +281,16 @@ class NotificationManager {
     try {
       if (
         typeof Notification !== 'undefined' &&
-        Notification.permission === 'granted' &&
-        document.visibilityState !== 'visible'
+        Notification.permission === 'granted'
+        // NOTE: visibility check removed — notifications must show even when app is open
+        // so beta users and investors see them during demos and real use
       ) {
         const notification = new Notification(req.title, {
           body: req.body,
           tag: req.dedupKey,
           icon: '/favicon.ico',
           badge: '/favicon.ico',
-          requireInteraction: req.channel === 'climate', // Keep climate alerts visible
+          requireInteraction: req.channel === 'climate',
         });
 
         notification.onclick = () => {
