@@ -326,14 +326,23 @@ function calculateRealFeel(tempC: number, humidity: number, uvIndex?: number | n
 }
 
 // ── Upgraded 4-Tier Sweat Risk Evaluator ──
-function calculateSweatRisk(temp: number, humidity: number, uv: number) {
-  const heatIndex = calculateHeatIndex(temp, humidity);
-  const realFeel = calculateRealFeel(temp, humidity, uv);
-  const isHighUv = uv > 6;
+function calculateSweatRisk(temp: number, humidity: number, uv: number, thresholds: any = {}) {
+  const targetTemp = thresholds?.temperature ?? 27.0;
+  const targetHumidity = thresholds?.humidity ?? 75.0;
+  const targetUV = thresholds?.uv ?? 6.0;
 
-  if (realFeel >= 35 || (heatIndex >= 32 && isHighUv)) return 'extreme';
-  if (realFeel >= 30) return 'high';
-  if (realFeel >= 27) return 'moderate';
+  const heatIndex = calculateHeatIndex(temp, humidity);
+
+  // Radiant Solar Adjustment Formula
+  const effectiveSolarHeatIndex = heatIndex + (uv * 0.5);
+
+  const realFeel = calculateRealFeel(temp, humidity, uv);
+  const isHighUv = uv >= targetUV;
+
+  // Sudden UV Flare / Scorching Sun rule overrides lower tier if UV is very high
+  if (uv >= 10.0 || effectiveSolarHeatIndex >= 35 || (heatIndex >= 32 && isHighUv)) return 'extreme';
+  if (uv >= 7.0 || effectiveSolarHeatIndex >= 30 || temp >= targetTemp + 3) return 'high';
+  if (effectiveSolarHeatIndex >= targetTemp || temp >= targetTemp || humidity >= targetHumidity) return 'moderate';
   return 'low';
 }
 
@@ -384,12 +393,7 @@ serve(async (req) => {
          isAuthorized = true;
       }
 
-      // We will allow cron if it sends a secret we have, or if no secret is set we trust the call to have been made by the db
-      // For utmost safety, we will let x-cron-secret pass if it matches the one we received from Deno.env OR if Deno.env.CRON_SECRET is missing but the header is provided by the DB.
-
-      if (!isAuthorized && cronHeader && cronHeader.length > 5) {
-         isAuthorized = true;
-      }
+      // Do not allow bypassing auth. If cronSecret is not set, we require valid authHeader
 
       if (!isAuthorized) {
         return new Response(JSON.stringify({ error: 'Unauthorized cron request' }), {
@@ -617,6 +621,7 @@ serve(async (req) => {
         if (!sub.latitude || !sub.longitude) { skipped++; continue; }
 
         try {
+          // Timezone resolution via OpenWeatherMap (uses local timezone based on coordinates)
           const weatherRes = await fetch(
             `https://api.openweathermap.org/data/2.5/weather?lat=${sub.latitude}&lon=${sub.longitude}&units=metric&appid=${weatherApiKey}`
           );
@@ -625,7 +630,24 @@ serve(async (req) => {
           const humidity = weather.main?.humidity || 0;
 
           const nowUnix = Math.floor(Date.now() / 1000);
-          const isNight = nowUnix < (weather.sys?.sunrise || 0) || nowUnix > (weather.sys?.sunset || 0);
+          const sunrise = weather.sys?.sunrise || 0;
+          const sunset = weather.sys?.sunset || 0;
+
+          // Use OpenWeatherMap's timezone offset (in seconds from UTC)
+          // To calculate local hour
+          const tzOffset = weather.timezone || 0;
+          const localTimeUnix = nowUnix + tzOffset;
+          const localDate = new Date(localTimeUnix * 1000);
+          const localHour = localDate.getUTCHours(); // Note: getting UTC hours of the shifted timestamp gives us the local hour
+
+          const isNight = nowUnix < sunrise || nowUnix > sunset;
+
+          // Restrict automated climate alerts to daytime (07:00 - 19:00) local time
+          if (localHour < 7 || localHour >= 19) {
+            skipped++;
+            continue;
+          }
+
 
           let uv = 0;
           if (!isNight) {
@@ -638,30 +660,76 @@ serve(async (req) => {
             } catch { /* optional */ }
           }
 
-          const risk = calculateSweatRisk(temp, humidity, uv);
+
+          // Get user thresholds
+          let customThresholds = {};
+          if (sub.user_id) {
+             const { data: profile } = await supabase.from('profiles').select('custom_thresholds').eq('id', sub.user_id).single();
+             if (profile?.custom_thresholds) {
+                customThresholds = typeof profile.custom_thresholds === 'string' ? JSON.parse(profile.custom_thresholds) : profile.custom_thresholds;
+             }
+          }
+
+          const risk = calculateSweatRisk(temp, humidity, uv, customThresholds);
           // Dispatch automatic push notifications for Moderate, High, and Extreme Risk
           if (risk !== 'high' && risk !== 'extreme' && risk !== 'moderate') { skipped++; continue; }
 
           const notifType = risk === 'extreme' ? 'climate_extreme' : (risk === 'high' ? 'climate_high' : 'climate_moderate');
           const todayCount = await getNotificationCountToday(supabase, sub.id, notifType);
-          if (todayCount >= 3) { skipped++; continue; }
 
           const totalToday = await getNotificationCountToday(supabase, sub.id, 'climate_high') +
             await getNotificationCountToday(supabase, sub.id, 'climate_extreme') +
             await getNotificationCountToday(supabase, sub.id, 'climate_moderate');
-          if (totalToday >= 6) { skipped++; continue; }
+
+          if (totalToday >= 3) { skipped++; continue; } // Max 2-3 per day
+
+          // 2-hour cooldown timer logic for repeated alerts of the same tier
+          const { data: lastNotif } = await supabase
+             .from('notification_logs')
+             .select('created_at, notification_type')
+             .eq('subscription_id', sub.id)
+             .in('notification_type', ['climate_extreme', 'climate_high', 'climate_moderate'])
+             .order('created_at', { ascending: false })
+             .limit(1)
+             .maybeSingle();
+
+          if (lastNotif) {
+             const lastSentMs = new Date(lastNotif.created_at).getTime();
+             const nowMs = Date.now();
+             const twoHoursMs = 2 * 60 * 60 * 1000;
+
+             // If we've sent an alert in the last 2 hours and we aren't escalating, block it
+             if (nowMs - lastSentMs < twoHoursMs) {
+                // If it's the same or lower risk, skip
+                if (lastNotif.notification_type === notifType) {
+                   skipped++; continue;
+                }
+                if (lastNotif.notification_type === 'climate_extreme') {
+                   skipped++; continue;
+                }
+                if (lastNotif.notification_type === 'climate_high' && notifType === 'climate_moderate') {
+                   skipped++; continue;
+                }
+             }
+          }
+
 
           const realFeel = calculateRealFeel(temp, humidity, uv);
 
           let title = '⚠️ SweatSmart: Moderate Sweat Risk';
-          let body = `Moderate Sweat Risk: Thermal threshold crossed (RealFeel ${realFeel.toFixed(1)}°C). Stay hydrated.`;
+          let body = `Moderate Sweat Risk: Heat Index reached ${calculateHeatIndex(temp, humidity).toFixed(1)}°C. Monitor symptoms and stay hydrated.`;
 
           if (risk === 'extreme') {
             title = '🚨 SweatSmart: Extreme Flare Hazard';
             body = `Extreme Flare Hazard: Severe heat load (RealFeel ${realFeel.toFixed(1)}°C). Move to cool/shaded environment.`;
           } else if (risk === 'high') {
-            title = '⚠️ SweatSmart: High Sweat Alert';
-            body = `High Sweat Alert: RealFeel ${realFeel.toFixed(1)}°C with high humidity (${humidity}%). Prepare cool-down strategies.`;
+            if (uv >= 7.0) {
+               title = `☀️ Scorching Sun Alert (UV ${uv.toFixed(1)})`;
+               body = 'Scorching Sun Alert: Intense direct solar radiation detected. High risk of sudden facial and palm sweat flares. Seek shade and use cooling compress.';
+            } else {
+               title = '⚠️ SweatSmart: High Sweat Alert';
+               body = `High Sweat Alert: RealFeel ${realFeel.toFixed(1)}°C with high humidity (${humidity}%). Prepare cool-down strategies.`;
+            }
           }
 
           const result = await sendWebPush(
