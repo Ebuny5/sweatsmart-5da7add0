@@ -282,21 +282,11 @@ const Dashboard = () => {
         {/* ── HERO ──────────────────────────────────────────────────────── */}
         <div className="bg-gradient-to-br from-violet-600 via-purple-500 to-pink-500 px-6 pt-8 pb-14 rounded-b-[2.5rem] shadow-lg shadow-purple-200">
 
-          {/* Title row — centred with Insights button on right */}
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex-1" />
-            <h1 className="text-white text-lg font-black tracking-tight leading-tight text-center flex-1 whitespace-nowrap">
-              {firstName}'s Dashboard 💧
+          {/* Title row — centred */}
+          <div className="flex items-center justify-center mb-3">
+            <h1 className="text-white text-lg font-black tracking-tight leading-tight text-center whitespace-nowrap">
+              {firstName}'s Dashboard
             </h1>
-            <div className="flex-1 flex justify-end">
-              <button
-                onClick={() => navigate("/insights")}
-                className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-2 rounded-full transition-all backdrop-blur-sm"
-              >
-                <TrendingUp className="h-3.5 w-3.5" />
-                Insights
-              </button>
-            </div>
           </div>
 
           {/* HDSS status badge */}
