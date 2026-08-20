@@ -177,57 +177,41 @@ class LoggingReminderService {
     const subscription = await webPushService.getSubscription();
 
     if (subscription) {
-      // Confirm to user that it's scheduled
-      await notificationManager.send({
-        channel: 'system',
-        kind: 'reminder',
-        title: '🧪 Test Scheduled',
-        body: `Web Push test set for ${at.toLocaleTimeString()}. You can close the app — it will still arrive.`,
-        dedupKey: `test-sched-${Date.now()}`,
-      });
-
-      // Wait the delay, then fire via edge function (real push, app can be closed)
-      setTimeout(async () => {
-        try {
-          await supabase.functions.invoke('send-push-notification', {
-            body: {
-              action: 'send_to_endpoint',
-              endpoint: subscription.endpoint,
-              notification: {
-                title: '⏰ Time for Your Six-Hour Check-In',
-                body: "It's time for your six-hour check-in 💧",
-                tag: 'logging-reminder-test',
-                type: 'reminder',
-                kind: 'reminder',
-                url: '/log-episode',
-              },
-            },
-          });
-          console.log('🧪 Web Push test reminder delivered via edge function');
-        } catch (err) {
-          console.error('🧪 Web Push test failed:', err);
-          // Fallback: in-app notification if push failed
-          await notificationManager.send({
-            channel: 'system',
-            kind: 'reminder',
+      // Offload the delay to the Edge Function (no client-side timeout)
+      // We don't wait for this to resolve since it handles the delay on the server.
+      supabase.functions.invoke('send-push-notification', {
+        body: {
+          action: 'send_to_endpoint',
+          endpoint: subscription.endpoint,
+          delayMs,
+          keys: {
+            p256dh: subscription.toJSON().keys?.p256dh,
+            auth: subscription.toJSON().keys?.auth,
+          },
+          notification: {
             title: '⏰ Time for Your Six-Hour Check-In',
             body: "It's time for your six-hour check-in 💧",
-            dedupKey: `test-rem-fallback-${Date.now()}`,
+            tag: 'logging-reminder-test',
+            type: 'reminder',
+            kind: 'reminder',
             url: '/log-episode',
-          });
+          },
+        },
+      }).then(({ data, error }) => {
+        if (error || (data && !data.success)) {
+          console.error('🧪 Web Push test edge function error:', error || data?.error);
+        } else {
+          console.log('🧪 Web Push test reminder delivered via edge function');
         }
-      }, delayMs);
+      }).catch(err => {
+         console.error('🧪 Web Push test failed to invoke:', err);
+      });
 
-      console.log(`🧪 Web Push test scheduled for ${at.toLocaleString()} (${delayMs}ms)`);
+      console.log(`🧪 Web Push test scheduled for ${at.toLocaleString()} (${delayMs}ms) on Edge Function`);
     } else {
       // No push subscription — fall back to in-app timer with a clear message
-      await notificationManager.send({
-        channel: 'system',
-        kind: 'reminder',
-        title: '🧪 Test Scheduled (App Must Stay Open)',
-        body: `No Web Push subscription found. Keep the app open — reminder fires in ${minutes} min. Enable Background Notifications first for true background delivery.`,
-        dedupKey: `test-sched-nopush-${Date.now()}`,
-      });
+      // We removed the initial notification alert to avoid instant audio playback
+      console.log(`No Web Push subscription found. Falling back to in-app timer for ${minutes} min.`);
 
       setTimeout(() => {
         notificationManager.send({

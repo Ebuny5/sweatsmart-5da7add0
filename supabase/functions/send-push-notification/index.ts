@@ -398,23 +398,38 @@ serve(async (req) => {
       }
     }
 
-    // send_to_endpoint (Test button)
+    // send_to_endpoint (Test button and test reminders)
     if (action === 'send_to_endpoint' && endpoint) {
-      const { data: sub } = await supabase
-        .from('push_subscriptions')
-        .select('*')
-        .eq('endpoint', endpoint)
-        .eq('is_active', true)
-        .single();
+      // Allow passing keys directly to avoid DB lookup delays if available, but fallback to DB
+      let p256dh = body.keys?.p256dh;
+      let auth = body.keys?.auth;
+      let targetEndpoint = endpoint;
 
-      if (!sub) {
-        return new Response(JSON.stringify({ success: false, error: 'Subscription not found' }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+      if (!p256dh || !auth) {
+        const { data: sub } = await supabase
+          .from('push_subscriptions')
+          .select('*')
+          .eq('endpoint', endpoint)
+          .eq('is_active', true)
+          .single();
+
+        if (!sub) {
+          return new Response(JSON.stringify({ success: false, error: 'Subscription not found' }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        p256dh = sub.p256dh;
+        auth = sub.auth;
+        targetEndpoint = sub.endpoint;
+      }
+
+      // Delay for background testing if requested
+      if (body.delayMs && typeof body.delayMs === 'number' && body.delayMs > 0) {
+        await new Promise(r => setTimeout(r, body.delayMs));
       }
 
       const result = await sendWebPush(
-        { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+        { endpoint: targetEndpoint, p256dh, auth },
         normalizeReminderNotification(notification) || { title: '✅ Test', body: 'Push notifications working!', tag: 'test', url: '/climate' },
         vapidPublicKey, vapidPrivateKey, vapidSubject
       );

@@ -273,16 +273,16 @@ const Settings = () => {
             <Button
               className="w-full bg-[#E9E4FA] hover:bg-[#d8d2f2] text-emerald-500 font-bold py-7 rounded-xl"
               onClick={async () => {
-                const id = toast.loading("Scheduling 5-minute test...");
+                const id = toast.loading("Scheduling 1-minute test...");
                 try {
-                  await loggingReminderService.scheduleTestReminder(5 * 60 * 1000);
-                  toast.success("5-minute test reminder scheduled! You can close the app now.", { id });
+                  await loggingReminderService.scheduleTestReminder(1 * 60 * 1000);
+                  toast.success("1-minute test reminder scheduled! You can close the app now.", { id });
                 } catch (e) {
                   toast.error("Failed to schedule test reminder.", { id });
                 }
               }}
             >
-              5-Minute Test Reminder
+              1-Minute Test Reminder
             </Button>
           </div>
         </Card>
