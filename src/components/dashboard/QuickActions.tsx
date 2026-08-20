@@ -248,13 +248,28 @@ const WarriorLaunchpad = () => {
   }, [nonDryEpisodes.length]);
 
   const rawWarriorInsight = useMemo(() => getWarriorInsight(episodes), [episodes]);
-  const isMissedCheckIn = rawWarriorInsight.message.includes("missed your 6-hour check-in");
+  const isMissedCheckIn = rawWarriorInsight.message.includes("Missed Check in 😋");
 
-  const dynamicInsight = useMemo(() => {
-    if (sweatRisk === "extreme") return "⚠️ Extreme sweat risk today — consider rescheduling outdoor plans";
-    if (sweatRisk === "high") return "🌡️ High humidity today — carry cooling wipes and stay hydrated";
-    return isMissedCheckIn ? "Check out your insights & recommendations today" : rawWarriorInsight.message;
-  }, [sweatRisk, isMissedCheckIn, rawWarriorInsight.message]);
+  const [dynamicInsight, setDynamicInsight] = useState(rawWarriorInsight.message);
+
+  useEffect(() => {
+    const texts = [
+      rawWarriorInsight.message,
+      "Check out your insights & recommendations today",
+      ...(sweatRisk === "extreme" ? ["⚠️ Extreme sweat risk today — consider rescheduling outdoor plans"] : []),
+      ...(sweatRisk === "high" ? ["🌡️ High humidity today — carry cooling wipes and stay hydrated"] : [])
+    ];
+    let i = 0;
+
+    // Initial sync
+    setDynamicInsight(texts[0]);
+
+    const interval = setInterval(() => {
+      i = (i + 1) % texts.length;
+      setDynamicInsight(texts[i]);
+    }, 8000); // Rotate every 8 seconds
+    return () => clearInterval(interval);
+  }, [sweatRisk, rawWarriorInsight.message]);
 
   const tip = COMMUNITY_TIPS[tipIndex];
 
@@ -450,17 +465,7 @@ const WarriorLaunchpad = () => {
             </button>
           </div>
 
-          {isMissedCheckIn && (
-            <div className="mb-3 bg-amber-50 rounded-2xl border border-amber-200 p-4 flex items-start gap-3 shadow-sm text-left">
-              <div className="text-xl shrink-0">⏰</div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-amber-900 leading-snug">{rawWarriorInsight.message}</p>
-                <button onClick={() => navigate("/log-episode")} className="text-[10px] text-amber-700 mt-1 font-bold underline hover:text-amber-800 transition-colors">
-                  Log now →
-                </button>
-              </div>
-            </div>
-          )}
+
 
           <button
             onClick={() => navigate("/community")}
