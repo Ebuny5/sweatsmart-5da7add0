@@ -100,8 +100,8 @@ export function getWarriorInsight(episodes: ProcessedEpisode[]): { message: stri
   const baseline = parseInt(lastLogTimeStr || onboardingTimeStr || '0', 10);
 
   if (baseline > 0) {
-    const sixHours = 6 * 60 * 60 * 1000;
-    const thirtyHours = 30 * 60 * 60 * 1000; // 6h due + 24h persistence
+    const eightHours = 8 * 60 * 60 * 1000;
+    const thirtyTwoHours = 32 * 60 * 60 * 1000; // 8h due + 24h persistence
     const diff = now.getTime() - baseline;
 
     // Priority 0: Post-Log Commendation (within 4 hours of last log)
@@ -111,31 +111,24 @@ export function getWarriorInsight(episodes: ProcessedEpisode[]): { message: stri
 
     // Only show the immediate post-log commendation for 10 minutes (600000 ms) IF a log actually exists
     // rather than 4 hours, so it doesn't persistently replace standard insights
+
     if (episodes.length > 0 && lastLogTime > 0 && lastLogDiff < 10 * 60 * 1000 && lastHDSS > 0 && lastLogTimeStr) {
-      if (lastHDSS <= 2) {
-        return {
-          message: `Awesome work! You kept your sweat level at HDSS ${lastHDSS} today. Your consistency is paying off.`,
-          variant: "success"
-        };
-      } else if (lastHDSS === 3) {
-        return {
-          message: `Tough day with HDSS 3, but you showed up and logged it — that's the first step to mastering your triggers. Keep going, warrior. 💪`,
-          variant: "nudge"
-        };
-      } else {
-        return {
-          message: `HDSS 4 is a heavy day, but your strength shows in tracking it. Every log sharpens your pattern map — you're taking back control. 🔥`,
-          variant: "nudge"
-        };
-      }
+      return {
+        message: "Great job logging😊. You're building a clearer picture of your triggers, making it easier to manage your daily comfort.",
+        variant: "success"
+      };
     }
 
     // Priority 0.5: Missed Check-in
-    if (diff >= sixHours && diff < thirtyHours) {
-      return {
-        message: "You missed your 6-hour check-in. Consistent logging helps spot triggers elevating your sweat.",
-        variant: "nudge"
-      };
+    if (diff >= eightHours && diff < thirtyTwoHours) {
+      const currentHour = now.getHours();
+      const isNightWindow = currentHour >= 22 || currentHour < 6;
+      if (!isNightWindow) {
+        return {
+          message: "Missed Check in 😋. Consistency helps identify triggers and patterns accurately.",
+          variant: "nudge"
+        };
+      }
     }
   }
 
