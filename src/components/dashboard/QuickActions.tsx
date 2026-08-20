@@ -335,7 +335,7 @@ const WarriorLaunchpad = () => {
 
           {/* Card 3: EDA (Skin Conductance) */}
           <div className="bg-orange-50 rounded-2xl p-3 flex flex-col items-center justify-center gap-1 shadow-sm border border-orange-100">
-            <img src="/eda-icon.webp" alt="EDA Icon" className="h-8 w-8 mb-0.5 animate-pulse object-contain" />
+            <img src="/eda-icon.webp" alt="EDA Icon" className="h-12 w-12 mb-0.5 animate-pulse object-contain" />
             <span className="text-2xl font-black text-orange-700 leading-none">
               {edaData ? edaData.value.toFixed(1) : "—"}
             </span>
