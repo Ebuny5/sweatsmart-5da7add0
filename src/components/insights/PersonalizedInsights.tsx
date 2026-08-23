@@ -60,6 +60,7 @@ function analyzeEpisodes(episodes: Episode[]): WarriorInsight[] {
   const total = episodes.length;
   const severities = episodes.map(sev);
   const avgSev = severities.reduce((a, b) => a + b, 0) / total;
+  const roundedAvgSev = Math.round(avgSev);
 
   // ── Trigger analysis ──────────────────────────────────────────────────────
   const triggerMap = new Map<
@@ -212,7 +213,7 @@ function analyzeEpisodes(episodes: Episode[]): WarriorInsight[] {
     const worsening = sevDrift > 0.3;
     const improving = sevDrift < -0.3;
 
-    const isPrescriptionThreshold = last3Avg >= 3;
+    const isPrescriptionThreshold = roundedAvgSev >= 3;
 
     insights.push({
       rank: 2,
@@ -234,7 +235,7 @@ function analyzeEpisodes(episodes: Episode[]): WarriorInsight[] {
         : improving
         ? `Severity improving — avg ${Math.abs(sevDrift).toFixed(1)} HDSS pts reduction`
         : `Severity stable — consistent across episodes`,
-      sublabel: `Baseline ${first3Avg.toFixed(1)} → Recent ${last3Avg.toFixed(
+      sublabel: `Avg HDSS ${avgSev.toFixed(
         1
       )} (HDSS 1-4 Scale)`,
       probability: driftPercent,
@@ -262,14 +263,12 @@ function analyzeEpisodes(episodes: Episode[]): WarriorInsight[] {
         : improving
         ? `Your episodes are getting less severe over time — this is real, measurable progress. Whatever you've been doing is having a genuine physical effect, whether that's a treatment you started, a lifestyle change, or better trigger awareness. This trend is worth noting and protecting.`
         : `Your severity has been consistent across all your logged episodes — no escalation, no major improvement yet. This stability is actually useful: it means your triggers are predictable and a focused management strategy is likely to produce a clear, measurable result.`,
-      action: worsening
-        ? `Write down what's changed in the past few weeks — new stressors, seasonal shift, stopped using a product? Bring your episode log to your next doctor's appointment. At this severity level, prescription treatment options are available and worth asking about.`
-        : improving
-        ? `Keep doing what you're doing, and if you recently started a new treatment or habit, document it. This progress is evidence you can show a dermatologist to guide next steps.`
-        : `Use this stable window to make one deliberate change — for example, consistent use of aluminium chloride 20% antiperspirant at night for two weeks — and track whether it shifts your baseline.`,
-      clinicalNote: worsening
-        ? `If episodes are scoring HDSS 3 or higher consistently, it's time to ask your doctor about prescription options. Topical anticholinergics like Qbrexza and Sofdra are newer treatments that work by 'blocking the acetylcholine signal' at the gland. Botox injections are also an option, providing relief by stopping the nerve signal from reaching the glands.`
-        : `Continue your current approach. For HDSS 1-2, first-line treatments like Aluminium Chloride 20% are recommended. If severity drops below HDSS 2 consistently, you can consider reducing treatment frequency to find the minimum that keeps you comfortable.`,
+      action: improving || (!improving && !worsening && roundedAvgSev < 3)
+        ? `• Establish Minimum Effective Dose: Once sweating is under control, begin tapering topical applications (e.g., reduce aluminum chloride from nightly to 2–3 nights per week) to prevent skin irritation while keeping sweat ducts occluded.\n• Monitor Rebound Flares: Note if skipping consecutive days triggers an autonomic rebound flare.\n• Log Maintenance Response: Record treatment frequency in your notes so you have objective data on what sustains your dry baseline.`
+        : `• Document Topical Resistance: If high severity persists after 3–4 weeks of consistent nightly antiperspirant use, stop assuming lifestyle changes alone will fix it.\n• Prepare Escalation Log: Export your episode history to show your physician that primary sympathetic overactivity is overpowering topical first-line barriers.`,
+      clinicalNote: roundedAvgSev < 3
+        ? `• Maintenance Regimen: Shift to intermittent maintenance dosing (1–2 times weekly). Consider pairing with barrier-repair moisturizers during off-days to preserve the stratum corneum on palms and soles.\n• Targeted Trigger Prophylaxis: Apply topical solutions 24–48 hours in advance of anticipated high-stress or high-heat events rather than continuous daily overuse.`
+        : `• Extremities (Palms & Soles): Escalate from topicals to tap-water iontophoresis or intradermal Botulinum Toxin (Botox) injections.\n• Facial / Craniofacial: Initiate prescription topical anticholinergics (glycopyrronium) or hairline Botox.\n• Multi-Focal / Generalized: Consult a dermatologist for low-dose systemic oral anticholinergics (glycopyrrolate 1–2 mg or oxybutynin) to manage concurrent full-body flares.`,
     });
   }
 
@@ -433,13 +432,13 @@ const InsightDetail = ({ insight }: { insight: WarriorInsight }) => (
       <p className="text-[10px] font-black text-green-600 uppercase tracking-wide mb-1">
         What To Do
       </p>
-      <p className="text-xs text-green-800 leading-relaxed">{insight.action}</p>
+      <p className="text-xs text-green-800 leading-relaxed whitespace-pre-wrap">{insight.action}</p>
     </div>
     <div className="p-3 rounded-xl bg-blue-50 border border-blue-100">
       <p className="text-[10px] font-black text-blue-500 uppercase tracking-wide mb-1">
         Clinical Treatment Options
       </p>
-      <p className="text-xs text-blue-800 leading-relaxed">
+      <p className="text-xs text-blue-800 leading-relaxed whitespace-pre-wrap">
         {insight.clinicalNote}
       </p>
     </div>
@@ -478,11 +477,11 @@ const PersonalizedInsights: React.FC<PersonalizedInsightsProps> = ({
               </div>
 
               <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-semibold text-gray-800 truncate pr-2">
+                <div className="flex items-center justify-between mb-1 gap-2">
+                  <span className="text-xs font-semibold text-gray-800 truncate flex-1 min-w-0">
                     {insight.label}
                   </span>
-                  <span className="text-[10px] text-gray-400 shrink-0">
+                  <span className="text-[10px] text-gray-400 shrink-0 whitespace-nowrap">
                     {insight.sublabel.split("·")[0].trim()}
                   </span>
                 </div>
@@ -499,14 +498,14 @@ const PersonalizedInsights: React.FC<PersonalizedInsightsProps> = ({
 
               <div className="flex items-center gap-1.5 shrink-0">
                 <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${insight.pill}`}
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${insight.pill} whitespace-nowrap`}
                 >
                   {insight.pillText}
                 </span>
                 {isOpen ? (
-                  <ChevronUp className="h-3.5 w-3.5 text-gray-400" />
+                  <ChevronUp className="h-3.5 w-3.5 text-gray-400 shrink-0" />
                 ) : (
-                  <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
+                  <ChevronDown className="h-3.5 w-3.5 text-gray-400 shrink-0" />
                 )}
               </div>
             </button>
