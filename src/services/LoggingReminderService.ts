@@ -178,9 +178,20 @@ class LoggingReminderService {
 
     if (subscription) {
       // Offload the delay to the Edge Function (no client-side timeout)
-      // We don't wait for this to resolve since it handles the delay on the server.
-      supabase.functions.invoke('send-push-notification', {
-        body: {
+      // Use native fetch with keepalive so mobile browsers don't kill the request when backgrounded
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-push-notification`;
+
+      fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        keepalive: true, // Crucial for background completion
+        body: JSON.stringify({
           action: 'send_to_endpoint',
           endpoint: subscription.endpoint,
           delayMs,
@@ -196,18 +207,20 @@ class LoggingReminderService {
             kind: 'reminder',
             url: '/log-episode',
           },
-        },
-      }).then(({ data, error }) => {
-        if (error || (data && !data.success)) {
-          console.error('🧪 Web Push test edge function error:', error || data?.error);
-        } else {
-          console.log('🧪 Web Push test reminder delivered via edge function');
-        }
-      }).catch(err => {
-         console.error('🧪 Web Push test failed to invoke:', err);
-      });
+        })
+      }).then(res => res.json())
+        .then(data => {
+          if (!data.success) {
+            console.error('🧪 Web Push test edge function error:', data.error);
+          } else {
+            console.log('🧪 Web Push test reminder delivered via edge function');
+          }
+        })
+        .catch(err => {
+           console.error('🧪 Web Push test failed to invoke:', err);
+        });
 
-      console.log(`🧪 Web Push test scheduled for ${at.toLocaleString()} (${delayMs}ms) on Edge Function`);
+      console.log(`🧪 Web Push test scheduled for ${at.toLocaleString()} (${delayMs}ms) on Edge Function (keepalive active)`);
     } else {
       // No push subscription — fall back to in-app timer with a clear message
       // We removed the initial notification alert to avoid instant audio playback
