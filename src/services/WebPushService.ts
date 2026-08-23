@@ -348,7 +348,26 @@ class WebPushService {
     const currentKey = await this.getVapidPublicKey();
     const storedKey = this.getStoredVapidPublicKey();
 
-    if (storedKey && storedKey === currentKey) {
+    // Authoritative check: compare the key the browser actually subscribed with.
+    let liveKey: string | null = null;
+    try {
+      const raw = this.subscription?.options?.applicationServerKey as ArrayBuffer | null | undefined;
+      if (raw) {
+        const bytes = new Uint8Array(raw);
+        let bin = '';
+        bytes.forEach((b) => { bin += String.fromCharCode(b); });
+        liveKey = btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+      }
+    } catch {
+      liveKey = null;
+    }
+
+    if (liveKey && liveKey === currentKey) {
+      this.setStoredVapidPublicKey(currentKey);
+      return { refreshed: false, subscription: this.subscription };
+    }
+
+    if (!liveKey && storedKey && storedKey === currentKey) {
       return { refreshed: false, subscription: this.subscription };
     }
 
