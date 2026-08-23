@@ -706,9 +706,9 @@ serve(async (req) => {
             await getNotificationCountToday(supabase, sub.id, 'climate_extreme') +
             await getNotificationCountToday(supabase, sub.id, 'climate_moderate');
 
-          if (totalToday >= 3) { skipped++; continue; } // Max 2-3 per day
+          if (totalToday >= 10) { skipped++; continue; } // Increased max to 10 per day to ensure consistent alerts
 
-          // 2-hour cooldown timer logic for repeated alerts of the same tier
+          // 15-minute cooldown timer logic for repeated alerts of the exact same tier (prevents spam on fast crons)
           const { data: lastNotif } = await supabase
              .from('notification_logs')
              .select('created_at, notification_type')
@@ -721,11 +721,11 @@ serve(async (req) => {
           if (lastNotif) {
              const lastSentMs = new Date(lastNotif.created_at).getTime();
              const nowMs = Date.now();
-             const twoHoursMs = 2 * 60 * 60 * 1000;
+             const fifteenMinMs = 15 * 60 * 1000;
 
-             // If we've sent an alert in the last 2 hours and we aren't escalating, block it
-             if (nowMs - lastSentMs < twoHoursMs) {
-                // If it's the same or lower risk, skip
+             // If we've sent an alert in the last 15 minutes, block it to prevent rapid spam,
+             // but allow alerts more frequently than the previous 2-hour window.
+             if (nowMs - lastSentMs < fifteenMinMs) {
                 if (lastNotif.notification_type === notifType) {
                    skipped++; continue;
                 }
@@ -737,7 +737,6 @@ serve(async (req) => {
                 }
              }
           }
-
 
           const realFeel = calculateRealFeel(temp, humidity, uv);
 

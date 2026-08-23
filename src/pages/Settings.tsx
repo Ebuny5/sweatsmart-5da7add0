@@ -260,7 +260,7 @@ const Settings = () => {
                 notificationManager.resetCooldowns();
                 await notificationManager.send({
                   channel: 'system',
-                  kind: 'extreme',
+                  kind: 'high',
                   title: "HidroAlly Climate Alert",
                   body: "High sweat risk! Temperature is exceeding your threshold.",
                   dedupKey: `test-climate-${Date.now()}`
