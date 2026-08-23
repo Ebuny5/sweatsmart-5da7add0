@@ -100,8 +100,8 @@ export function getWarriorInsight(episodes: ProcessedEpisode[]): { message: stri
   const baseline = parseInt(lastLogTimeStr || onboardingTimeStr || '0', 10);
 
   if (baseline > 0) {
-    const sixHours = 6 * 60 * 60 * 1000;
-    const thirtyHours = 30 * 60 * 60 * 1000; // 6h due + 24h persistence
+    const eightHours = 8 * 60 * 60 * 1000;
+    const thirtyHours = 32 * 60 * 60 * 1000; // 8h due + 24h persistence
     const diff = now.getTime() - baseline;
 
     // Priority 0: Post-Log Commendation (within 4 hours of last log)
@@ -131,9 +131,9 @@ export function getWarriorInsight(episodes: ProcessedEpisode[]): { message: stri
     }
 
     // Priority 0.5: Missed Check-in
-    if (diff >= sixHours && diff < thirtyHours) {
+    if (diff >= eightHours && diff < thirtyHours) {
       return {
-        message: "You missed your 6-hour check-in. Consistent logging helps spot triggers elevating your sweat.",
+        message: "You missed your 8-hour check-in. Consistent logging helps spot triggers elevating your sweat.",
         variant: "nudge"
       };
     }

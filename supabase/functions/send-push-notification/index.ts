@@ -6,10 +6,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
 };
 
-const LOG_REMINDER_TITLE = '⏰ Time for Your Six-Hour Check-In';
-const LOG_REMINDER_BODY = "It's time for your six-hour check-in 💧";
+const LOG_REMINDER_TITLE = '⏰ Time for Your Eight-Hour Check-In';
+const LOG_REMINDER_BODY = "It's time to check-in 🤗";
 const MISSED_REMINDER_TITLE = '⏰ Missed Check-In';
-const MISSED_REMINDER_BODY = "You missed your 6-hour check-in";
+const MISSED_REMINDER_BODY = "You missed your 8-hour check-in";
 
 const MIN_CRON_SECRET_LENGTH = 32;
 
@@ -498,12 +498,28 @@ serve(async (req) => {
 
       console.log(`🔔 Found ${subs?.length || 0} active subscriptions`);
 
-      const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
+      const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000;
       const now = Date.now();
       let sent = 0, skipped = 0, failed = 0;
 
       for (const sub of subs || []) {
         try {
+          // Quiet hours check (10 PM to 6 AM local time)
+          if (sub.longitude !== undefined && sub.longitude !== null) {
+            // Rough estimate of timezone offset in hours based on longitude (15 degrees = 1 hour)
+            const offsetHours = Math.round(sub.longitude / 15);
+            const now = new Date();
+            let localHour = now.getUTCHours() + offsetHours;
+            if (localHour >= 24) localHour -= 24;
+            if (localHour < 0) localHour += 24;
+
+            if (localHour >= 22 || localHour < 6) {
+              console.log(`⏭️ Sub ${sub.id}: Skipping reminder due to quiet hours (estimated local hour ${localHour})`);
+              skipped++;
+              continue;
+            }
+          }
+
           const todayCount = await getNotificationCountToday(supabase, sub.id, 'logging_reminder');
           if (todayCount >= 4) {
             console.log(`⏭️ Sub ${sub.id}: Max today (${todayCount})`);
@@ -513,7 +529,7 @@ serve(async (req) => {
 
           if (sub.last_reminder_sent_at) {
             const lastSent = new Date(sub.last_reminder_sent_at).getTime();
-            if (now - lastSent < SIX_HOURS_MS) {
+            if (now - lastSent < EIGHT_HOURS_MS) {
               console.log(`⏭️ Sub ${sub.id}: Sent recently (${Math.round((now - lastSent)/1000/60)}m ago)`);
               skipped++;
               continue;
@@ -531,7 +547,7 @@ serve(async (req) => {
 
             if (lastEpisode) {
               const lastLogTime = new Date(lastEpisode.created_at).getTime();
-              if (now - lastLogTime < SIX_HOURS_MS) {
+              if (now - lastLogTime < EIGHT_HOURS_MS) {
                 console.log(`⏭️ Sub ${sub.id}: User logged recently (${Math.round((now - lastLogTime)/1000/60)}m ago)`);
                 skipped++;
                 continue;
@@ -559,7 +575,7 @@ serve(async (req) => {
 
             if (lastEpisode) {
               const lastLogTime = new Date(lastEpisode.created_at).getTime();
-              if (now - lastLogTime > (6 * 60 * 60 * 1000 + 30 * 60 * 1000)) {
+              if (now - lastLogTime > (8 * 60 * 60 * 1000 + 30 * 60 * 1000)) {
                 reminderTitle = MISSED_REMINDER_TITLE;
                 reminderBody = MISSED_REMINDER_BODY;
               }
