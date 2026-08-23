@@ -136,6 +136,7 @@ class NotificationManager {
           const isSubscribed = await webPushService.isSubscribed();
           if (isSubscribed) {
             await webPushService.ensureFreshSubscription();
+            await webPushService.syncSubscriptionContext();
           } else {
             await webPushService.subscribe();
           }

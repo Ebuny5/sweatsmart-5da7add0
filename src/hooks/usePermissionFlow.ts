@@ -57,8 +57,9 @@ export const usePermissionFlow = () => {
 
     return new Promise<'granted' | 'denied'>((resolve) => {
       navigator.geolocation.getCurrentPosition(
-        () => {
+        async () => {
           setStep('complete');
+          await webPushService.syncSubscriptionContext();
           resolve('granted');
         },
         (error) => {
