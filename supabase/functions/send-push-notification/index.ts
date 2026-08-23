@@ -260,10 +260,19 @@ async function sendWebPush(
     }
     const body = await response.text();
     console.error('Push failed:', response.status, body);
+    // Subscriptions created with an older VAPID key can never be delivered to again.
+    if (response.status === 403 || /vapid/i.test(body)) {
+      return { success: false, error: 'subscription_expired' };
+    }
     return { success: false, error: `HTTP ${response.status}: ${body}` };
   } catch (error) {
-    console.error('Push error:', error);
-    return { success: false, error: (error as Error).message };
+    const msg = (error as Error).message || 'unknown';
+    console.error('Push error:', msg);
+    // Corrupt/legacy key material stored on the subscription row — unusable forever.
+    if (/base64|decode|invalid|key/i.test(msg)) {
+      return { success: false, error: 'subscription_expired' };
+    }
+    return { success: false, error: msg };
   }
 }
 
