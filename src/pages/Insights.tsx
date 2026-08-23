@@ -364,8 +364,7 @@ const Insights = () => {
 
         {/* ── HERO ────────────────────────────────────────────────────── */}
         <div className="bg-gradient-to-br from-violet-600 via-purple-500 to-pink-500 px-6 pt-8 pb-14 rounded-b-[2.5rem] shadow-lg shadow-purple-200">
-          <p className="text-purple-200 text-xs font-semibold uppercase tracking-widest mb-1">HidroAlly</p>
-          <h1 className="text-white text-2xl font-black tracking-tight leading-tight">
+          <h1 className="text-white text-[20px] sm:text-[22px] font-bold tracking-tight leading-tight truncate font-sans">
             Insights & Recommendations 📊
           </h1>
           <p className="text-purple-100 text-sm mt-1.5 leading-snug">
