@@ -5,8 +5,8 @@ const CACHE_VERSION = 'v2.6.0-android-notification-repair';
 const CACHE_NAME = `sweatsmart-${CACHE_VERSION}`;
 
 const OFFLINE_FALLBACK_URL = '/offline.html';
-const LOG_REMINDER_TITLE = '⏰ Time for Your Six-Hour Check-In';
-const LOG_REMINDER_BODY = "It's time for your six-hour check-in 💧";
+const LOG_REMINDER_TITLE = '⏰ Time for Your Eight-Hour Check-In';
+const LOG_REMINDER_BODY = "It's time to check-in 🤗";
 
 function normalizeReminderPayload(payload = {}) {
   const body = String(payload.body || '');

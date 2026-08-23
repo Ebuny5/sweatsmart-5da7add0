@@ -2,7 +2,7 @@ import { notificationManager } from './NotificationManager';
 import { webPushService } from './WebPushService';
 import { supabase } from '@/integrations/supabase/client';
 
-export const PRODUCTION_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
+export const PRODUCTION_INTERVAL_MS = 8 * 60 * 60 * 1000; // 6 hours
 export const LAST_LOG_TIME_KEY = 'sweatsmart_last_log_time';
 export const ONBOARDING_TIME_KEY = 'sweatsmart_onboarding_time';
 export const CURRENT_HDSS_KEY = 'sweatsmart_current_hdss';
@@ -82,8 +82,8 @@ class LoggingReminderService {
 
     await notificationManager.scheduleReminder(
       new Date(nextTime),
-      '⏰ Time for Your Six-Hour Check-In',
-      "It's time for your six-hour check-in 💧",
+      '⏰ Time for Your Eight-Hour Check-In',
+      "It's time to check-in 🤗",
       '/log-episode'
     );
 
@@ -91,8 +91,8 @@ class LoggingReminderService {
       await notificationManager.send({
         channel: 'reminder',
         kind: 'reminder',
-        title: '⏰ Time for Your Six-Hour Check-In',
-        body: "It's time for your six-hour check-in 💧",
+        title: '⏰ Time for Your Eight-Hour Check-In',
+        body: "It's time to check-in 🤗",
         dedupKey: `log-reminder-${nextTime}`,
         url: '/log-episode',
       });
@@ -110,7 +110,7 @@ class LoggingReminderService {
           channel: 'reminder',
           kind: 'reminder',
           title: '⏰ Missed Check-In',
-          body: "You missed your 6-hour check-in",
+          body: "You missed your 8-hour check-in",
           dedupKey: `log-missed-30m-${previousDueTime}`,
           url: '/log-episode',
         });
@@ -121,7 +121,7 @@ class LoggingReminderService {
           channel: 'reminder',
           kind: 'reminder',
           title: '⏰ Missed Check-In',
-          body: "You missed your 6-hour check-in",
+          body: "You missed your 8-hour check-in",
           dedupKey: `log-missed-2h-${previousDueTime}`,
           url: '/log-episode',
         });
@@ -163,8 +163,8 @@ class LoggingReminderService {
       await scheduleNativeReminder({
         id: 999999,
         at,
-        title: '⏰ Time for Your Six-Hour Check-In',
-        body: "It's time for your six-hour check-in 💧",
+        title: '⏰ Time for Your Eight-Hour Check-In',
+        body: "It's time to check-in 🤗",
         url: '/log-episode',
         channelId: 'reminder',
       });
@@ -189,8 +189,8 @@ class LoggingReminderService {
             auth: subscription.toJSON().keys?.auth,
           },
           notification: {
-            title: '⏰ Time for Your Six-Hour Check-In',
-            body: "It's time for your six-hour check-in 💧",
+            title: '⏰ Time for Your Eight-Hour Check-In',
+            body: "It's time to check-in 🤗",
             tag: 'logging-reminder-test',
             type: 'reminder',
             kind: 'reminder',
@@ -217,8 +217,8 @@ class LoggingReminderService {
         notificationManager.send({
           channel: 'system',
           kind: 'reminder',
-          title: '⏰ Time for Your Six-Hour Check-In',
-          body: "It's time for your six-hour check-in 💧",
+          title: '⏰ Time for Your Eight-Hour Check-In',
+          body: "It's time to check-in 🤗",
           dedupKey: `test-rem-${Date.now()}`,
           url: '/log-episode',
         });
