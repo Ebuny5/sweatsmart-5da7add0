@@ -721,11 +721,11 @@ serve(async (req) => {
           if (lastNotif) {
              const lastSentMs = new Date(lastNotif.created_at).getTime();
              const nowMs = Date.now();
-             const fifteenMinMs = 15 * 60 * 1000;
+             const cooldownMs = 5 * 60 * 1000;
 
-             // If we've sent an alert in the last 15 minutes, block it to prevent rapid spam,
-             // but allow alerts more frequently than the previous 2-hour window.
-             if (nowMs - lastSentMs < fifteenMinMs) {
+             // If we've sent an alert in the last 5 minutes, block it to prevent rapid spam,
+             // but allow alerts more frequently than the previous previous window.
+             if (nowMs - lastSentMs < cooldownMs) {
                 if (lastNotif.notification_type === notifType) {
                    skipped++; continue;
                 }

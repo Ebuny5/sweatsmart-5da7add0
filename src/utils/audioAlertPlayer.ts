@@ -140,7 +140,7 @@ class AudioAlertPlayer {
    * Play a single audio file and resolve when it ends (or on error).
    * Capped to ~6s so the water cue stays short.
    */
-  private playClip(src: string, maxMs = 8000): Promise<void> {
+  private playClip(src: string, maxMs = 12000): Promise<void> {
     return new Promise((resolve) => {
       try {
         const audio = new Audio(src);
@@ -192,7 +192,7 @@ class AudioAlertPlayer {
 
     // 1. Water cue (adjusted to 5s to allow full sound before voice)
     console.log(`🔊 Playing water sound: ${WATER_SOUND_PATH}`);
-    await this.playClip(WATER_SOUND_PATH, 5000);
+    if (kind === "reminder" || kind === "checkin") { await this.playClip(WATER_SOUND_PATH, 5000); } else { await this.playClip(WATER_SOUND_PATH, 550); }
 
     // Tiny gap for clarity between cue and voice
     await new Promise((r) => setTimeout(r, 80));

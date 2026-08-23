@@ -238,7 +238,7 @@ export function getRiskSeverity(
 
 /**
  * Determine whether a real-data push alert should fire.
- * Maintains automatic push notifications strictly for High Risk and Extreme Risk (RealFeel >= 30°C).
+ * Maintains automatic push notifications strictly for Moderate, High, and Extreme Risk.
  */
 export function shouldTriggerAlert(
   temperature: number,
@@ -253,7 +253,7 @@ export function shouldTriggerAlert(
 
   const risk = calculateSweatRiskV2({ temperature, humidity, uvIndex, sky, edaValue });
 
-  if (risk.level === 'high' || risk.level === 'extreme') {
+  if (risk.level === 'moderate' || risk.level === 'high' || risk.level === 'extreme') {
     return {
       shouldAlert: true,
       triggers: risk.triggers,

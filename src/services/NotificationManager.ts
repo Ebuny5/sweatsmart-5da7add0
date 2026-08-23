@@ -33,8 +33,8 @@ export interface NotificationRequest {
 }
 
 const DEFAULT_COOLDOWN_MS: Record<NotificationChannel, number> = {
-  climate: 30 * 60 * 1000,
-  reminder: 15 * 60 * 1000,
+  climate: 5 * 60 * 1000, // Reduced from 30 mins to 15 mins to match backend and ensure reliable alerts
+  reminder: 5 * 60 * 1000,
   system: 0,
 };
 
