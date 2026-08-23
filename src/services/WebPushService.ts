@@ -207,19 +207,39 @@ class WebPushService {
         throw new Error('Failed to get subscription keys');
       }
 
+      // Fall back to the signed-in user when no id was passed in
+      let resolvedUserId = userId || null;
+      if (!resolvedUserId) {
+        try {
+          const { data } = await supabase.auth.getUser();
+          resolvedUserId = data?.user?.id || null;
+        } catch {
+          resolvedUserId = null;
+        }
+      }
+
+      // Fall back to the device location when no coordinates were passed in
+      let lat = latitude ?? null;
+      let lon = longitude ?? null;
+      if (lat == null || lon == null) {
+        const coords = await this.getCurrentCoords();
+        lat = coords?.latitude ?? null;
+        lon = coords?.longitude ?? null;
+      }
+
       // Store subscription in database
-      console.log('📱 Storing subscription in DB for user:', userId);
+      console.log('📱 Storing subscription in DB for user:', resolvedUserId);
       const { error } = await supabase
         .from('push_subscriptions')
         .upsert({
-          user_id: userId || null,
+          user_id: resolvedUserId,
           endpoint: this.subscription.endpoint,
           p256dh: keys.p256dh,
           auth: keys.auth,
-          latitude: latitude || null,
-          longitude: longitude || null,
-          temperature_threshold: thresholds?.temperature || 24,
-          humidity_threshold: thresholds?.humidity || 70,
+          latitude: lat,
+          longitude: lon,
+          temperature_threshold: thresholds?.temperature || 27,
+          humidity_threshold: thresholds?.humidity || 75,
           uv_threshold: thresholds?.uv || 6,
           is_active: true,
         }, {
