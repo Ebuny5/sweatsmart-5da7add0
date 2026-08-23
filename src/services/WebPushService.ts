@@ -399,6 +399,7 @@ class WebPushService {
    * Update subscription settings
    */
   async updateSettings(settings: {
+    user_id?: string | null;
     latitude?: number;
     longitude?: number;
     temperature_threshold?: number;
@@ -406,6 +407,10 @@ class WebPushService {
     uv_threshold?: number;
     is_active?: boolean;
   }): Promise<boolean> {
+    if (!this.subscription) {
+      await this.getSubscription();
+    }
+
     if (!this.subscription) {
       console.warn('No active subscription to update');
       return false;
@@ -501,6 +506,64 @@ class WebPushService {
       console.error('Failed to send test notification:', err);
       return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
     }
+  }
+
+  /**
+   * Get current location coordinates
+   */
+  private async getCurrentCoords(): Promise<{ latitude: number; longitude: number } | null> {
+    if (typeof window === 'undefined' || !('geolocation' in navigator)) {
+      return null;
+    }
+
+    try {
+      // First check if permission is granted before trying to get location
+      const perm = await navigator.permissions.query({ name: 'geolocation' });
+      if (perm.state === 'denied' || perm.state === 'prompt') {
+        return null;
+      }
+
+      return await new Promise((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+          () => resolve(null),
+          { enableHighAccuracy: false, timeout: 5000 }
+        );
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Sync the current user context (user_id and location) to the active subscription.
+   */
+  async syncSubscriptionContext(): Promise<boolean> {
+    const subscribed = await this.isSubscribed();
+    if (!subscribed) return false;
+
+    let userId: string | null = null;
+    try {
+      const { data } = await supabase.auth.getUser();
+      userId = data?.user?.id || null;
+    } catch {
+      // ignore
+    }
+
+    const coords = await this.getCurrentCoords();
+
+    const updates: any = {};
+    if (userId) updates.user_id = userId;
+    if (coords) {
+      updates.latitude = coords.latitude;
+      updates.longitude = coords.longitude;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      return this.updateSettings(updates);
+    }
+
+    return true;
   }
 
   /**

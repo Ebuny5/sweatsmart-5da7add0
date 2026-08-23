@@ -244,8 +244,8 @@ const Settings = () => {
                 await notificationManager.send({
                   channel: 'system',
                   kind: 'reminder',
-                  title: "⏰ Time for Your Six-Hour Check-In",
-                  body: "It's time for your six-hour check-in 💧",
+                  title: "⏰ Time for Your Eight-Hour Check-In",
+                  body: "It's time to check-in 🤗",
                   dedupKey: `test-rem-${Date.now()}`
                 });
               }}
