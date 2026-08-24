@@ -2,7 +2,7 @@ import { notificationManager } from './NotificationManager';
 import { webPushService } from './WebPushService';
 import { supabase } from '@/integrations/supabase/client';
 
-export const PRODUCTION_INTERVAL_MS = 8 * 60 * 60 * 1000; // 6 hours
+export const PRODUCTION_INTERVAL_MS = 8 * 60 * 60 * 1000; // 8 hours
 export const LAST_LOG_TIME_KEY = 'sweatsmart_last_log_time';
 export const ONBOARDING_TIME_KEY = 'sweatsmart_onboarding_time';
 export const CURRENT_HDSS_KEY = 'sweatsmart_current_hdss';
@@ -108,7 +108,7 @@ class LoggingReminderService {
       if (now >= missed30m && now - missed30m < 15 * 60 * 1000) {
         await notificationManager.send({
           channel: 'reminder',
-          kind: 'reminder',
+          kind: 'missed-checkin',
           title: '⏰ Missed Check-In',
           body: "You missed your 8-hour check-in",
           dedupKey: `log-missed-30m-${previousDueTime}`,
@@ -119,7 +119,7 @@ class LoggingReminderService {
       if (now >= missed2h && now - missed2h < 15 * 60 * 1000) {
         await notificationManager.send({
           channel: 'reminder',
-          kind: 'reminder',
+          kind: 'missed-checkin',
           title: '⏰ Missed Check-In',
           body: "You missed your 8-hour check-in",
           dedupKey: `log-missed-2h-${previousDueTime}`,
@@ -140,11 +140,6 @@ class LoggingReminderService {
     this.checkForDueLog();
   }
 
-  /**
-   * Schedule a test reminder.
-   * On web: uses real Web Push via the edge function (works even when app is closed).
-   * On native Android: schedules an OS-level local notification.
-   */
   async scheduleTestReminder(delayMs: number): Promise<void> {
     const at = new Date(Date.now() + delayMs);
     const minutes = Math.round(delayMs / 60000);
@@ -153,7 +148,6 @@ class LoggingReminderService {
     const isNative = await isNativeApp();
 
     if (isNative) {
-      // Android/iOS: use OS-level scheduled notification
       await showNativeNotification({
         title: '🧪 Test Scheduled',
         body: `Your ${minutes}-minute test is set for ${at.toLocaleTimeString()}`,
@@ -169,19 +163,13 @@ class LoggingReminderService {
         channelId: 'reminder',
       });
 
-      console.log(`🧪 Native test reminder scheduled for ${at.toLocaleString()}`);
       return;
     }
 
-    // Web: schedule via edge function using Web Push so it fires even when closed
     const subscription = await webPushService.getSubscription();
-
     if (subscription) {
-      // Offload the delay to the Edge Function (no client-side timeout)
-      // Use native fetch with keepalive so mobile browsers don't kill the request when backgrounded
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
-
       const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-push-notification`;
 
       fetch(functionUrl, {
@@ -190,7 +178,7 @@ class LoggingReminderService {
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
-        keepalive: true, // Crucial for background completion
+        keepalive: true,
         body: JSON.stringify({
           action: 'send_to_endpoint',
           endpoint: subscription.endpoint,
@@ -208,24 +196,8 @@ class LoggingReminderService {
             url: '/log-episode',
           },
         })
-      }).then(res => res.json())
-        .then(data => {
-          if (!data.success) {
-            console.error('🧪 Web Push test edge function error:', data.error);
-          } else {
-            console.log('🧪 Web Push test reminder delivered via edge function');
-          }
-        })
-        .catch(err => {
-           console.error('🧪 Web Push test failed to invoke:', err);
-        });
-
-      console.log(`🧪 Web Push test scheduled for ${at.toLocaleString()} (${delayMs}ms) on Edge Function (keepalive active)`);
+      });
     } else {
-      // No push subscription — fall back to in-app timer with a clear message
-      // We removed the initial notification alert to avoid instant audio playback
-      console.log(`No Web Push subscription found. Falling back to in-app timer for ${minutes} min.`);
-
       setTimeout(() => {
         notificationManager.send({
           channel: 'system',
