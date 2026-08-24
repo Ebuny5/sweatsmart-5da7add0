@@ -20,30 +20,6 @@ const haversine = (lat1: number, lng1: number, lat2: number, lng2: number): numb
 
 const formatDistance = (m: number) => m < 1000 ? `${Math.round(m)}m` : `${(m / 1000).toFixed(1)}km`;
 
-// Geoapify's "healthcare" category is broad (hospitals, clinics, pharmacies,
-// GPs, dentists...) — OSM has no fine-grained "dermatologist" subcategory,
-// so we still need a name-based pass to narrow it down and exclude clear
-// non-matches, same idea as before but now applied to Geoapify results.
-const isDermatologist = (categories: string[], name: string): boolean => {
-  const combined = [...categories, name].join(' ').toLowerCase();
-  const excludeKeywords = [
-    'pharmacy', 'chemist', 'optician', 'optical', 'dental', 'dentist', 'eye',
-    'obstetric', 'orthop', 'pediatric', 'paediatric', 'veterinary', 'vet',
-    'physiotherapy', 'radiology', 'laboratory',
-  ];
-  if (excludeKeywords.some(k => combined.includes(k))) return false;
-
-  // Previously this function only excluded bad matches, so ANY unnamed
-  // "healthcare" point in range (a generic OSM address node, a random
-  // clinic with no specialty info, etc.) passed through and got shown
-  // as a "dermatologist". Now we also require a positive signal:
-  // either Geoapify already tagged it as dermatology, or the name text
-  // itself mentions skin/derma-related terms.
-  const isTaggedDermatology = categories.some(c => c.includes('dermatology'));
-  const nameLooksDermatology = /derma|skin\s*(clinic|care|centre|center)|hyperhidrosis/i.test(name);
-  return isTaggedDermatology || nameLooksDermatology;
-};
-
 const inferTreatments = (name: string): string[] => {
   const combined = name.toLowerCase();
   const tx: string[] = [];
@@ -189,6 +165,90 @@ serve(async (req) => {
       }
     }
 
+
+    // ════════════════════════════════════════════════════════════════
+    // TIER 2 — Geoapify Places fallback (only if curated results < 3)
+    // ════════════════════════════════════════════════════════════════
+    const GEOAPIFY_KEY = Deno.env.get('GEOAPIFY_API_KEY');
+
+    if (doctors.length < 3 && GEOAPIFY_KEY) {
+      const searchRadius = scope === 'state'     ? 200000
+                         : scope === 'country'   ? 500000
+                         : 5000000;
+
+      const url = new URL('https://api.geoapify.com/v2/places');
+      url.searchParams.set('categories', 'healthcare,healthcare.clinic_or_praxis.dermatology');
+      url.searchParams.set('filter', `circle:${lng},${lat},${searchRadius}`);
+      url.searchParams.set('bias', `proximity:${lng},${lat}`);
+      url.searchParams.set('limit', '100');
+      url.searchParams.set('apiKey', GEOAPIFY_KEY);
+
+      let features: any[] = [];
+      try {
+        const res = await fetch(url.toString());
+        const data = await res.json();
+        features = data.features || [];
+      } catch (e) { console.error('Geoapify fetch error:', e); }
+
+      const matched = features
+        // Drop anything with no real name — raw address strings like
+        // "F207, Aiyepe, Osun State" are NOT clinic names
+        .filter(f => f.properties?.name && f.properties.name.trim())
+        // Require a positive dermatology signal, not just absence of bad keywords
+        .filter(f => {
+          const categories: string[] = f.properties?.categories || [];
+          const name: string = f.properties?.name || '';
+          const combined = [...categories, name].join(' ').toLowerCase();
+          const exclude = [
+            'pharmacy','chemist','optician','optical','dental','dentist','eye',
+            'obstetric','orthop','pediatric','paediatric','veterinary','vet',
+            'physiotherapy','radiology','laboratory',
+          ];
+          if (exclude.some(k => combined.includes(k))) return false;
+          const isTaggedDermatology = categories.some(c => c.includes('dermatology'));
+          const nameLooksDermatology = /derma|skin\s*(clinic|care|centre|center)|hyperhidrosis/i.test(name);
+          return isTaggedDermatology || nameLooksDermatology;
+        })
+        .slice(0, 20);
+
+      for (const feature of matched) {
+        const p = feature.properties;
+        if (!p.name || !p.name.trim()) continue;
+        const [fLng, fLat] = feature.geometry?.coordinates ?? [p.lon, p.lat];
+        const dist = haversine(lat, lng, fLat, fLng);
+        const doc = {
+          id:               p.place_id,
+          name:             p.name,
+          clinicName:       null,
+          specialty:        'Dermatologist',
+          address:          p.formatted || p.address_line2 || '',
+          city:             p.city || '',
+          country:          p.country || '',
+          lat: fLat, lng: fLng,
+          phone:            p.contact?.phone || p.datasource?.raw?.phone || null,
+          email:            p.contact?.email || null,
+          website:          p.website || p.contact?.website || null,
+          treatments:       ['topical'],
+          isIhsVerified:    false,
+          isNdsMember:      false,
+          isTelehealth:     false,
+          distance:         dist < 1000 ? `${Math.round(dist)}m` : `${(dist/1000).toFixed(1)}km`,
+          distanceMeters:   dist,
+          tier:             'external' as const,
+          specialistConfirmed: false,
+          source:           'geoapify',
+          rating:           null,
+          reviewCount:      null,
+          openNow:          null,
+          languages:        ['English'],
+        };
+        if (!seenIds.has(doc.id)) { doctors.push(doc); seenIds.add(doc.id); }
+      }
+
+      console.log(`TIER 2 (Geoapify): ${features.length} raw, ${matched.length} matched, ${doctors.length} total after`);
+    } else if (doctors.length < 3 && !GEOAPIFY_KEY) {
+      console.warn('TIER 2 skipped — GEOAPIFY_API_KEY not configured');
+    }
 
     // ════════════════════════════════════════════════════════════════
     // TIER 3 — Telehealth bridge
