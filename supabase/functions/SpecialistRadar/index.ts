@@ -68,7 +68,7 @@ const normaliseCurated = (row: any, userLat: number, userLng: number) => {
   const tier = row.tier || 'curated';
   return {
     id: row.id, name: row.name, clinicName: row.clinic_name || null, specialty: row.specialty,
-    address: row.address, city: row.city, country: row.country, lat: row.lat, lng: row.lng,
+    address: row.address, state: row.state, country: row.country, lat: row.lat, lng: row.lng,
     phone: row.phone || null, email: row.email || null, website: row.website || null,
     treatments: row.treatments || [], isIhsVerified: row.is_ihs_verified, isNdsMember: row.is_nds_member,
     isTelehealth: row.is_telehealth, distance: dist !== null ? formatDistance(dist) : null,
@@ -77,45 +77,6 @@ const normaliseCurated = (row: any, userLat: number, userLng: number) => {
     // Explicit boolean for the frontend badge — don't infer from tier string alone,
     // so the card component doesn't need to know tier naming to decide what to show.
     specialistConfirmed: tier === 'curated',
-  };
-};
-
-// ── Normalise a Geoapify Places feature → unified Doctor shape ───────────
-// Returns null when the feature has no real name — a raw address string
-// (e.g. "F207, Aiyepe, Osun State, Nigeria") is NOT a clinic name and was
-// previously being shown to users as one via the `p.name || p.formatted`
-// fallback below. We'd rather drop an unidentifiable point than show a
-// fake "clinic" that's really just a street address.
-const normaliseGeoapify = (feature: any, userLat: number, userLng: number) => {
-  const p = feature.properties;
-  if (!p.name || !p.name.trim()) return null;
-
-  const [lng, lat] = feature.geometry?.coordinates ?? [p.lon, p.lat];
-  const dist = haversine(userLat, userLng, lat, lng);
-  return {
-    id:               p.place_id,
-    name:             p.name,
-    clinicName:       null,
-    specialty:        'Dermatologist',
-    address:          p.formatted || p.address_line2 || '',
-    city:             p.city || '',
-    country:          p.country || '',
-    lat, lng,
-    phone:            p.contact?.phone || p.datasource?.raw?.phone || null,
-    email:            p.contact?.email || null,
-    website:          p.website || p.contact?.website || null,
-    treatments:       inferTreatments(p.name || ''),
-    isIhsVerified:    false,
-    isNdsMember:      false,
-    isTelehealth:     false,
-    distance:         formatDistance(dist),
-    distanceMeters:   dist,
-    tier:             'external' as const,
-    source:           'geoapify',
-    rating:           null,
-    reviewCount:      null,
-    openNow:          p.opening_hours ? null : null, // Geoapify gives raw OSM opening_hours text, not a boolean
-    languages:        ['English'],
   };
 };
 
@@ -145,8 +106,8 @@ serve(async (req) => {
 
     const {
       lat, lng, radius = 10000,
-      city = '', state = '', country = '', countryCode = '', continent = '',
-      scope = 'city',
+      state = '', country = '', countryCode = '', continent = '',
+      scope = 'state',
     } = await req.json();
 
     if (!lat || !lng) return new Response(JSON.stringify({ error: 'lat and lng required' }), {
@@ -154,7 +115,7 @@ serve(async (req) => {
     });
 
     const cacheKey =
-      scope === 'city'      ? `city:${city.toLowerCase()}` :
+      scope === 'state'     ? `state:${state.toLowerCase()}` :
       scope === 'country'   ? `country:${countryCode.toLowerCase() || country.toLowerCase()}` :
                                `continent:${continent.toLowerCase()}`;
 
@@ -163,7 +124,7 @@ serve(async (req) => {
 
     const cacheAgeHours = cached ? (Date.now() - new Date(cached.created_at).getTime()) / 36e5 : Infinity;
 
-    if (cached && cacheAgeHours < CACHE_TTL_HOURS && !(cached.meta?.externalCount === 0 && Deno.env.get('GEOAPIFY_API_KEY'))) {
+    if (cached && cacheAgeHours < CACHE_TTL_HOURS) {
       return new Response(JSON.stringify({
         doctors: cached.doctors, meta: { ...cached.meta, fromCache: true },
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -174,8 +135,8 @@ serve(async (req) => {
       .from('radar_search_log').select('id')
       .eq('user_id', user.id).eq('scope', scope).eq('search_date', today).maybeSingle();
 
-    if (existingLog && !(cached?.meta?.externalCount === 0 && Deno.env.get('GEOAPIFY_API_KEY'))) {
-      if (cached && !(cached?.meta?.externalCount === 0 && Deno.env.get('GEOAPIFY_API_KEY'))) {
+    if (existingLog) {
+      if (cached) {
         return new Response(JSON.stringify({
           doctors: cached.doctors, meta: { ...cached.meta, fromCache: true, stale: true },
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -199,12 +160,7 @@ serve(async (req) => {
       return data || [];
     };
 
-    if (city && (scope === 'city' || scope === 'country' || scope === 'continent')) {
-      for (const row of await queryCurated({ city })) {
-        if (!seenIds.has(row.id)) { doctors.push(normaliseCurated(row, lat, lng)); seenIds.add(row.id); }
-      }
-    }
-    if (state && (scope === 'country' || scope === 'continent')) {
+    if (state && (scope === 'state' || scope === 'country' || scope === 'continent')) {
       for (const row of await queryCurated({ state })) {
         if (!seenIds.has(row.id)) { doctors.push(normaliseCurated(row, lat, lng)); seenIds.add(row.id); }
       }
@@ -230,47 +186,6 @@ serve(async (req) => {
       }
     }
 
-    // ════════════════════════════════════════════════════════════════
-    // TIER 2 — Geoapify Places fallback (if curated < 3)
-    // ════════════════════════════════════════════════════════════════
-    const GEOAPIFY_KEY = Deno.env.get('GEOAPIFY_API_KEY');
-
-    if ((doctors.length < 3 || scope === 'country' || scope === 'continent') && GEOAPIFY_KEY) {
-      // Geoapify's circle filter isn't hard-capped like Google's, so the
-      // same radius value can be reused directly for city/country/continent
-      // scope — this is what actually makes "widen" work.
-      const searchRadius = scope === 'city' ? Math.min(radius, 50000)
-                          : scope === 'country' ? Math.min(radius, 500000)
-                          : Math.min(radius, 5000000);
-
-      const url = new URL('https://api.geoapify.com/v2/places');
-      url.searchParams.set('categories', 'healthcare,healthcare.clinic_or_praxis.dermatology');
-      url.searchParams.set('filter', `circle:${lng},${lat},${searchRadius}`);
-      url.searchParams.set('bias', `proximity:${lng},${lat}`);
-      url.searchParams.set('limit', '100');
-      url.searchParams.set('apiKey', GEOAPIFY_KEY);
-
-      let features: any[] = [];
-      try {
-        const res = await fetch(url.toString());
-        const data = await res.json();
-        features = data.features || [];
-      } catch (e) { console.error('Geoapify fetch error:', e); }
-
-      const matched = features
-        .filter(f => f.properties?.name && f.properties.name.trim()) // must have a real name, not just an address
-        .filter(f => isDermatologist(f.properties?.categories || [], f.properties?.name || ''))
-        .slice(0, 20);
-
-      for (const feature of matched) {
-        const doc = normaliseGeoapify(feature, lat, lng);
-        if (doc && !seenIds.has(doc.id)) { doctors.push(doc); seenIds.add(doc.id); }
-      }
-
-      console.log(`TIER 2 (Geoapify): ${features.length} raw, ${matched.length} matched`);
-    } else if ((doctors.length < 3 || scope === 'country' || scope === 'continent') && !GEOAPIFY_KEY) {
-      console.warn('TIER 2 skipped — GEOAPIFY_API_KEY not configured');
-    }
 
     // ════════════════════════════════════════════════════════════════
     // TIER 3 — Telehealth bridge
@@ -288,7 +203,7 @@ serve(async (req) => {
     const physicalCount = curated.length + facilityOnly.length + external.length;
     const meta = {
       total: allDoctors.length, curatedCount: curated.length, facilityOnlyCount: facilityOnly.length,
-      externalCount: external.length, telehealthCount: telehealthDoctors.length, careGap: physicalCount === 0,
+      externalCount: 0, telehealthCount: telehealthDoctors.length, careGap: physicalCount === 0,
     };
 
     await supabase.from('radar_cache').upsert({

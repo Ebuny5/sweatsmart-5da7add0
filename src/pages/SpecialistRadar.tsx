@@ -21,7 +21,7 @@ interface Doctor {
   clinicName?: string;
   specialty: string;
   address: string;
-  city: string;
+  state: string;
   country: string;
   lat: number;
   lng: number;
@@ -56,7 +56,7 @@ interface SearchMeta {
 }
 
 type TreatmentFilter = 'all' | 'iontophoresis' | 'botox' | 'miradry' | 'topical';
-type ScopeFilter = 'city' | 'country' | 'continent';
+type ScopeFilter = 'state' | 'country' | 'continent';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const TREATMENTS = [
@@ -67,7 +67,7 @@ const TREATMENTS = [
 ];
 
 const SCOPE_RADII: Record<ScopeFilter, number> = {
-  city:      50000,
+  state:     200000,
   country:   300000,
   continent: 5000000,
 };
@@ -124,8 +124,8 @@ const TierBadge = ({ tier, isIhs, isNds, specialistConfirmed }: { tier: string; 
 };
 
 // ── AI Greeting ────────────────────────────────────────────────────────────
-const AIGreeting = ({ profile, hdss, meta, city, onDismiss }: {
-  profile: any; hdss: number; meta: SearchMeta | null; city: string; onDismiss: () => void;
+const AIGreeting = ({ profile, hdss, meta, state, onDismiss }: {
+  profile: any; hdss: number; meta: SearchMeta | null; state: string; onDismiss: () => void;
 }) => {
   const name = profile?.name?.split(' ')[0] || 'Warrior';
   const hdssText = hdss > 0 ? `HDSS ${hdss.toFixed(1)} severity` : 'your hyperhidrosis profile';
@@ -148,7 +148,7 @@ const AIGreeting = ({ profile, hdss, meta, city, onDismiss }: {
             <span className="text-teal-300 font-semibold">{hdssText}</span>,{' '}
             {meta?.careGap
               ? <>no physical specialists were found nearby, but I've located <span className="text-violet-300 font-semibold">{meta.telehealthCount} telehealth expert{meta.telehealthCount !== 1 ? 's' : ''}</span> who can review your Warrior Report today.</>
-              : <>I've located <span className="text-teal-300 font-semibold">{physCount} specialist{physCount !== 1 ? 's' : ''}</span> near <span className="font-semibold text-white">{city || 'you'}</span>. Tap any pin to see their profile.</>
+              : <>I've located <span className="text-teal-300 font-semibold">{physCount} specialist{physCount !== 1 ? 's' : ''}</span> near <span className="font-semibold text-white">{state || 'you'}</span>. Tap any pin to see their profile.</>
             }
           </p>
         </div>
@@ -419,7 +419,6 @@ const SpecialistRadar = () => {
   const [isLoading, setIsLoading]     = useState(false);
   const [location, setLocation]       = useState<{ lat: number; lng: number } | null>(null);
   const [isGeocoding, setIsGeocoding] = useState(false);
-  const [city, setCity]               = useState('');
   const [state, setState]             = useState('');
   const [country, setCountry]         = useState('');
   const [countryCode, setCountryCode] = useState('');
@@ -428,7 +427,7 @@ const SpecialistRadar = () => {
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [activePin, setActivePin]     = useState<string | null>(null);
   const [treatFilter, setTreatFilter] = useState<TreatmentFilter>('all');
-  const [scope, setScope]             = useState<ScopeFilter>('city');
+  const [scope, setScope]             = useState<ScopeFilter>('state');
   const [showGreeting, setShowGreeting] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [locationError, setLocationError] = useState('');
@@ -467,7 +466,6 @@ const SpecialistRadar = () => {
         const p = JSON.parse(saved);
         if (p.lat && p.lng) {
           setLocation({ lat: p.lat, lng: p.lng });
-          if (p.city) setCity(p.city);
           if (p.state) setState(p.state);
           if (p.country) setCountry(p.country);
           if (p.countryCode) setCountryCode(p.countryCode);
@@ -488,7 +486,6 @@ const SpecialistRadar = () => {
         const res  = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`);
         const data = await res.json();
         const addr = data.address || {};
-        const dc = addr.city || addr.town || addr.municipality || addr.village || addr.suburb || addr.county || '';
         const ds = addr.state || addr.region || addr.province || '';
         const dco = addr.country || '';
         const iso = (addr.country_code || '').toUpperCase();
@@ -519,13 +516,12 @@ const SpecialistRadar = () => {
           AU:'Oceania',NZ:'Oceania',FJ:'Oceania',PG:'Oceania',
         };
         const cont = CONTINENT_MAP[iso] || 'Global';
-        setCity(dc); setState(ds); setCountry(dco); setCountryCode(iso); setContinent(cont);
+        setState(ds); setCountry(dco); setCountryCode(iso); setContinent(cont);
         localStorage.setItem('ss_last_known_location', JSON.stringify({
-          lat, lng, city: dc, state: ds, country: dco, countryCode: iso, continent: cont,
+          lat, lng, state: ds, country: dco, countryCode: iso, continent: cont,
         }));
         setGeoReady(true);
       } catch {
-        setCity('your area');
         setGeoReady(true);
       } finally {
         setIsGeocoding(false);
@@ -573,7 +569,7 @@ const SpecialistRadar = () => {
         body: JSON.stringify({
           lat: location.lat, lng: location.lng,
           radius: SCOPE_RADII[scope],
-          city, state, country, countryCode, continent, scope,
+          state, country, countryCode, continent, scope,
         }),
       });
       if (!res.ok) { const errData = await res.json().catch(() => ({})); if (res.status === 429) { toast.error(errData.message || 'Daily limit reached for this scope'); return; } throw new Error(errData.error || 'Search failed'); }
@@ -586,7 +582,7 @@ const SpecialistRadar = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [location, scope, city, state, country, countryCode, continent]);
+  }, [location, scope, state, country, countryCode, continent]);
 
   // Auto-fetch: fires once geoReady + user auth available, and on scope changes
   useEffect(() => {
@@ -604,7 +600,7 @@ const SpecialistRadar = () => {
 
     if (location) {
       if (userPin.current) userPin.current.remove();
-      mapInst.current.setView([location.lat, location.lng], scope === 'city' ? 12 : scope === 'country' ? 5 : 2);
+      mapInst.current.setView([location.lat, location.lng], scope === 'state' ? 10 : scope === 'country' ? 5 : 2);
     }
 
     physical.forEach(doc => {
@@ -677,7 +673,7 @@ const SpecialistRadar = () => {
           {/* Scope selector */}
           <div className="flex rounded-xl p-0.5 gap-0.5"
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-            {(['city', 'country', 'continent'] as ScopeFilter[]).map(s => (
+            {(['state', 'country', 'continent'] as ScopeFilter[]).map(s => (
               <button key={s} onClick={() => setScope(s)}
                 className="flex-1 py-2 rounded-[10px] text-[11px] font-bold capitalize transition-all"
                 style={{
@@ -685,7 +681,7 @@ const SpecialistRadar = () => {
                   color: scope === s ? '#00BCD4' : 'rgba(255,255,255,0.35)',
                   border: scope === s ? '1px solid rgba(0,188,212,0.38)' : '1px solid transparent',
                 }}>
-                {s === 'city' ? 'My City' : s === 'country' ? 'My Country' : 'My Continent'}
+                {s === 'state' ? 'My State' : s === 'country' ? 'My Country' : 'My Continent'}
               </button>
             ))}
           </div>
@@ -749,12 +745,12 @@ const SpecialistRadar = () => {
         <div className="flex-1 overflow-y-auto px-4 pt-4 pb-28">
 
           {showGreeting && !isLoading && meta && (
-            <AIGreeting profile={profile} hdss={hdss} meta={meta} city={city} onDismiss={() => setShowGreeting(false)} />
+            <AIGreeting profile={profile} hdss={hdss} meta={meta} state={state} onDismiss={() => setShowGreeting(false)} />
           )}
 
           {/* Care gap */}
           {!isLoading && meta?.careGap && physical.length === 0 && (
-            <CareGapCard onWiden={() => setScope(scope === 'city' ? 'country' : 'continent')} hideWiden={scope === 'continent'} />
+            <CareGapCard onWiden={() => setScope(scope === 'state' ? 'country' : 'continent')} hideWiden={scope === 'continent'} />
           )}
 
           {/* Loading */}
@@ -766,7 +762,7 @@ const SpecialistRadar = () => {
                 <Sparkles className="absolute inset-0 m-auto h-5 w-5 text-teal-400" />
               </div>
               <p className="text-sm font-bold text-white/50">Finding specialists near you...</p>
-              <p className="text-xs text-white/25 mt-1">Checking curated database + Geoapify Places</p>
+              <p className="text-xs text-white/25 mt-1">Checking curated database</p>
             </div>
           )}
 
@@ -832,7 +828,7 @@ const SpecialistRadar = () => {
           </a>
 
           <p className="text-[10px] text-white/18 text-center leading-relaxed px-4 mb-4">
-            Data from HidroAlly curated database, Geoapify Places & IHS directory. Always verify credentials before booking. Not medical advice.
+            Data from HidroAlly curated database & IHS directory. Always verify credentials before booking. Not medical advice.
           </p>
         </div>
       </div>
