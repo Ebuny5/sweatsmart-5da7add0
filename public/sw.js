@@ -86,7 +86,7 @@ self.addEventListener('message', async (event) => {
       badge: '/favicon.ico',
       ...payload,
       // ANDROID FIX: Always mark as user visible
-      silent: false,
+      silent: payload.kind === 'missed-checkin',
       requireInteraction: payload?.requireInteraction !== false,
     });
   }
@@ -152,7 +152,7 @@ self.addEventListener('push', (event) => {
           tag: tag,
           data: { url, timestamp: Date.now() },
           // CRITICAL FOR ANDROID:
-          silent: false,
+          silent: payload.kind === 'missed-checkin',
           requireInteraction: true,
           vibrate: [200, 100, 200],
           // ANDROID CHANNEL SUPPORT
@@ -179,6 +179,13 @@ self.addEventListener('push', (event) => {
         const kind = data.kind || data.type || 'reminder';
         for (const client of clients) {
           client.postMessage({ type: 'PUSH_RECEIVED', data });
+          if (kind !== 'missed-checkin') {
+            client.postMessage({
+              type: 'PLAY_NOTIFICATION_SOUND',
+              kind,
+            });
+          }
+          client.postMessage({ type: 'PUSH_RECEIVED', data });
           client.postMessage({
             type: 'PLAY_NOTIFICATION_SOUND',
             kind,
@@ -193,7 +200,7 @@ self.addEventListener('push', (event) => {
             body: 'You have a new alert',
             icon: '/favicon.ico',
             badge: '/favicon.ico',
-            silent: false,
+            silent: payload.kind === 'missed-checkin',
             requireInteraction: true,
           });
         } catch (e) {
@@ -215,6 +222,13 @@ self.addEventListener('sync', (event) => {
           // Sync pending reminders when connection restored
           const clients = await self.clients.matchAll();
           for (const client of clients) {
+          client.postMessage({ type: 'PUSH_RECEIVED', data });
+          if (kind !== 'missed-checkin') {
+            client.postMessage({
+              type: 'PLAY_NOTIFICATION_SOUND',
+              kind,
+            });
+          }
             client.postMessage({
               type: 'SYNC_REMINDERS',
             });
