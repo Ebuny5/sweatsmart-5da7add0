@@ -182,7 +182,10 @@ serve(async (req) => {
       for (const row of (allCurated || [])) {
         if (seenIds.has(row.id)) continue;
         const dist = haversine(lat, lng, row.lat, row.lng);
-        if (dist <= radius) { doctors.push(normaliseCurated(row, lat, lng)); seenIds.add(row.id); }
+        if (dist <= radius) {
+          if (scope === 'state' && row.state !== state) continue;
+          doctors.push(normaliseCurated(row, lat, lng)); seenIds.add(row.id);
+        }
       }
     }
 
