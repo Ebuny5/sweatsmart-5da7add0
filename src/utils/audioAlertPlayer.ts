@@ -19,7 +19,7 @@
 
 export type ClimateAlertKind = 'low' | 'moderate' | 'high' | 'extreme';
 export type ReminderKind = 'reminder' | 'checkin';
-export type AlertKind = ClimateAlertKind | ReminderKind;
+export type AlertKind = ClimateAlertKind | ReminderKind | "missed-checkin";
 export type VoiceGender = 'female' | 'male';
 
 const WATER_SOUND_PATH = '/sounds/water-sound.mp3';

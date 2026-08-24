@@ -90,7 +90,7 @@ class LoggingReminderService {
     if (now >= nextTime && now - nextTime < 15 * 60 * 1000) {
       await notificationManager.send({
         channel: 'reminder',
-        kind: 'reminder',
+        kind: 'missed-checkin',
         title: '⏰ Time for Your Eight-Hour Check-In',
         body: "It's time to check-in 🤗",
         dedupKey: `log-reminder-${nextTime}`,
@@ -108,8 +108,8 @@ class LoggingReminderService {
       if (now >= missed30m && now - missed30m < 15 * 60 * 1000) {
         await notificationManager.send({
           channel: 'reminder',
-          kind: 'reminder',
-          title: '⏰ Missed Check-In',
+          kind: 'missed-checkin',
+          title: '⏰ Missed Check-In', kind: 'missed-checkin',
           body: "You missed your 8-hour check-in",
           dedupKey: `log-missed-30m-${previousDueTime}`,
           url: '/log-episode',
@@ -119,8 +119,8 @@ class LoggingReminderService {
       if (now >= missed2h && now - missed2h < 15 * 60 * 1000) {
         await notificationManager.send({
           channel: 'reminder',
-          kind: 'reminder',
-          title: '⏰ Missed Check-In',
+          kind: 'missed-checkin',
+          title: '⏰ Missed Check-In', kind: 'missed-checkin',
           body: "You missed your 8-hour check-in",
           dedupKey: `log-missed-2h-${previousDueTime}`,
           url: '/log-episode',
@@ -204,7 +204,7 @@ class LoggingReminderService {
             body: "It's time to check-in 🤗",
             tag: 'logging-reminder-test',
             type: 'reminder',
-            kind: 'reminder',
+            kind: 'missed-checkin',
             url: '/log-episode',
           },
         })
@@ -229,7 +229,7 @@ class LoggingReminderService {
       setTimeout(() => {
         notificationManager.send({
           channel: 'system',
-          kind: 'reminder',
+          kind: 'missed-checkin',
           title: '⏰ Time for Your Eight-Hour Check-In',
           body: "It's time to check-in 🤗",
           dedupKey: `test-rem-${Date.now()}`,
