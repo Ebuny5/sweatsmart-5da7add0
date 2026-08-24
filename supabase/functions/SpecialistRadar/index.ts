@@ -8,6 +8,8 @@ const corsHeaders = {
 
 const CACHE_TTL_HOURS = 24;
 
+const normalizeState = (s: string) => (s || '').toLowerCase().replace(/\s+state$/, '').trim();
+
 const haversine = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
   const R  = 6371000;
   const φ1 = lat1 * Math.PI / 180;
@@ -115,9 +117,9 @@ serve(async (req) => {
     });
 
     const cacheKey =
-      scope === 'state'     ? `state:${state.toLowerCase()}` :
-      scope === 'country'   ? `country:${countryCode.toLowerCase() || country.toLowerCase()}` :
-                               `continent:${continent.toLowerCase()}`;
+      scope === 'state'     ? `v2:state:${normalizeState(state)}` :
+      scope === 'country'   ? `v2:country:${countryCode.toLowerCase() || country.toLowerCase()}` :
+                               `v2:continent:${continent.toLowerCase()}`;
 
     const { data: cached } = await supabase
       .from('radar_cache').select('*').eq('cache_key', cacheKey).eq('scope', scope).maybeSingle();
@@ -161,7 +163,11 @@ serve(async (req) => {
     };
 
     if (state && (scope === 'state' || scope === 'country' || scope === 'continent')) {
-      for (const row of await queryCurated({ state })) {
+      const searchState = normalizeState(state);
+      for (const row of await queryCurated({ state: searchState })) {
+        // Meticulously enforce strict state boundaries for state scope
+        if (scope === 'state' && normalizeState(row.state) !== searchState) continue;
+
         if (!seenIds.has(row.id)) { doctors.push(normaliseCurated(row, lat, lng)); seenIds.add(row.id); }
       }
     }
@@ -183,7 +189,7 @@ serve(async (req) => {
         if (seenIds.has(row.id)) continue;
         const dist = haversine(lat, lng, row.lat, row.lng);
         if (dist <= radius) {
-          if (scope === 'state' && row.state !== state) continue;
+          if (scope === 'state' && normalizeState(row.state) !== normalizeState(state)) continue;
           doctors.push(normaliseCurated(row, lat, lng)); seenIds.add(row.id);
         }
       }
