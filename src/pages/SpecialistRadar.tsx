@@ -129,7 +129,7 @@ const AIGreeting = ({ profile, hdss, meta, state, onDismiss }: {
 }) => {
   const name = profile?.name?.split(' ')[0] || 'Warrior';
   const hdssText = hdss > 0 ? `HDSS ${hdss.toFixed(1)} severity` : 'your hyperhidrosis profile';
-  const physCount = meta ? meta.curatedCount + meta.facilityOnlyCount + meta.externalCount : 0;
+  const physCount = meta ? (meta.curatedCount || 0) + (meta.facilityOnlyCount || 0) + (meta.externalCount || 0) : 0;
 
   return (
     <div className="relative rounded-2xl overflow-hidden mb-4 p-4"
