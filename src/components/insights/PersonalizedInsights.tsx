@@ -237,7 +237,7 @@ function analyzeEpisodes(episodes: Episode[]): WarriorInsight[] {
         : improving
           ? `Severity improving — avg ${Math.abs(sevDrift).toFixed(1)} HDSS pts reduction`
           : `Severity stable — consistent across episodes`,
-      sublabel: `Avg HDSS ${avgSev.toFixed(1)} (HDSS 1-4 Scale)`,
+      sublabel: `Avg HDSS ${Math.round(avgSev)} (HDSS 1-4 Scale)`,
       probability: driftPercent,
       probabilityLabel: worsening
         ? `The escalation is consistent across your last ${Math.min(
@@ -257,7 +257,7 @@ function analyzeEpisodes(episodes: Episode[]): WarriorInsight[] {
         : improving
           ? "bg-green-100 text-green-700"
           : "bg-gray-100 text-gray-600",
-      pillText: worsening ? "↑" : improving ? "↓" : "→",
+      pillText: "Trend",
       detail: worsening
         ? `Your episodes are getting more severe over time, which tells you that what you're currently doing isn't quite keeping pace with what your body needs. This can happen for several reasons — increasing exposure to your triggers, seasonal changes, or simply that your condition needs stronger management than first-line approaches can offer. The important thing: escalating severity is a clear signal to act, not to wait.`
         : improving
@@ -357,14 +357,8 @@ function analyzeEpisodes(episodes: Episode[]): WarriorInsight[] {
         isPrescriptionThreshold,
         icon: <Wind className="h-3.5 w-3.5" />,
         rankColor: "bg-sky-400",
-        label: isFocal
-          ? `Focal pattern — ${topArea[0]} dominant (${Math.round(
-              (topArea[1] / total) * 100,
-            )}%)`
-          : `Widespread pattern — ${multiPercent}% of episodes affect 3+ areas`,
-        sublabel: `${topArea[0]} appears in ${topArea[1]}/${total} episodes · ${
-          isFocal ? "Focal pattern" : "Systemic trigger likely"
-        }`,
+        label: `Most Affected: ${topArea[0].charAt(0).toUpperCase() + topArea[0].slice(1)}`,
+        sublabel: `${topArea[1]}× · appears in ${Math.round((topArea[1] / total) * 100)}% of your logged episodes`,
         probability: isFocal ? 100 - multiPercent : multiPercent,
         probabilityLabel: isFocal
           ? `Your sweating is concentrated in specific areas — a typical primary hyperhidrosis pattern`
@@ -484,9 +478,9 @@ const PersonalizedInsights: React.FC<PersonalizedInsightsProps> = ({
                 {insight.icon}
               </div>
 
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 pr-2">
                 <div className="flex items-center justify-between mb-1 gap-2">
-                  <span className="text-xs font-semibold text-gray-800 truncate flex-1 min-w-0">
+                  <span className="text-xs font-semibold text-gray-800 flex-1 min-w-0 break-words">
                     {insight.label}
                   </span>
                   <span className="text-[10px] text-gray-400 shrink-0 whitespace-nowrap">
@@ -504,7 +498,7 @@ const PersonalizedInsights: React.FC<PersonalizedInsightsProps> = ({
                 </p>
               </div>
 
-              <div className="flex items-center gap-1.5 shrink-0">
+              <div className="shrink-0 flex items-center gap-1.5">
                 <span
                   className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${insight.pill} whitespace-nowrap`}
                 >
