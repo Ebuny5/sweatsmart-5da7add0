@@ -261,7 +261,7 @@ let detailText = "";
         : improving
           ? `Severity improving — avg ${Math.abs(sevDrift).toFixed(1)} HDSS pts reduction`
           : `Severity stable — consistent across episodes`,
-      sublabel: `Avg HDSS ${Math.round(avgSev)} (HDSS 1-4 Scale)`,
+      sublabel: `Avg HDSS ${Math.round(roundedAvgSev)} (HDSS 1-4 Scale)`,
       probability: driftPercent,
       probabilityLabel: worsening
         ? `The escalation is consistent across your last ${Math.min(
