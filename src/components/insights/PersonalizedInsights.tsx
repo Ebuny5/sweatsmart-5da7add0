@@ -20,14 +20,14 @@ import {
 } from "lucide-react";
 import { formatHdss } from "@/utils/hdssGauger";
 
-const CLINICAL_TEXT_SEVERE = `For your HDSS 3–4 pattern, sympathetic signaling frequently overpowers over-the-counter topical barriers alone. Escalation to clinical-strength prescription therapies is indicated: intradermal Botulinum Toxin (Botox) or tap-water iontophoresis for hands and feet, prescription topical anticholinergics (glycopyrronium) for facial flares, or oral anticholinergics (glycopyrrolate/oxybutynin) for concurrent multi-site episodes.`;
-const CLINICAL_TEXT_MILD = `For mild-to-moderate patterns (HDSS 1–2), first-line treatment with 15–20% Aluminum Chloride Hexahydrate applied nightly to completely dry skin remains the standard approach, transitioning to 2–3 nights weekly once baseline dryness is established.`;
+export const CLINICAL_TEXT_SEVERE = `For your HDSS 3–4 pattern, sympathetic signaling frequently overpowers over-the-counter topical barriers alone. Escalation to clinical-strength prescription therapies is indicated: intradermal Botulinum Toxin (Botox) or tap-water iontophoresis for hands and feet, prescription topical anticholinergics (glycopyrronium) for facial flares, or oral anticholinergics (glycopyrrolate/oxybutynin) for concurrent multi-site episodes.`;
+export const CLINICAL_TEXT_MILD = `For mild-to-moderate patterns (HDSS 1–2), first-line treatment with 15–20% Aluminum Chloride Hexahydrate applied nightly to completely dry skin remains the standard approach, transitioning to 2–3 nights weekly once baseline dryness is established.`;
 
 interface Episode {
   id?: string;
   severity?: number | string;
   body_areas?: string[];
-  triggers?: any[];
+  triggers?: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
   date?: string;
   created_at?: string;
   notes?: string;
@@ -73,7 +73,7 @@ function analyzeEpisodes(episodes: Episode[]): WarriorInsight[] {
   >();
   episodes.forEach((ep) => {
     const triggers = Array.isArray(ep.triggers) ? ep.triggers : [];
-    triggers.forEach((t: any) => {
+    triggers.forEach((t: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
       const raw = typeof t === "string" ? JSON.parse(t) : t;
       const key = (raw?.label || raw?.value || "unknown").toLowerCase();
       const type = raw?.type || "environmental";
@@ -217,6 +217,30 @@ function analyzeEpisodes(episodes: Episode[]): WarriorInsight[] {
 
     const isPrescriptionThreshold = roundedAvgSev >= 3;
 
+let detailText = "";
+    if (roundedAvgSev >= 3) {
+      if (improving) {
+        detailText = `Although your average severity has decreased slightly, your recent pattern remains at HDSS ${roundedAvgSev}. This still represents clinically disruptive sweating where baseline sympathetic drive is high and actively breaking through topical barriers.`;
+      } else if (worsening) {
+        detailText = `Your recent pattern has escalated to HDSS ${roundedAvgSev}, indicating sweating that frequently disrupts daily activities and functional comfort. Sympathetic signaling is currently overpowering baseline physiological regulation.`;
+      } else {
+        detailText = `Your recent pattern remains steady at HDSS ${roundedAvgSev}, indicating persistent disruption to daily tasks. Your sympathetic nervous system is maintaining a high autonomic baseline that standard non-clinical measures are not suppressing.`;
+      }
+    } else {
+      if (worsening) {
+        detailText = `Your episodes are averaging HDSS ${roundedAvgSev}. While still manageable, watch for increasing trigger sensitivity to prevent escalating beyond your baseline.`;
+      } else {
+        detailText = `Your recent episodes have stabilized at HDSS ${roundedAvgSev} (mild/manageable). Sweat output is no longer interfering with daily functional activities, indicating your current management regimen is maintaining effective sweat duct occlusion.`;
+      }
+    }
+
+    let actionText = "";
+    if (roundedAvgSev >= 3) {
+      actionText = `• Do NOT Reduce Topical Defenses: Maintain consistent nightly application; stopping will trigger immediate rebound sweating.\n• Document Breakthrough Timing: Record how many hours after application sweating begins again.\n• Prepare Medical Escalation Summary: Export your 30-day report to show your physician that first-line topicals are insufficient for your severity level.`;
+    } else {
+      actionText = `• Establish Minimum Effective Dose: Begin tapering topical antiperspirants from nightly to 2–3 nights per week to prevent skin irritation while maintaining duct blockage.\n• Monitor Rebound Flares: Note if skipping consecutive nights triggers sudden sweat surges.\n• Log Maintenance Response: Record treatment frequency in your notes to capture what sustains your dry baseline.`;
+    }
+
     insights.push({
       rank: 2,
       isPrescriptionThreshold,
@@ -258,15 +282,8 @@ function analyzeEpisodes(episodes: Episode[]): WarriorInsight[] {
           ? "bg-green-100 text-green-700"
           : "bg-gray-100 text-gray-600",
       pillText: "Trend",
-      detail: worsening
-        ? `Your episodes are getting more severe over time, which tells you that what you're currently doing isn't quite keeping pace with what your body needs. This can happen for several reasons — increasing exposure to your triggers, seasonal changes, or simply that your condition needs stronger management than first-line approaches can offer. The important thing: escalating severity is a clear signal to act, not to wait.`
-        : improving
-          ? `Your episodes are getting less severe over time — this is real, measurable progress. Whatever you've been doing is having a genuine physical effect, whether that's a treatment you started, a lifestyle change, or better trigger awareness. This trend is worth noting and protecting.`
-          : `Your severity has been consistent across all your logged episodes — no escalation, no major improvement yet. This stability is actually useful: it means your triggers are predictable and a focused management strategy is likely to produce a clear, measurable result.`,
-      action:
-        improving || (!improving && !worsening && roundedAvgSev < 3)
-          ? `• Establish Minimum Effective Dose: Once sweating is under control, begin tapering topical applications (e.g., reduce aluminum chloride from nightly to 2–3 nights per week) to prevent skin irritation while keeping sweat ducts occluded.\n• Monitor Rebound Flares: Note if skipping consecutive days triggers an autonomic rebound flare.\n• Log Maintenance Response: Record treatment frequency in your notes so you have objective data on what sustains your dry baseline.`
-          : `• Document Topical Resistance: If high severity persists after 3–4 weeks of consistent nightly antiperspirant use, stop assuming lifestyle changes alone will fix it.\n• Prepare Escalation Log: Export your episode history to show your physician that primary sympathetic overactivity is overpowering topical first-line barriers.`,
+      detail: detailText,
+      action: actionText,
       clinicalNote:
         roundedAvgSev < 3 ? CLINICAL_TEXT_MILD : CLINICAL_TEXT_SEVERE,
     });
