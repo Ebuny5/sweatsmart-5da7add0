@@ -234,9 +234,20 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Shared-secret guard: only the database trigger (or an authorized caller) may invoke this.
+  const hookSecret = Deno.env.get("WELCOME_EMAIL_HOOK_SECRET");
+  if (hookSecret && req.headers.get("x-hook-secret") !== hookSecret) {
+    console.error("Unauthorized welcome-email invocation");
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 401,
+    });
+  }
+
   try {
     const payload = await req.json();
-    console.log("Webhook payload received:", payload);
+    console.log("Welcome email request received for user id:", payload?.record?.id);
+
 
     const record = payload.record;
     if (!record || !record.email) {
