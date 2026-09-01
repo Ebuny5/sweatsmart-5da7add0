@@ -1,27 +1,15 @@
 --- src/components/recommendationEngine.ts
 +++ src/components/recommendationEngine.ts
-@@ -1079,34 +1079,84 @@
+@@ -1079,7 +1079,84 @@
  function buildDryDayResponse(
    ni: NotesIntelligence,
    userName: string | undefined,
-   seed: number,
-   episodesList?: any[]
- ): EpisodeInsights & { cta: string; emotionalOpener: string } {
--  const greeting = userName ? `Hi ${userName}, this is HidroAlly 👋` : `Hi, this is HidroAlly 👋`;
--
--  const theme = pick([
--    // Theme 1 (General Compliance)
--    `Great job tracking a dry day! Your consistency helps map how well your current management routine is working. Keep logging to see long-term dry patterns!`,
--    // Theme 2 (Treatment Focus)
--    `Log noted! If you applied a treatment or antiperspirant last night, a dry day is a great indicator of compliance. Consistency is key to keeping hyperhidrosis managed.`,
--    // Theme 3 (Empowerment & Control)
--    `Fantastic check-in. Tracking dry days is just as important as tracking flare-ups. It shows you are actively taking control and managing your hyperhidrosis effectively!`,
--    // Theme 4 (Insight Building)
--    `No episodes today! By documenting these dry periods alongside your treatment schedule, you're building a powerful dataset to prove what works best for your body.`,
--    // Theme 5 (Supportive & Brief)
--    `A dry day is a win for comfort! Thank you for maintaining your tracking habit today—every log brings you closer to mastering your triggers.`,
--  ], seed);
--
+-  seed: number,
+-  episodesList?: any[]
+-): EpisodeInsights & { cta: string; emotionalOpener: string } {
++  seed: number,
++  episodesList?: any[]
++): EpisodeInsights & { cta: string; emotionalOpener: string } {
 +  // Calculate metrics
 +  let allEpisodes = episodesList || [];
 +  if (allEpisodes.length === 0) {
@@ -93,22 +81,22 @@
 +    ];
 +  }
 +
-   return {
--    emotionalOpener: `${greeting} — ${theme}`,
--    clinicalAnalysis: "This was logged as a dry day, so there's no episode to clinically analyse — and that's exactly the outcome we want to see more of. Dry days logged alongside your treatment routine are valuable data in their own right, helping build a clear picture of what's working.",
--    immediateRelief: [
--      "No relief steps needed today — nothing to manage. Keep up whatever routine got you here.",
--    ],
--    treatmentOptions: [
--      "If you're using a treatment (antiperspirant, iontophoresis, medication, etc.), a dry day is a strong signal it's working. Keep your current routine consistent rather than changing anything based on one good day.",
--    ],
--    lifestyleModifications: [
--      "Keep logging dry days as well as episodes — the contrast between the two is what reveals which habits, treatments, or conditions are actually helping.",
--    ],
--    medicalAttention: "No concerns today — nothing to flag.",
++  return {
 +    emotionalOpener: "",
 +    clinicalAnalysis,
 +    immediateRelief,
 +    treatmentOptions: [],
 +    lifestyleModifications: [],
 +    medicalAttention: "",
++    cta: buildCTA(ni, seed),
++    isDryDay: true,
++    dryDayMetrics: {
++      currentStreak,
++      dryDaysLast7,
++      monthlyDryTotal,
++      header
++    }
++  };
+ }
+
+ // ─── Empty response ───────────────────────────────────────────────────────────

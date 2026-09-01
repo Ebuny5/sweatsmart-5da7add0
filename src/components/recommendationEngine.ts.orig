@@ -1,5 +1,5 @@
 /**
- * SweatSmart — HidroAlly Recommendation Engine (Definitive Edition)
+ * HidroAlly — HidroAlly Recommendation Engine (Definitive Edition)
  * ─────────────────────────────────────────────────────────────────────────────
  * This is the SINGLE engine. Do not create additional engines alongside this.
  *
@@ -49,6 +49,7 @@ export interface EpisodeInput {
   episodeCount?: number; // total episodes logged — used for variation + longitudinal context
   userName?: string;     // optional — used in HidroAlly greeting
   isDryDay?: boolean;    // true for dry-day/treatment logs — bypasses symptom analysis entirely
+  episodesList?: any[];  // Optional full episode list for streak calculations
 }
 
 export interface EpisodeInsights {
@@ -57,6 +58,13 @@ export interface EpisodeInsights {
   treatmentOptions: string[];
   lifestyleModifications: string[];
   medicalAttention: string;
+  isDryDay?: boolean;
+  dryDayMetrics?: {
+    currentStreak: number;
+    dryDaysLast7: number;
+    monthlyDryTotal: number;
+    header: string;
+  };
 }
 
 // ─── Notes Intelligence Layer ─────────────────────────────────────────────────
@@ -710,7 +718,7 @@ function buildTreatments(
   // ── Prescription topicals for HDSS 3
   if (sv.isPresThreshold && !sv.isBotoxLevel && options.length < 2) {
     options.push(pick([
-      `At HDSS 3, prescription-strength topical treatments are clinically appropriate and represent a meaningful step beyond what aluminium chloride can achieve. Qbrexza wipes and Sofdra gel both work by reducing the nerve signal that activates your sweat glands — a different mechanism that is more effective for many warriors at your severity level. Your dermatologist or general practitioner (GP) can prescribe these; bringing your SweatSmart episode log to the appointment provides objective severity and frequency data that supports the prescription request. Most warriors see meaningful improvement within two to four weeks of consistent use. 🛡️`,
+      `At HDSS 3, prescription-strength topical treatments are clinically appropriate and represent a meaningful step beyond what aluminium chloride can achieve. Qbrexza wipes and Sofdra gel both work by reducing the nerve signal that activates your sweat glands — a different mechanism that is more effective for many warriors at your severity level. Your dermatologist or general practitioner (GP) can prescribe these; bringing your HidroAlly episode log to the appointment provides objective severity and frequency data that supports the prescription request. Most warriors see meaningful improvement within two to four weeks of consistent use. 🛡️`,
       `Given your HDSS 3 severity, prescription topical treatments are worth pursuing rather than limiting to over-the-counter options. Glycopyrronium-based treatments such as Qbrexza or Sofdra target the activation signal to your sweat glands — a mechanism upstream of what aluminium chloride addresses. Discuss this specifically with a dermatologist; your logged episode history from this app demonstrates the frequency and impact of your condition clearly, which is exactly the kind of objective evidence that supports a prescription recommendation. 🛡️`,
     ], seed+1));
   }
@@ -724,7 +732,7 @@ function buildTreatments(
         : areaList;
 
     options.push(pick([
-      `Botulinum toxin injections for your ${btxTarget} — this is the most effective intervention at your severity level and should be pursued as a priority, not deferred. The treatment works by blocking nerve signals directly at the sweat gland, producing four to six months of dramatically reduced sweating per treatment session. It is available through NHS dermatology referral or privately. When you see your dermatologist or general practitioner (GP), be specific: "I have hyperhidrosis affecting my ${btxTarget} at HDSS 4 severity — I would like to discuss botulinum toxin treatment and a referral to dermatology." Your SweatSmart episode log is objective evidence that makes this conversation more productive.`,
+      `Botulinum toxin injections for your ${btxTarget} — this is the most effective intervention at your severity level and should be pursued as a priority, not deferred. The treatment works by blocking nerve signals directly at the sweat gland, producing four to six months of dramatically reduced sweating per treatment session. It is available through NHS dermatology referral or privately. When you see your dermatologist or general practitioner (GP), be specific: "I have hyperhidrosis affecting my ${btxTarget} at HDSS 4 severity — I would like to discuss botulinum toxin treatment and a referral to dermatology." Your HidroAlly episode log is objective evidence that makes this conversation more productive.`,
       `At HDSS 4, botulinum toxin is the clinically appropriate and most impactful treatment for your ${btxTarget}. It does not merely reduce output — for most warriors at this severity level, it transforms daily life during the four to six months of each treatment cycle. Do not put this off: bring your episode log to your next medical appointment and ask directly for a dermatology referral for botulinum toxin. The data you have logged makes the clinical case clearly.`,
     ], seed));
 
@@ -919,7 +927,7 @@ function buildMedical(
 
   if (redFlags.length > 0) {
     return pick([
-      `A clinical appointment is recommended here — ${redFlags.join("; and ")}. In most cases the findings will be reassuring, but confirming them directs you to the right treatment. When you see your dermatologist or general practitioner (GP), say: "I have significant sweating affecting ${areaList} and I am also experiencing ${redFlags.map(f=>f.split(" ").slice(0,4).join(" ")).join(", ")}. I would like to discuss the full picture and rule out any secondary causes." Your SweatSmart episode history provides the clinical context to make that conversation efficient.`,
+      `A clinical appointment is recommended here — ${redFlags.join("; and ")}. In most cases the findings will be reassuring, but confirming them directs you to the right treatment. When you see your dermatologist or general practitioner (GP), say: "I have significant sweating affecting ${areaList} and I am also experiencing ${redFlags.map(f=>f.split(" ").slice(0,4).join(" ")).join(", ")}. I would like to discuss the full picture and rule out any secondary causes." Your HidroAlly episode history provides the clinical context to make that conversation efficient.`,
     ], seed);
   }
 
@@ -996,6 +1004,7 @@ export function generateEpisodeInsights(input: EpisodeInput): EpisodeInsights & 
     episodeCount = 0,
     userName,
     isDryDay = false,
+    episodesList,
   } = input;
 
   // Seed: combine episodeCount and current minute so every call is unique
@@ -1008,7 +1017,7 @@ export function generateEpisodeInsights(input: EpisodeInput): EpisodeInsights & 
   // response instead. Must run BEFORE the empty-bodyAreas check below, since
   // every dry day log has bodyAreas: [] by design, not by omission.
   if (isDryDay) {
-    return buildDryDayResponse(ni, userName, seed);
+    return buildDryDayResponse(ni, userName, seed, episodesList);
   }
 
   if (!bodyAreas || bodyAreas.length === 0) {
@@ -1056,7 +1065,7 @@ export function generateFallbackInsights(
     notes,
     climate,
     isDryDay,
-    episodeCount: Math.floor(Date.now() / 1000) % 50,
+    episodeCount: actualCount,
   });
   return result;
 }
@@ -1075,16 +1084,16 @@ function buildDryDayResponse(
   const greeting = userName ? `Hi ${userName}, this is HidroAlly 👋` : `Hi, this is HidroAlly 👋`;
 
   const theme = pick([
-    // Theme 1 — General Compliance
-    `Great job tracking a dry day! Your consistency helps map how well your current management routine is working. Keep logging to see long-term dry patterns build up over time.`,
-    // Theme 2 — Treatment Focus
-    `Log noted! If you applied a treatment or antiperspirant last night, a dry day like this is a great indicator of compliance. Consistency with treatment is key to keeping hyperhidrosis managed.`,
-    // Theme 3 — Empowerment & Control
-    `Fantastic check-in. Tracking dry days is just as important as tracking flare-ups — it shows you are actively taking control and managing your hyperhidrosis effectively.`,
-    // Theme 4 — Insight Building / Data Value
-    `No episodes today! By documenting these dry periods alongside your treatment schedule, you're building a powerful dataset that helps prove what works best for your body.`,
-    // Theme 5 — Supportive & Brief
-    `A dry day is a win for comfort! Thank you for maintaining your tracking habit today — every log brings you closer to mastering your triggers.`,
+    // Theme 1 (General Compliance)
+    `Great job tracking a dry day! Your consistency helps map how well your current management routine is working. Keep logging to see long-term dry patterns!`,
+    // Theme 2 (Treatment Focus)
+    `Log noted! If you applied a treatment or antiperspirant last night, a dry day is a great indicator of compliance. Consistency is key to keeping hyperhidrosis managed.`,
+    // Theme 3 (Empowerment & Control)
+    `Fantastic check-in. Tracking dry days is just as important as tracking flare-ups. It shows you are actively taking control and managing your hyperhidrosis effectively!`,
+    // Theme 4 (Insight Building)
+    `No episodes today! By documenting these dry periods alongside your treatment schedule, you're building a powerful dataset to prove what works best for your body.`,
+    // Theme 5 (Supportive & Brief)
+    `A dry day is a win for comfort! Thank you for maintaining your tracking habit today—every log brings you closer to mastering your triggers.`,
   ], seed);
 
   return {

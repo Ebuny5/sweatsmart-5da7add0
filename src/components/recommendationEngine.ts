@@ -49,6 +49,7 @@ export interface EpisodeInput {
   episodeCount?: number; // total episodes logged — used for variation + longitudinal context
   userName?: string;     // optional — used in HidroAlly greeting
   isDryDay?: boolean;    // true for dry-day/treatment logs — bypasses symptom analysis entirely
+  episodesList?: any[];  // Optional full episode list for streak calculations
 }
 
 export interface EpisodeInsights {
@@ -57,6 +58,13 @@ export interface EpisodeInsights {
   treatmentOptions: string[];
   lifestyleModifications: string[];
   medicalAttention: string;
+  isDryDay?: boolean;
+  dryDayMetrics?: {
+    currentStreak: number;
+    dryDaysLast7: number;
+    monthlyDryTotal: number;
+    header: string;
+  };
 }
 
 // ─── Notes Intelligence Layer ─────────────────────────────────────────────────
@@ -996,6 +1004,7 @@ export function generateEpisodeInsights(input: EpisodeInput): EpisodeInsights & 
     episodeCount = 0,
     userName,
     isDryDay = false,
+    episodesList,
   } = input;
 
   // Seed: combine episodeCount and current minute so every call is unique
@@ -1008,7 +1017,7 @@ export function generateEpisodeInsights(input: EpisodeInput): EpisodeInsights & 
   // response instead. Must run BEFORE the empty-bodyAreas check below, since
   // every dry day log has bodyAreas: [] by design, not by omission.
   if (isDryDay) {
-    return buildDryDayResponse(ni, userName, seed);
+    return buildDryDayResponse(ni, userName, seed, episodesList);
   }
 
   if (!bodyAreas || bodyAreas.length === 0) {
@@ -1071,41 +1080,98 @@ function buildDryDayResponse(
   ni: NotesIntelligence,
   userName: string | undefined,
   seed: number,
+  episodesList?: any[]
 ): EpisodeInsights & { cta: string; emotionalOpener: string } {
-  const greeting = userName ? `Hi ${userName}, this is HidroAlly 👋` : `Hi, this is HidroAlly 👋`;
+  // Calculate metrics
+  let allEpisodes = episodesList || [];
+  if (allEpisodes.length === 0) {
+    const localLogsJson = localStorage.getItem('sweatSmartLogs');
+    if (localLogsJson) {
+      allEpisodes = JSON.parse(localLogsJson);
+    }
+  }
 
-  const theme = pick([
-    // Theme 1 (General Compliance)
-    `Great job tracking a dry day! Your consistency helps map how well your current management routine is working. Keep logging to see long-term dry patterns!`,
-    // Theme 2 (Treatment Focus)
-    `Log noted! If you applied a treatment or antiperspirant last night, a dry day is a great indicator of compliance. Consistency is key to keeping hyperhidrosis managed.`,
-    // Theme 3 (Empowerment & Control)
-    `Fantastic check-in. Tracking dry days is just as important as tracking flare-ups. It shows you are actively taking control and managing your hyperhidrosis effectively!`,
-    // Theme 4 (Insight Building)
-    `No episodes today! By documenting these dry periods alongside your treatment schedule, you're building a powerful dataset to prove what works best for your body.`,
-    // Theme 5 (Supportive & Brief)
-    `A dry day is a win for comfort! Thank you for maintaining your tracking habit today—every log brings you closer to mastering your triggers.`,
-  ], seed);
+  // Sort episodes by date descending
+  const sortedEpisodes = [...allEpisodes].sort((a: any, b: any) => new Date(b.datetime).getTime() - new Date(a.datetime).getTime());
+
+  // 1. Current Streak
+  let currentStreak = 0;
+  for (const ep of sortedEpisodes) {
+    if (ep.is_dry_day) {
+      currentStreak++;
+    } else {
+      break; // Stop counting at the first non-dry day
+    }
+  }
+  if (currentStreak === 0) currentStreak = 1; // Always at least 1 since they just logged today
+
+  // 2. 7-Day Dry Ratio
+  const now = new Date();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const epsLast7Days = sortedEpisodes.filter((ep: any) => new Date(ep.datetime) >= sevenDaysAgo);
+  const dryDaysLast7 = epsLast7Days.filter((ep: any) => ep.is_dry_day).length || 1; // Include today
+
+  // 3. Monthly Dry Total
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const epsLast30Days = sortedEpisodes.filter((ep: any) => new Date(ep.datetime) >= thirtyDaysAgo);
+  const monthlyDryTotal = epsLast30Days.filter((ep: any) => ep.is_dry_day).length || 1; // Include today
+
+  // Branching States
+  let header = "";
+  let clinicalAnalysis = "";
+  let immediateRelief: string[] = []; // Used as What to Do (Maintenance Protocol)
+
+  if (currentStreak >= 3) {
+    // State 3: Sustained Remission
+    header = `🏆 Sustained Remission — ${currentStreak} Consecutive Dry Days`;
+    clinicalAnalysis = "Consecutive dry days confirm deep eccrine duct occlusion. Your sweat glands have reached saturation, and your sympathetic signaling is well within manageable thresholds.";
+    immediateRelief = [
+      "Test Maintenance Frequency: If you have achieved 4+ consecutive dry days, discuss tapering to a 2–3 night/week maintenance schedule to protect your skin barrier.",
+      "Skin Recovery: Apply soothing barrier creams (ceramides/hyaluronic acid) on off-nights to prevent dermatitis.",
+      "Prepare Clinical Summary: Your streak data provides objective proof of treatment efficacy for your dermatologist.",
+      "Maintain Trigger Readiness: Keep your portable cooling strategies on hand in case of extreme environmental surges."
+    ];
+  } else if (dryDaysLast7 >= 3 && currentStreak < 3) {
+    // State 2: Intermittent / Partial Control
+    const percentage = Math.round((dryDaysLast7 / 7) * 100);
+    header = `⚖️ Partial Control — ${dryDaysLast7} of Last 7 Days Dry (${percentage}%)`;
+    clinicalAnalysis = "Your pattern shows intermittent responsiveness. Your treatment is successfully occluding sweat ducts on low-demand days, but is being overwhelmed on high-stress or high-temperature days. This intermittent pattern is common when the topical concentration is slightly subtherapeutic or when application technique allows sweat to wash away active ingredients before they bind.";
+    immediateRelief = [
+      "Audit Application Surface: Ensure skin is 100% bone-dry before applying nighttime topicals (apply a cool hairdryer on cool setting for 30 seconds before and after).",
+      "Correlate Wet vs. Dry Days: Review the Trigger Intelligence tab to see which specific environmental factor caused the wet days between your dry days.",
+      "Clinical Discussion Note: If 3–4 weeks of consistent application still yields an alternating wet/dry pattern, consult your physician about increasing topical concentration (e.g., from 15% to 20% Aluminum Chloride) or adding an oral anticholinergic bridge."
+    ];
+  } else {
+    // State 1: Isolated Reset Day
+    header = "✨ Dry Baseline Reset — 1 Dry Day Logged";
+    clinicalAnalysis = "Today demonstrates that your sweat glands are capable of achieving occlusion under the right physiological conditions. Because this follows recent active episodes, today represents a temporary barrier hold rather than permanent saturation. Your sweat ducts are beginning to respond to treatment or lower autonomic load, but the effect is wearing off within 24–48 hours.";
+    immediateRelief = [
+      "Identify Today’s Protective Factor: Did you apply topicals last night, spend more time in climate-controlled spaces, or experience lower stress?",
+      "Do Not Skip Tonight’s Protocol: Intermittent dry days require immediate re-application tonight. Skipping now will cause sweat to wash out forming duct plugs tomorrow.",
+      "Track the 'Breakthrough Window': Note how many hours of dryness you achieve before the next flare begins.",
+      "Skin Barrier Care: If using clinical topicals, apply a gentle moisturizer to off-target areas to prevent irritation."
+    ];
+  }
 
   return {
-    emotionalOpener: `${greeting} — ${theme}`,
-    clinicalAnalysis: "This was logged as a dry day, so there's no episode to clinically analyse — and that's exactly the outcome we want to see more of. Dry days logged alongside your treatment routine are valuable data in their own right, helping build a clear picture of what's working.",
-    immediateRelief: [
-      "No relief steps needed today — nothing to manage. Keep up whatever routine got you here.",
-    ],
-    treatmentOptions: [
-      "If you're using a treatment (antiperspirant, iontophoresis, medication, etc.), a dry day is a strong signal it's working. Keep your current routine consistent rather than changing anything based on one good day.",
-    ],
-    lifestyleModifications: [
-      "Keep logging dry days as well as episodes — the contrast between the two is what reveals which habits, treatments, or conditions are actually helping.",
-    ],
-    medicalAttention: "No concerns today — nothing to flag.",
+    emotionalOpener: "",
+    clinicalAnalysis,
+    immediateRelief,
+    treatmentOptions: [],
+    lifestyleModifications: [],
+    medicalAttention: "",
     cta: buildCTA(ni, seed),
+    isDryDay: true,
+    dryDayMetrics: {
+      currentStreak,
+      dryDaysLast7,
+      monthlyDryTotal,
+      header
+    }
   };
 }
 
 // ─── Empty response ───────────────────────────────────────────────────────────
-
 function buildEmptyResponse(
   ni: NotesIntelligence,
   userName: string | undefined,

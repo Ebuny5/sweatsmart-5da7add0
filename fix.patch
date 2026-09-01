@@ -1,0 +1,10 @@
+--- src/components/recommendationEngine.ts
++++ src/components/recommendationEngine.ts
+@@ -992,6 +992,7 @@
+     episodeCount = 0,
+     userName,
+     isDryDay = false,
++    episodesList,
+   } = input;
+
+   // Seed: combine episodeCount and current minute so every call is unique

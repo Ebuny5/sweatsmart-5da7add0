@@ -197,6 +197,17 @@ const LogEpisode = () => {
           label: t.label,
         }));
 
+        // Include the newly logged episode in the episodes list for real-time calculations
+        const newEpisodeForStreak = {
+          id: data?.[0]?.id || 'temp',
+          datetime: datetime.toISOString(),
+          severityLevel: finalSeverity,
+          is_dry_day: isDryDay,
+          hdssLevel: finalSeverity
+        };
+
+        const fullEpisodesList = [newEpisodeForStreak, ...(episodes || [])];
+
         const insights = generateFallbackInsights(
           finalSeverity,
           finalBodyAreas,
@@ -204,6 +215,7 @@ const LogEpisode = () => {
           finalNotes,
           undefined,
           isDryDay,
+          fullEpisodesList
         );
 
         setAiInsights(insights);
