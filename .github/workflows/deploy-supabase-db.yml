@@ -1,11 +1,11 @@
-name: Deploy Supabase Functions
+name: Deploy Supabase Database Migrations
 
 on:
   push:
     branches:
       - main
     paths:
-      - 'supabase/functions/**'
+      - 'supabase/migrations/**'
   workflow_dispatch:
 
 jobs:
@@ -18,7 +18,8 @@ jobs:
         with:
           version: latest
 
-      - name: Deploy all Supabase Functions
-        run: supabase functions deploy --project-ref ujbcolxawpzfjkjviwqw
+      - name: Deploy Supabase Database Migrations
+        run: supabase db push --project-ref ujbcolxawpzfjkjviwqw
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
