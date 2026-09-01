@@ -19,6 +19,7 @@ import { SeverityLevel, BodyArea, Trigger } from "@/types";
 import { CalendarIcon, Clock, Loader2, CheckCircle2, LayoutDashboard, History, Plus, Mic, MicOff, Droplets, Square, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useEngagement } from "@/hooks/useEngagement";
 import { useEpisodes } from "@/hooks/useEpisodes";
 import { generateFallbackInsights } from "@/components/recommendationEngine";
 import { loggingReminderService, LAST_LOG_TIME_KEY, CURRENT_HDSS_KEY } from "@/services/LoggingReminderService";
@@ -61,6 +62,7 @@ const LogEpisode = () => {
   const location = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { trackAction } = useEngagement();
   const { episodes } = useEpisodes();
   const searchParams = new URLSearchParams(location.search);
   const isNow = searchParams.get("now") === "true";
@@ -109,9 +111,9 @@ const LogEpisode = () => {
   // ── All original logic ─────────────────────────────────────────────────────
   const handleSubmit = useCallback(async (e?: React.FormEvent, manualNotes?: string, manualBodyAreas?: BodyArea[], manualTriggers?: Trigger[], manualSeverity?: SeverityLevel) => {
     if (e) e.preventDefault();
-    const finalBodyAreas = manualBodyAreas ?? bodyAreas;
-    const finalTriggers = manualTriggers ?? triggers;
-    const finalSeverity = manualSeverity ?? severity;
+    const finalBodyAreas = isDryDay ? [] : (manualBodyAreas ?? bodyAreas);
+    const finalTriggers = isDryDay ? [] : (manualTriggers ?? triggers);
+    const finalSeverity = isDryDay ? (1 as SeverityLevel) : (manualSeverity ?? severity);
 
     if (!user) {
       toast({ title: "Authentication required", description: "Please log in to save episodes.", variant: "destructive" });
@@ -138,75 +140,88 @@ const LogEpisode = () => {
     const datetime = new Date(date);
     datetime.setHours(hours, minutes);
 
-    const finalNotes = manualNotes !== undefined ? manualNotes : notes;
+    const baseNotes = manualNotes !== undefined ? manualNotes : notes;
+    const finalNotes = isDryDay
+      ? (baseNotes?.trim() ? `Dry day / treatment — ${baseNotes.trim()}` : "Dry day / treatment logged")
+      : baseNotes;
 
     try {
-      const dbTriggers = isDryDay ? [] : (finalTriggers || []);
-      const triggerStrings = dbTriggers.map((trigger) =>
+      const triggerStrings = finalTriggers.map((trigger) =>
         JSON.stringify({ type: trigger.type, value: trigger.value, label: trigger.label })
       );
 
-      const dbSeverity = isDryDay ? 1 : finalSeverity;
-      const dbBodyAreas = isDryDay ? [] : finalBodyAreas;
       const { data, error } = await supabase.from("episodes").insert({
         user_id: user.id,
-        severity: dbSeverity,
-        is_dry_day: isDryDay,
-        body_areas: dbBodyAreas,
+        severity: finalSeverity,
+        body_areas: finalBodyAreas,
         triggers: triggerStrings,
         notes: finalNotes || null,
         date: datetime.toISOString(),
+        is_dry_day: isDryDay,
       }).select();
+
 
       if (error) throw error;
 
       if (data && data[0]) {
         setLastSavedEpisodeId(data[0].id);
         localStorage.setItem(CURRENT_HDSS_KEY, finalSeverity.toString());
+        // Keep local storage in sync
+        const existingLogsStr = localStorage.getItem("sweatSmartLogs");
+        const existingLogs = existingLogsStr ? JSON.parse(existingLogsStr) : [];
+        const newLog = {
+          id: data[0].id,
+          datetime: datetime.toISOString(),
+          severityLevel: finalSeverity,
+          is_dry_day: isDryDay,
+          hdssLevel: finalSeverity
+        };
+        localStorage.setItem("sweatSmartLogs", JSON.stringify([newLog, ...existingLogs]));
+      }
+
+      // Track actions based on log type
+      if (isDryDay) {
+        trackAction("dry_mode_entries");
+      } else {
+        trackAction("episodes_logged");
       }
 
       // Reschedule the next reminder 6 hours from now
       loggingReminderService.handleLogSaved();
 
-      if (isDryDay) {
-        // For dry days, the user explicitly requested NO clinical analysis or insights produced.
-        // We just toast success and leave the form as is, ready to log another or go home,
-        // without showing the AIGeneratedInsights component.
-        toast({ title: "Dry day logged! ✨", description: "Nice work — no sweating today." });
-        setAiInsights(null);
-        setShowInsights(false);
+      setIsLoadingInsights(true);
+      try {
+        const triggerData = (finalTriggers || []).map(t => ({
+          type: t.type,
+          value: t.value,
+          label: t.label,
+        }));
+
+        const insights = generateFallbackInsights(
+          finalSeverity,
+          finalBodyAreas,
+          triggerData,
+          finalNotes,
+          undefined,
+          isDryDay,
+        );
+
+        setAiInsights(insights);
+        toast(
+          isDryDay
+            ? { title: "Dry day logged! ✨", description: "Nice work — no sweating today." }
+            : { title: "Episode logged 🎉", description: "Your personalised insights are below." }
+        );
+      } catch (insightError) {
+        console.error("Insight generation error:", insightError);
+        toast({
+          title: "Insights unavailable",
+          description: "Episode saved. Insights could not be generated.",
+          variant: "destructive",
+        });
+      } finally {
         setIsLoadingInsights(false);
-      } else {
-        setIsLoadingInsights(true);
-        try {
-          const triggerData = (finalTriggers || []).map(t => ({
-            type: t.type,
-            value: t.value,
-            label: t.label,
-          }));
-
-          const insights = generateFallbackInsights(
-            dbSeverity,
-            dbBodyAreas,
-            triggerData,
-            finalNotes,
-            undefined,
-            isDryDay, // will be false here, but pass it anyway for signature
-          );
-
-          setAiInsights(insights);
-          toast({ title: "Episode logged 🎉", description: "Your personalised insights are below." });
-        } catch (insightError) {
-          console.error("Insight generation error:", insightError);
-          toast({
-            title: "Insights unavailable",
-            description: "Episode saved. Insights could not be generated.",
-            variant: "destructive",
-          });
-        } finally {
-          setIsLoadingInsights(false);
-          setShowInsights(true);
-        }
+        setShowInsights(true);
       }
     } catch (error) {
       toast({ title: "Failed to log episode", description: "An error occurred. Please try again.", variant: "destructive" });
@@ -234,6 +249,11 @@ const LogEpisode = () => {
       setLastSavedEpisodeId(null);
       setShowInsights(false);
       setAiInsights(null);
+
+      // Also clean up local storage if we just undid the log
+      const existingLogsStr = localStorage.getItem('sweatSmartLogs');
+      const existingLogs = existingLogsStr ? JSON.parse(existingLogsStr) : [];
+      localStorage.setItem('sweatSmartLogs', JSON.stringify(existingLogs.filter((log: any) => log.id !== lastSavedEpisodeId)));
     } catch (error) {
       console.error("Undo failed:", error);
       toast({
@@ -358,7 +378,7 @@ const LogEpisode = () => {
           <div className="flex items-start justify-between mb-2">
             <div>
               <p className="text-blue-100 text-xs font-semibold uppercase tracking-widest mb-1">
-                SweatSmart
+                HidroAlly
               </p>
               <h1 className="text-white text-2xl font-black tracking-tight leading-tight">
                 Log Sweating<br />Episode 💧
@@ -524,8 +544,11 @@ const LogEpisode = () => {
               <div className="flex items-center gap-3">
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="flex-[2] py-3.5 rounded-xl bg-[#4B0082] hover:opacity-90 disabled:opacity-60 text-white font-bold transition-all shadow-md text-sm flex items-center justify-center gap-2"
+                  disabled={isSubmitting || (severity === null && !isDryDay)}
+                  className={cn(
+                    "flex-[2] py-3.5 rounded-xl bg-[#4B0082] hover:opacity-90 disabled:opacity-60 text-white font-bold transition-all shadow-md text-sm flex items-center justify-center gap-2",
+                    severity === null && !isDryDay && "opacity-50 cursor-not-allowed"
+                  )}
                 >
                   {isSubmitting ? (
                     <>

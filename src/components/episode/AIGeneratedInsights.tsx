@@ -27,6 +27,13 @@ interface AIInsightsProps {
     emotionalOpener?: string;
     emotionalSupport?: string;
     cta?: string;
+    isDryDay?: boolean;
+    dryDayMetrics?: {
+      currentStreak: number;
+      dryDaysLast7: number;
+      monthlyDryTotal: number;
+      header: string;
+    };
   };
 }
 
@@ -204,7 +211,7 @@ Always consult with a healthcare provider for personalized medical advice.
               <span className="text-lg">✨</span>
             </div>
             <p className="text-[15px] font-semibold leading-snug tracking-tight">
-              I've analyzed your triggers. Here is a detailed analysis of your episode 😊
+              {insights.isDryDay && insights.dryDayMetrics ? insights.dryDayMetrics.header : "I've analyzed your triggers. Here is a detailed analysis of your episode 😊"}
             </p>
           </div>
         </CardContent>
@@ -244,13 +251,37 @@ Always consult with a healthcare provider for personalized medical advice.
         </div>
       </div>
 
+      {/* Dry Day Metrics Row */}
+      {insights.isDryDay && insights.dryDayMetrics && (
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          <Card className="border-none bg-blue-50/50 shadow-sm">
+            <CardContent className="p-3 text-center">
+              <p className="text-xs text-blue-600 font-bold uppercase tracking-wider mb-1">Current Streak</p>
+              <p className="text-xl font-black text-blue-900">{insights.dryDayMetrics.currentStreak} Days</p>
+            </CardContent>
+          </Card>
+          <Card className="border-none bg-emerald-50/50 shadow-sm">
+            <CardContent className="p-3 text-center">
+              <p className="text-xs text-emerald-600 font-bold uppercase tracking-wider mb-1">7-Day Control</p>
+              <p className="text-xl font-black text-emerald-900">{insights.dryDayMetrics.dryDaysLast7} / 7</p>
+            </CardContent>
+          </Card>
+          <Card className="border-none bg-purple-50/50 shadow-sm">
+            <CardContent className="p-3 text-center">
+              <p className="text-xs text-purple-600 font-bold uppercase tracking-wider mb-1">30-Day Total</p>
+              <p className="text-xl font-black text-purple-900">{insights.dryDayMetrics.monthlyDryTotal}</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Clinical Analysis */}
       <Card className="border-l-4 border-l-blue-500">
         <CardHeader>
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center space-x-2">
               <Stethoscope className="h-5 w-5 text-blue-600" />
-              <CardTitle>Clinical Analysis</CardTitle>
+              <CardTitle>{insights.isDryDay ? 'Dry Day Insights' : 'Clinical Analysis'}</CardTitle>
             </div>
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="hidden sm:inline-flex">AI-Generated</Badge>
@@ -275,7 +306,7 @@ Always consult with a healthcare provider for personalized medical advice.
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center space-x-2">
               <Heart className="h-5 w-5 text-green-600" />
-              <CardTitle>Immediate Relief Strategies</CardTitle>
+              <CardTitle>{insights.isDryDay ? 'Maintenance & Skin Protocol' : 'Immediate Relief Strategies'}</CardTitle>
             </div>
             <ListenButton
               text={listify('Immediate relief strategies', insights.immediateRelief)}
@@ -297,6 +328,8 @@ Always consult with a healthcare provider for personalized medical advice.
         </CardContent>
       </Card>
 
+      {!insights.isDryDay && (
+      <>
       {/* Treatment Options */}
       <Card className="border-l-4 border-l-purple-500">
         <CardHeader>
@@ -373,6 +406,9 @@ Always consult with a healthcare provider for personalized medical advice.
         </CardContent>
       </Card>
 
+
+      </>
+      )}
 
       {/* HidroAlly CTA */}
       {insights.cta && (
