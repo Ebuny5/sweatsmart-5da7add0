@@ -31,6 +31,8 @@ const FEMALE_VOICES: Record<AlertKind, string> = {
   extreme: '/sounds/voice-female-extreme.mp3',
   reminder: '/sounds/voice-female-reminder.mp3',
   checkin: '/sounds/voice-female-reminder.mp3',
+  'missed-checkin': '/sounds/voice-female-reminder.mp3',
+
 };
 
 // Male voices — we only have low/reminder/checkin uploaded today.
