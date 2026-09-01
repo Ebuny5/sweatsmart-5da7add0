@@ -256,7 +256,7 @@ serve(async (req) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: \`Bearer \${RESEND_API_KEY}\`,
+        Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
         from: "HidroAlly Team <welcome@sweatsmart.guru>",
@@ -270,7 +270,7 @@ serve(async (req) => {
     if (!res.ok) {
       const errorText = await res.text();
       console.error("Resend API error:", errorText);
-      throw new Error(\`Failed to send email: \${errorText}\`);
+      throw new Error(`Failed to send email: ${errorText}`);
     }
 
     const resData = await res.json();
