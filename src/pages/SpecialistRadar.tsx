@@ -52,11 +52,14 @@ interface SearchMeta {
   facilityOnlyCount: number;
   externalCount: number;
   telehealthCount: number;
+  physicalCount?: number;
+  scope?: string;
+  boundary?: string;
   careGap: boolean;
 }
 
 type TreatmentFilter = 'all' | 'iontophoresis' | 'botox' | 'miradry' | 'topical';
-type ScopeFilter = 'state' | 'country' | 'continent';
+type ScopeFilter = 'city' | 'state' | 'country';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const TREATMENTS = [
@@ -66,10 +69,10 @@ const TREATMENTS = [
   { key: 'topical',       label: 'Topical Rx',      icon: '🧴', color: 'text-green-300 border-green-500/40 bg-green-500/10' },
 ];
 
-const SCOPE_RADII: Record<ScopeFilter, number> = {
-  state:     200000,
-  country:   300000,
-  continent: 5000000,
+const SCOPE_LABELS: Record<ScopeFilter, string> = {
+  city:    'My City',
+  state:   'My State',
+  country: 'My Country',
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -129,7 +132,10 @@ const AIGreeting = ({ profile, hdss, meta, state, onDismiss }: {
 }) => {
   const name = profile?.name?.split(' ')[0] || 'Warrior';
   const hdssText = hdss > 0 ? `HDSS ${hdss.toFixed(1)} severity` : 'your hyperhidrosis profile';
-  const physCount = meta ? (meta.curatedCount || 0) + (meta.facilityOnlyCount || 0) + (meta.externalCount || 0) : 0;
+  const physCount = meta
+    ? (Number(meta.physicalCount) ||
+       (Number(meta.curatedCount) || 0) + (Number(meta.facilityOnlyCount) || 0) + (Number(meta.externalCount) || 0))
+    : 0;
 
   return (
     <div className="relative rounded-2xl overflow-hidden mb-4 p-4"
@@ -419,10 +425,10 @@ const SpecialistRadar = () => {
   const [isLoading, setIsLoading]     = useState(false);
   const [location, setLocation]       = useState<{ lat: number; lng: number } | null>(null);
   const [isGeocoding, setIsGeocoding] = useState(false);
+  const [city, setCity]               = useState('');
   const [state, setState]             = useState('');
   const [country, setCountry]         = useState('');
   const [countryCode, setCountryCode] = useState('');
-  const [continent, setContinent]     = useState('Africa');
   const [geoReady, setGeoReady]       = useState(false); // true once reverse geocode completes
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [activePin, setActivePin]     = useState<string | null>(null);
@@ -466,10 +472,10 @@ const SpecialistRadar = () => {
         const p = JSON.parse(saved);
         if (p.lat && p.lng) {
           setLocation({ lat: p.lat, lng: p.lng });
+          if (p.city) setCity(p.city);
           if (p.state) setState(p.state);
           if (p.country) setCountry(p.country);
           if (p.countryCode) setCountryCode(p.countryCode);
-          if (p.continent) setContinent(p.continent);
           setGeoReady(true);
         }
       }
@@ -486,6 +492,7 @@ const SpecialistRadar = () => {
         const res  = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`);
         const data = await res.json();
         const addr = data.address || {};
+        const dc = addr.city || addr.town || addr.village || addr.municipality || addr.county || '';
         const ds = addr.state || addr.region || addr.province || '';
         const dco = addr.country || '';
         const iso = (addr.country_code || '').toUpperCase();
@@ -516,9 +523,9 @@ const SpecialistRadar = () => {
           AU:'Oceania',NZ:'Oceania',FJ:'Oceania',PG:'Oceania',
         };
         const cont = CONTINENT_MAP[iso] || 'Global';
-        setState(ds); setCountry(dco); setCountryCode(iso); setContinent(cont);
+        setCity(dc); setState(ds); setCountry(dco); setCountryCode(iso);
         localStorage.setItem('ss_last_known_location', JSON.stringify({
-          lat, lng, state: ds, country: dco, countryCode: iso, continent: cont,
+          lat, lng, city: dc, state: ds, country: dco, countryCode: iso, continent: cont,
         }));
         setGeoReady(true);
       } catch {
@@ -568,11 +575,17 @@ const SpecialistRadar = () => {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           lat: location.lat, lng: location.lng,
-          radius: SCOPE_RADII[scope],
-          state, country, countryCode, continent, scope,
+          city, state, country, countryCode, scope,
         }),
       });
-      if (!res.ok) { const errData = await res.json().catch(() => ({})); if (res.status === 429) { toast.error(errData.message || 'Daily limit reached for this scope'); return; } throw new Error(errData.error || 'Search failed'); }
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        // Boundary data missing (city/state undetected) — tell the user which
+        // scope to use instead of silently showing out-of-boundary results.
+        if (res.status === 400 && errData.message) { toast.error(errData.message); setDoctors([]); setMeta(null); return; }
+        if (res.status === 429) { toast.error(errData.message || 'Daily limit reached for this scope'); return; }
+        throw new Error(errData.error || 'Search failed');
+      }
       const { doctors: results, meta: resMeta } = await res.json();
       setDoctors(results || []);
       setMeta(resMeta || null);
@@ -582,7 +595,7 @@ const SpecialistRadar = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [location, scope, state, country, countryCode, continent]);
+  }, [location, scope, city, state, country, countryCode]);
 
   // Auto-fetch: fires once geoReady + user auth available, and on scope changes
   useEffect(() => {
@@ -600,7 +613,7 @@ const SpecialistRadar = () => {
 
     if (location) {
       if (userPin.current) userPin.current.remove();
-      mapInst.current.setView([location.lat, location.lng], scope === 'state' ? 10 : scope === 'country' ? 5 : 2);
+      mapInst.current.setView([location.lat, location.lng], scope === 'city' ? 12 : scope === 'state' ? 9 : 5);
     }
 
     physical.forEach(doc => {
@@ -673,7 +686,7 @@ const SpecialistRadar = () => {
           {/* Scope selector */}
           <div className="flex rounded-xl p-0.5 gap-0.5"
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-            {(['state', 'country', 'continent'] as ScopeFilter[]).map(s => (
+            {(['city', 'state', 'country'] as ScopeFilter[]).map(s => (
               <button key={s} onClick={() => setScope(s)}
                 className="flex-1 py-2 rounded-[10px] text-[11px] font-bold capitalize transition-all"
                 style={{
@@ -681,7 +694,7 @@ const SpecialistRadar = () => {
                   color: scope === s ? '#00BCD4' : 'rgba(255,255,255,0.35)',
                   border: scope === s ? '1px solid rgba(0,188,212,0.38)' : '1px solid transparent',
                 }}>
-                {s === 'state' ? 'My State' : s === 'country' ? 'My Country' : 'My Continent'}
+                {SCOPE_LABELS[s]}
               </button>
             ))}
           </div>
@@ -745,12 +758,12 @@ const SpecialistRadar = () => {
         <div className="flex-1 overflow-y-auto px-4 pt-4 pb-28">
 
           {showGreeting && !isLoading && meta && (
-            <AIGreeting profile={profile} hdss={hdss} meta={meta} state={state} onDismiss={() => setShowGreeting(false)} />
+            <AIGreeting profile={profile} hdss={hdss} meta={meta} state={meta?.boundary || (scope === 'city' ? city : scope === 'country' ? country : state)} onDismiss={() => setShowGreeting(false)} />
           )}
 
           {/* Care gap */}
           {!isLoading && meta?.careGap && physical.length === 0 && (
-            <CareGapCard onWiden={() => setScope(scope === 'state' ? 'country' : 'continent')} hideWiden={scope === 'continent'} />
+            <CareGapCard onWiden={() => setScope(scope === 'city' ? 'state' : 'country')} hideWiden={scope === 'country'} />
           )}
 
           {/* Loading */}
