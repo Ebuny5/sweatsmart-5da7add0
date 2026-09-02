@@ -150,20 +150,59 @@ export function calculateSweatRiskV2(input: SweatRiskInput): SweatRiskResult {
   const isHighUv = uvIndex != null && !isNaN(uvIndex) && uvIndex > 6;
   const isHighEda = edaValue != null && !isNaN(edaValue) && edaValue > 10;
 
-  let level: SweatRiskLevel;
+  // 1. Calculate Base Thermal-Moisture Score (0 to 100)
+  let score = 0;
 
-  // Extreme Risk: RealFeel >= 35°C OR (Heat Index >= 32°C with high UV or high EDA)
-  if (realFeel >= 35 || (heatIndex >= 32 && (isHighUv || isHighEda))) {
+  // Temperature component (Base comfort baseline: 18°C)
+  if (temperature > 18) {
+    score += Math.min((temperature - 18) * 3.0, 40);
+  }
+
+  // Moisture / Dew Point component (The Evaporative Barrier)
+  if (dewPoint >= 24) {
+    score += 60; // Critical extreme evaporative block
+  } else if (dewPoint >= 22) {
+    score += 50; // Critical evaporative block
+  } else if (dewPoint >= 20) {
+    score += 40; // Severe impairment
+  } else if (dewPoint >= 16) {
+    score += 25; // Moderate sticky threshold
+  } else if (dewPoint >= 12) {
+    score += 10;
+  }
+
+  // Extreme Relative Humidity Multiplier
+  if (humidity >= 85) {
+    score += 15; // Direct sweat evaporation failure bonus
+  } else if (humidity >= 75) {
+    score += 8;
+  }
+
+  // UV radiation thermal radiant load
+  if (isHighUv) score += 5;
+
+  // EDA high load bonus
+  if (isHighEda) score += 5;
+
+  const finalScore = Math.min(Math.round(score), 100);
+
+  let level: SweatRiskLevel = 'low';
+  let message = 'Low Risk';
+  let description = 'Optimal Evaporative Conditions. Air moisture allows normal evaporative cooling with minimal autonomic resistance.';
+
+  // 3. Clinical Risk Bracket Categorization
+  if (finalScore >= 85 || dewPoint >= 24 || (humidity >= 90 && temperature >= 28)) {
     level = 'extreme';
-  } else if (realFeel >= 30) {
-    // High Risk: 30.0°C - 34.9°C
+    message = 'Extreme Evaporative Block';
+    description = `Severe ambient humidity (${humidity.toFixed(0)}%) completely blocks sweat evaporation. Immediate cooling and rest required.`;
+  } else if (finalScore >= 65 || dewPoint >= 21.5 || (humidity >= 85 && temperature >= 22)) {
     level = 'high';
-  } else if (realFeel >= 27) {
-    // Moderate Risk: 27.0°C - 29.9°C
+    message = 'Evaporative Impairment Flare Risk';
+    description = `High ambient humidity (${humidity.toFixed(0)}%) prevents sweat from evaporating naturally. Expect lingering skin moisture and compensatory pooling even at rest.`;
+  } else if (finalScore >= 40 || dewPoint >= 18 || humidity >= 75) {
     level = 'moderate';
-  } else {
-    // Low Risk: < 27.0°C
-    level = 'low';
+    message = 'Elevated Moisture Load';
+    description = `Atmospheric moisture slows skin drying. Maintain airflow with fans or light moisture-wicking fabrics.`;
   }
 
   const triggers: string[] = [];
@@ -176,31 +215,15 @@ export function calculateSweatRiskV2(input: SweatRiskInput): SweatRiskResult {
     triggers.push(`☀️ UV: ${uvLabel}`);
   }
 
-  let description = '';
-  switch (level) {
-    case 'low':
-      description = 'Optimal conditions. Normal baseline.';
-      break;
-    case 'moderate':
-      description = 'Moderate sweat risk: Thermal threshold crossed. Stay hydrated.';
-      break;
-    case 'high':
-      description = `High Sweat Alert: RealFeel ${realFeel.toFixed(1)}°C with high humidity. Prepare cool-down strategies.`;
-      break;
-    case 'extreme':
-      description = 'Extreme Flare Hazard: Severe heat load. Move to cool/shaded environment.';
-      break;
-  }
-
   const meta = LEVEL_META[level];
 
   return {
     level,
-    message: meta.message,
+    message, // Overriding default meta message with more specific clinical ones
     description,
     color: meta.color,
     triggers,
-    score: realFeel,
+    score: finalScore,
     heatIndex,
     dewPoint,
     realFeel,
