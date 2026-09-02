@@ -4,7 +4,7 @@
  * Uses the SAME Supabase Edge Function (`get-weather-data`) that ClimateMonitor
  * already calls, so there is only one weather source across the entire app.
  *
- * Auto-refreshes every 15 minutes (matching WEATHER_REFRESH_INTERVAL in ClimateMonitor).
+ * Auto-refreshes every 5 minutes (matching WEATHER_REFRESH_INTERVAL in ClimateMonitor).
  * Returns null weatherData until real data arrives — no fake fallbacks.
  */
 
@@ -35,7 +35,7 @@ const RISK_LABEL: Record<string, string> = {
   extreme:  "Extreme risk — severe heat load, move to shaded/ventilated space 🔴",
 };
 
-const WEATHER_REFRESH_MS = 15 * 60 * 1000; // 15 min — same as ClimateMonitor
+const WEATHER_REFRESH_MS = 5 * 60 * 1000; // 5 min — same as ClimateMonitor
 
 export function useClimateData(): ClimateSnapshot {
   const [weather, setWeather]           = useState<WeatherData | null>(null);
@@ -114,15 +114,17 @@ export function useClimateData(): ClimateSnapshot {
       });
 
       if (fnError) throw new Error(fnError.message);
-      if (data?.simulated) throw new Error("Weather API unavailable — no real data received.");
+
+      const activeData = data?.isSimulated ? data.data : data;
 
       const w: WeatherData = {
-        ...data,
-        uvIndex: typeof data.uvIndex === 'number' ? data.uvIndex : null,
-        sky: data.sky ?? 'unknown',
-        heatIndex: data.heatIndex,
-        dewPoint: data.dewPoint,
-        realFeel: data.realFeel,
+        ...activeData,
+        uvIndex: typeof activeData.uvIndex === 'number' ? activeData.uvIndex : null,
+        sky: activeData.sky ?? 'unknown',
+        heatIndex: activeData.heatIndex,
+        dewPoint: activeData.dewPoint,
+        realFeel: activeData.realFeel,
+        isSimulated: data?.isSimulated || false,
         lastUpdated: Date.now(),
       };
 
@@ -173,7 +175,7 @@ export function useClimateData(): ClimateSnapshot {
     }
   }, [coords, getCoords, fetchWeather]);
 
-  // ── Auto-refresh every 15 min once coords are ready ──────────────────────
+  // ── Auto-refresh every 5 min once coords are ready ──────────────────────
   useEffect(() => {
     if (!coords) return;
     fetchWeather();

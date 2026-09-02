@@ -82,7 +82,7 @@ const ZapIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   </svg>
 );
 
-const WEATHER_REFRESH_INTERVAL = 15 * 60 * 1000;
+const WEATHER_REFRESH_INTERVAL = 5 * 60 * 1000;
 
 const WeatherErrorCard: React.FC<{ error: string; onRetry: () => void; isFetching: boolean }> = ({ error, onRetry, isFetching }) => (
   <div className="bg-white/10 backdrop-blur-xl border border-red-400/40 rounded-xl p-6 text-center space-y-3">
@@ -133,7 +133,11 @@ const CurrentStatusCard: React.FC<{
           {weather.lastUpdated && (
             <span className="text-xs text-purple-200 bg-white/10 px-2 py-1 rounded-full">🔄 {getLastUpdatedText()}</span>
           )}
-          <span className="text-xs text-green-300 bg-green-500/20 border border-green-400/30 px-2 py-1 rounded-full">✅ Real</span>
+          {weather.isSimulated ? (
+            <span className="text-xs text-yellow-300 bg-yellow-500/20 border border-yellow-400/30 px-2 py-1 rounded-full">⚠️ Simulated (No network)</span>
+          ) : (
+            <span className="text-xs text-green-300 bg-green-500/20 border border-green-400/30 px-2 py-1 rounded-full">✅ Real</span>
+          )}
         </div>
       </div>
 
@@ -283,9 +287,15 @@ const ClimateMonitor = () => {
         body: { latitude: coords.latitude, longitude: coords.longitude, bypassCache }
       });
       if (error) throw new Error(error.message);
-      if (data.simulated) throw new Error(data.error || 'Weather API unavailable — no real data received.');
+
+      const activeData = data.isSimulated ? data.data : data;
       const now = Date.now();
-      setWeatherData({ ...data, uvIndex: data.uvIndex ?? data.uvi ?? null, lastUpdated: now });
+      setWeatherData({
+        ...activeData,
+        uvIndex: activeData.uvIndex ?? activeData.uvi ?? null,
+        lastUpdated: now,
+        isSimulated: data.isSimulated || false
+      });
       setLastWeatherFetch(now);
       setWeatherError(null);
     } catch (err: any) {

@@ -15,6 +15,7 @@ export interface WeatherData {
   lastUpdated?: number;
   description?: string;
   location?: string;
+  isSimulated?: boolean;
 }
 
 export interface PhysiologicalData {
