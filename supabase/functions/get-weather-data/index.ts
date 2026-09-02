@@ -29,6 +29,7 @@ type WeatherResult = {
   icon?: string;
   location?: string;
   timestamp: number;
+  isSimulated?: boolean;
 };
 
 // In-memory cache to reduce redundant API calls (3 minutes TTL for rapid tracking)
@@ -144,7 +145,7 @@ serve(async (req: Request) => {
       const rf = calculateRealFeel(temp, hum, uv);
       return new Response(
         JSON.stringify({ 
-          simulated: true,
+          isSimulated: true,
           error: 'Weather API not configured',
           data: { temperature: temp, humidity: hum, uvIndex: uv, heatIndex: hi, dewPoint: dp, realFeel: rf }
         }),
@@ -281,6 +282,7 @@ serve(async (req: Request) => {
       icon: weatherData.weather?.[0]?.icon,
       location: weatherData.name,
       timestamp: Date.now(),
+      isSimulated: false,
     };
 
     // Update cache
@@ -312,7 +314,7 @@ serve(async (req: Request) => {
     return new Response(
       JSON.stringify({ 
         error: 'Weather service temporarily unavailable',
-        simulated: true,
+        isSimulated: true,
         data: { temperature: temp, humidity: hum, uvIndex: uv, heatIndex: hi, dewPoint: dp, realFeel: rf }
       }),
       { 

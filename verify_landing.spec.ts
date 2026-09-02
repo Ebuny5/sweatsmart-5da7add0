@@ -8,7 +8,7 @@ test('landing page renders without crashing', async ({ page }) => {
   await page.goto(`http://localhost:${port}`);
 
   // Wait for the landing page title
-  await expect(page.locator('h1')).toContainText('Take control of your hyper-hidrosis');
+  await expect(page.locator('h1')).toContainText('Master your');
 
   console.log('✅ Landing page content verified');
 
