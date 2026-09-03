@@ -15,12 +15,13 @@ const CACHE_TTL_HOURS = 24;
 const normalizeState = (s: string) =>
   (s || '').toLowerCase().replace(/\s+(state|province|region|governorate)$/, '').trim();
 
-const normalizeCity = (s: string) =>
+const _unusedNormalizeCity = (s: string) =>
   (s || '')
     .toLowerCase()
     .replace(/\s+(city|town|metropolis|lga|local government area)$/, '')
     .replace(/[^a-z0-9\s-]/g, '')
     .trim();
+
 
 const haversine = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
   const R  = 6371000;
@@ -181,7 +182,7 @@ serve(async (req) => {
       telehealthCount: telehealthDoctors.length,
       physicalCount,
       scope,
-      boundary: scope === 'city' ? city : scope === 'state' ? state : (country || wantedCountry),
+      boundary: scope === 'state' ? state : scope === 'country' ? (country || wantedCountry) : continent,
       careGap: physicalCount === 0,
     };
 
