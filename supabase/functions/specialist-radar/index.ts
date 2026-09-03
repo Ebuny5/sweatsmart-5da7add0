@@ -80,30 +80,31 @@ serve(async (req) => {
 
     const {
       lat, lng,
-      city = '', state = '', country = '', countryCode = '',
+      city = '', state = '', country = '', countryCode = '', continent = '',
       scope: rawScope = 'state',
     } = await req.json();
 
     if (!lat || !lng) return json({ error: 'lat and lng required' }, 400);
 
-    const scope: 'city' | 'state' | 'country' =
-      rawScope === 'city' || rawScope === 'country' ? rawScope : 'state';
+    const scope: 'state' | 'country' | 'continent' =
+      rawScope === 'continent' || rawScope === 'country' ? rawScope : 'state';
 
-    const wantedCity    = normalizeCity(city);
-    const wantedState   = normalizeState(state);
-    const wantedCountry = (countryCode || '').toUpperCase();
+    const wantedState     = normalizeState(state);
+    const wantedCountry   = (countryCode || '').toUpperCase();
+    const wantedContinent = (continent || '').trim().toLowerCase();
 
     // Missing boundary data → we cannot enforce the boundary, so we refuse
     // rather than silently falling back to an open radius search.
-    if (scope === 'city' && !wantedCity)      return json({ error: 'missing_city',  message: 'We could not detect your city. Try the State view.' }, 400);
-    if (scope === 'state' && !wantedState)    return json({ error: 'missing_state', message: 'We could not detect your state. Try the Country view.' }, 400);
+    if (scope === 'state' && !wantedState)    return json({ error: 'missing_state', message: 'We could not detect your state or region. Try the Country view.' }, 400);
     if (scope === 'country' && !wantedCountry && !country)
       return json({ error: 'missing_country', message: 'We could not detect your country.' }, 400);
+    if (scope === 'continent' && !wantedContinent)
+      return json({ error: 'missing_continent', message: 'We could not detect your continent. Try the Country view.' }, 400);
 
     const cacheKey =
-      scope === 'city'  ? `v3:city:${wantedCity}:${wantedState}` :
-      scope === 'state' ? `v3:state:${wantedState}:${wantedCountry}` :
-                          `v3:country:${wantedCountry || country.toLowerCase()}`;
+      scope === 'state'   ? `v4:state:${wantedState}:${wantedCountry}` :
+      scope === 'country' ? `v4:country:${wantedCountry || country.toLowerCase()}` :
+                            `v4:continent:${wantedContinent}`;
 
     const { data: cached } = await supabase
       .from('radar_cache').select('*').eq('cache_key', cacheKey).eq('scope', scope).maybeSingle();
@@ -118,12 +119,14 @@ serve(async (req) => {
     // ════════════════════════════════════════════════════════════════
     let query = supabase.from('specialists').select('*').eq('is_telehealth', false);
 
-    if (scope === 'country') {
+    if (scope === 'continent') {
+      query = query.ilike('continent', wantedContinent);
+    } else if (scope === 'country') {
       query = wantedCountry
         ? query.eq('country_code', wantedCountry)
         : query.ilike('country', country);
     } else {
-      // City and State scopes both live inside one country + one state.
+      // State/region scope lives inside one country.
       if (wantedCountry) query = query.eq('country_code', wantedCountry);
       query = query.ilike('state', `%${wantedState}%`);
     }
@@ -132,18 +135,19 @@ serve(async (req) => {
     if (qErr) throw qErr;
 
     const physicalRows = (rows || []).filter((row: any) => {
+      if (scope === 'continent') {
+        return (row.continent || '').trim().toLowerCase() === wantedContinent;
+      }
       if (scope === 'country') {
         return wantedCountry
           ? (row.country_code || '').toUpperCase() === wantedCountry
           : true;
       }
-      // Hard state boundary — an Oyo/Lagos row can never survive an Ondo search.
-      if (normalizeState(row.state) !== wantedState) return false;
-      if (scope === 'state') return true;
-      // City scope: exact normalised city match (handles "Ondo" vs "Ondo City").
-      const rowCity = normalizeCity(row.city || '');
-      return rowCity === wantedCity;
+      // Hard state/region boundary — an Oyo/Lagos row can never survive an
+      // Ondo search, and a Greater Accra row can never survive an Ashanti one.
+      return normalizeState(row.state) === wantedState;
     });
+
 
     const seen = new Set<string>();
     const physical = physicalRows
