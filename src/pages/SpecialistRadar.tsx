@@ -59,7 +59,7 @@ interface SearchMeta {
 }
 
 type TreatmentFilter = 'all' | 'iontophoresis' | 'botox' | 'miradry' | 'topical';
-type ScopeFilter = 'city' | 'state' | 'country';
+type ScopeFilter = 'state' | 'country' | 'continent';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const TREATMENTS = [
@@ -69,11 +69,55 @@ const TREATMENTS = [
   { key: 'topical',       label: 'Topical Rx',      icon: '🧴', color: 'text-green-300 border-green-500/40 bg-green-500/10' },
 ];
 
-const SCOPE_LABELS: Record<ScopeFilter, string> = {
-  city:    'My City',
-  state:   'My State',
-  country: 'My Country',
+// Continent lookup shared with the specialist-radar edge function.
+const CONTINENT_MAP: Record<string, string> = {
+  NG:'Africa',GH:'Africa',ZA:'Africa',KE:'Africa',EG:'Africa',TZ:'Africa',
+  ET:'Africa',CM:'Africa',SN:'Africa',CI:'Africa',RW:'Africa',UG:'Africa',
+  MA:'Africa',TN:'Africa',DZ:'Africa',MZ:'Africa',AO:'Africa',CD:'Africa',
+  SD:'Africa',MG:'Africa',ZM:'Africa',ZW:'Africa',BJ:'Africa',BF:'Africa',
+  ML:'Africa',NE:'Africa',TD:'Africa',SO:'Africa',LY:'Africa',ER:'Africa',
+  TG:'Africa',SL:'Africa',GN:'Africa',MW:'Africa',LS:'Africa',SZ:'Africa',
+  BW:'Africa',NA:'Africa',GM:'Africa',GA:'Africa',GQ:'Africa',CG:'Africa',
+  BI:'Africa',CF:'Africa',CV:'Africa',KM:'Africa',DJ:'Africa',GW:'Africa',
+  LR:'Africa',MR:'Africa',MU:'Africa',SC:'Africa',SS:'Africa',ST:'Africa',
+  GB:'Europe',DE:'Europe',FR:'Europe',IT:'Europe',ES:'Europe',PT:'Europe',
+  NL:'Europe',BE:'Europe',SE:'Europe',NO:'Europe',DK:'Europe',FI:'Europe',
+  CH:'Europe',AT:'Europe',PL:'Europe',CZ:'Europe',SK:'Europe',HU:'Europe',
+  RO:'Europe',BG:'Europe',GR:'Europe',TR:'Europe',UA:'Europe',RU:'Europe',
+  IE:'Europe',HR:'Europe',RS:'Europe',SI:'Europe',LT:'Europe',LV:'Europe',
+  EE:'Europe',LU:'Europe',MT:'Europe',CY:'Europe',IS:'Europe',AL:'Europe',
+  US:'Americas',CA:'Americas',MX:'Americas',BR:'Americas',AR:'Americas',
+  CL:'Americas',CO:'Americas',PE:'Americas',VE:'Americas',EC:'Americas',
+  BO:'Americas',PY:'Americas',UY:'Americas',GY:'Americas',SR:'Americas',
+  GT:'Americas',HN:'Americas',SV:'Americas',NI:'Americas',CR:'Americas',
+  PA:'Americas',CU:'Americas',DO:'Americas',JM:'Americas',TT:'Americas',
+  CN:'Asia',JP:'Asia',IN:'Asia',KR:'Asia',PK:'Asia',BD:'Asia',TH:'Asia',
+  VN:'Asia',ID:'Asia',PH:'Asia',MY:'Asia',SG:'Asia',MM:'Asia',KH:'Asia',
+  LK:'Asia',NP:'Asia',AE:'Asia',SA:'Asia',IL:'Asia',JO:'Asia',LB:'Asia',
+  IQ:'Asia',IR:'Asia',KW:'Asia',QA:'Asia',BH:'Asia',OM:'Asia',YE:'Asia',
+  KZ:'Asia',UZ:'Asia',GE:'Asia',AM:'Asia',AZ:'Asia',TW:'Asia',HK:'Asia',
+  AU:'Oceania',NZ:'Oceania',FJ:'Oceania',PG:'Oceania',
 };
+
+// Not every country divides itself into "states". Nigeria, the US, India and
+// Brazil do; most of Africa, Europe and Asia use regions/provinces/governorates.
+// The first scope button is labelled with the correct local term so the UI
+// never tells a Ghanaian user to search "My State".
+const STATE_COUNTRIES  = new Set(['NG','US','IN','BR','MX','AU','MY','SS','SD','VE','DE','AT','ET','SO','PW','FM','MX']);
+const PROVINCE_COUNTRIES = new Set(['ZA','CD','CA','CN','KE','ZM','ZW','RW','BI','MZ','AO','CN','ES','IT','NL','BE','AR','TR','PK','ID','PH','LA','KH','VN','CU','SA','IR','AF']);
+const GOVERNORATE_COUNTRIES = new Set(['EG','TN','LY','IQ','JO','LB','SY','KW','OM','YE','BH','QA','DZ','MA']);
+
+const regionTerm = (iso: string): string => {
+  const cc = (iso || '').toUpperCase();
+  if (STATE_COUNTRIES.has(cc))       return 'State';
+  if (PROVINCE_COUNTRIES.has(cc))    return 'Province';
+  if (GOVERNORATE_COUNTRIES.has(cc)) return 'Governorate';
+  return 'Region';
+};
+
+const scopeLabel = (s: ScopeFilter, iso: string): string =>
+  s === 'state' ? `My ${regionTerm(iso)}` : s === 'country' ? 'My Country' : 'My Continent';
+
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 const computeHdss = (episodes: any[]): number => {
