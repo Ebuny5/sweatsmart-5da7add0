@@ -473,6 +473,8 @@ const SpecialistRadar = () => {
   const [state, setState]             = useState('');
   const [country, setCountry]         = useState('');
   const [countryCode, setCountryCode] = useState('');
+  const [continent, setContinent]     = useState('');
+
   const [geoReady, setGeoReady]       = useState(false); // true once reverse geocode completes
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [activePin, setActivePin]     = useState<string | null>(null);
@@ -520,6 +522,8 @@ const SpecialistRadar = () => {
           if (p.state) setState(p.state);
           if (p.country) setCountry(p.country);
           if (p.countryCode) setCountryCode(p.countryCode);
+          if (p.continent) setContinent(p.continent);
+
           setGeoReady(true);
         }
       }
