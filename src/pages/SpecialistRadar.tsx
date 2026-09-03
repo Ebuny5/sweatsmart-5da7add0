@@ -598,7 +598,7 @@ const SpecialistRadar = () => {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           lat: location.lat, lng: location.lng,
-          city, state, country, countryCode, scope,
+          city, state, country, countryCode, continent, scope,
         }),
       });
       if (!res.ok) {
@@ -618,7 +618,7 @@ const SpecialistRadar = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [location, scope, city, state, country, countryCode]);
+  }, [location, scope, city, state, country, countryCode, continent]);
 
   // Auto-fetch: fires once geoReady + user auth available, and on scope changes
   useEffect(() => {
@@ -636,7 +636,7 @@ const SpecialistRadar = () => {
 
     if (location) {
       if (userPin.current) userPin.current.remove();
-      mapInst.current.setView([location.lat, location.lng], scope === 'city' ? 12 : scope === 'state' ? 9 : 5);
+      mapInst.current.setView([location.lat, location.lng], scope === 'state' ? 9 : scope === 'country' ? 5 : 3);
     }
 
     physical.forEach(doc => {
