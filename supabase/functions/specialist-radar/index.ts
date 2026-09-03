@@ -15,12 +15,7 @@ const CACHE_TTL_HOURS = 24;
 const normalizeState = (s: string) =>
   (s || '').toLowerCase().replace(/\s+(state|province|region|governorate)$/, '').trim();
 
-const _unusedNormalizeCity = (s: string) =>
-  (s || '')
-    .toLowerCase()
-    .replace(/\s+(city|town|metropolis|lga|local government area)$/, '')
-    .replace(/[^a-z0-9\s-]/g, '')
-    .trim();
+
 
 
 const haversine = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
