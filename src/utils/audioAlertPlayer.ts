@@ -92,7 +92,7 @@ function vibrateForKind(kind: AlertKind) {
 
 class AudioAlertPlayer {
   private static instance: AudioAlertPlayer;
-  private current: HTMLAudioElement | null = null;
+  private currentAudios: HTMLAudioElement[] = [];
 
   static getInstance(): AudioAlertPlayer {
     if (!AudioAlertPlayer.instance) {
@@ -127,15 +127,15 @@ class AudioAlertPlayer {
   }
 
   stop(): void {
-    if (this.current) {
+    this.currentAudios.forEach(audio => {
       try {
-        this.current.pause();
-        this.current.src = '';
+        audio.pause();
+        audio.src = '';
       } catch {
         /* ignore */
       }
-      this.current = null;
-    }
+    });
+    this.currentAudios = [];
   }
 
   /**
@@ -149,13 +149,13 @@ class AudioAlertPlayer {
         audio.crossOrigin = 'anonymous';
         audio.preload = 'auto';
         audio.volume = 1;
-        this.current = audio;
+        this.currentAudios.push(audio);
 
         let settled = false;
         const finish = () => {
           if (settled) return;
           settled = true;
-          if (this.current === audio) this.current = null;
+          this.currentAudios = this.currentAudios.filter(a => a !== audio);
           resolve();
         };
 
@@ -178,7 +178,7 @@ class AudioAlertPlayer {
   }
 
   /**
-   * Play the full alert sequence: water sound → voice clip.
+   * Play the full alert sequence: water sound and voice clip simultaneously.
    * Fire-and-forget safe — never throws.
    */
   async playAlert(kind: AlertKind): Promise<void> {
@@ -192,17 +192,13 @@ class AudioAlertPlayer {
     console.log(`🔊 Playing alert sequence for kind: ${kind}`);
     vibrateForKind(kind);
 
-    // 1. Water cue (adjusted to 5s to allow full sound before voice)
-    console.log(`🔊 Playing water sound: ${WATER_SOUND_PATH}`);
-    await this.playClip(WATER_SOUND_PATH, 5000);
-
-    // Tiny gap for clarity between cue and voice
-    await new Promise((r) => setTimeout(r, 80));
-
-    // 2. Voice clip matching the alert kind
     const voicePath = resolveVoicePath(kind, getGender());
-    console.log(`🔊 Playing voice clip: ${voicePath} (Gender: ${getGender()})`);
-    await this.playClip(voicePath, 12000);
+    console.log(`🔊 Playing water sound and voice clip together: ${WATER_SOUND_PATH} & ${voicePath} (Gender: ${getGender()})`);
+
+    await Promise.all([
+      this.playClip(WATER_SOUND_PATH, 550),
+      this.playClip(voicePath, 12000)
+    ]);
   }
 }
 
