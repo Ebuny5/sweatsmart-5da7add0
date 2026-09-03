@@ -261,7 +261,7 @@ let detailText = "";
         : improving
           ? `Severity improving — avg ${Math.abs(sevDrift).toFixed(1)} HDSS pts reduction`
           : `Severity stable — consistent across episodes`,
-      sublabel: `Avg HDSS ${roundedAvgSev} (HDSS 1-4 Scale)`,
+      sublabel: `Avg HDSS ${Math.round(roundedAvgSev)} (HDSS 1-4 Scale)`,
       probability: driftPercent,
       probabilityLabel: worsening
         ? `The escalation is consistent across your last ${Math.min(
@@ -281,7 +281,7 @@ let detailText = "";
         : improving
           ? "bg-green-100 text-green-700"
           : "bg-gray-100 text-gray-600",
-      pillText: worsening ? "↑" : improving ? "↓" : "→",
+      pillText: "Trend",
       detail: detailText,
       action: actionText,
       clinicalNote:
@@ -375,13 +375,11 @@ let detailText = "";
         icon: <Wind className="h-3.5 w-3.5" />,
         rankColor: "bg-sky-400",
         label: isFocal
-          ? `Focal pattern — ${topArea[0]} dominant (${Math.round(
-              (topArea[1] / total) * 100,
-            )}%)`
-          : `Widespread pattern — ${multiPercent}% of episodes affect 3+ areas`,
-        sublabel: `${topArea[0]} appears in ${topArea[1]}/${total} episodes · ${
-          isFocal ? "Focal pattern" : "Systemic trigger likely"
-        }`,
+          ? `Most Affected: ${topArea[0].charAt(0).toUpperCase() + topArea[0].slice(1)}`
+          : `Widespread Pattern`,
+        sublabel: isFocal
+          ? `${topArea[1]}× · appears in ${Math.round((topArea[1] / total) * 100)}% of episodes`
+          : `Affects 3+ areas in ${multiPercent}% of episodes`,
         probability: isFocal ? 100 - multiPercent : multiPercent,
         probabilityLabel: isFocal
           ? `Your sweating is concentrated in specific areas — a typical primary hyperhidrosis pattern`
@@ -415,9 +413,9 @@ let detailText = "";
       icon: <AlertTriangle className="h-3.5 w-3.5" />,
       rankColor: "bg-rose-500",
       label: `${highSevEps.length} high-severity episodes (4–5/5) logged`,
-      sublabel: `${highPercent}% of total · avg HDSS ${(
+      sublabel: `${highPercent}% of total · avg HDSS ${Math.round(
         highSevEps.map(sev).reduce((a, b) => a + b, 0) / highSevEps.length
-      ).toFixed(1)} · prescription threshold reached`,
+      )} · prescription threshold reached`,
       probability: highPercent,
       probabilityLabel: `${highPercent}% of your episodes meet clinical criteria for prescription treatment`,
       bar: "from-rose-400 to-red-500",
@@ -501,9 +499,9 @@ const PersonalizedInsights: React.FC<PersonalizedInsightsProps> = ({
                 {insight.icon}
               </div>
 
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 pr-2">
                 <div className="flex items-center justify-between mb-1 gap-2">
-                  <span className="text-xs font-semibold text-gray-800 truncate flex-1 min-w-0">
+                  <span className="text-[14px] leading-tight font-semibold text-gray-800 break-words whitespace-normal">
                     {insight.label}
                   </span>
                   <span className="text-[10px] text-gray-400 shrink-0 whitespace-nowrap">
