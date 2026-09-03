@@ -1,7 +1,7 @@
 // Professional Service Worker for SweatSmart App - FIXED FOR ANDROID
 // NOW INCLUDES: High-priority push notifications + Android support
 // Version control for cache busting
-const CACHE_VERSION = 'v2.6.0-android-notification-repair';
+const CACHE_VERSION = 'v2.6.1-android-notification-fix';
 const CACHE_NAME = `sweatsmart-${CACHE_VERSION}`;
 
 const OFFLINE_FALLBACK_URL = '/offline.html';
@@ -152,7 +152,7 @@ self.addEventListener('push', (event) => {
           tag: tag,
           data: { url, timestamp: Date.now() },
           // CRITICAL FOR ANDROID:
-          silent: payload.kind === 'missed-checkin',
+          silent: data.kind === 'missed-checkin',
           requireInteraction: true,
           vibrate: [200, 100, 200],
           // ANDROID CHANNEL SUPPORT
@@ -178,13 +178,7 @@ self.addEventListener('push', (event) => {
         const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
         const kind = data.kind || data.type || 'reminder';
         for (const client of clients) {
-          client.postMessage({ type: 'PUSH_RECEIVED', data });
-          if (kind !== 'missed-checkin') {
-            client.postMessage({
-              type: 'PLAY_NOTIFICATION_SOUND',
-              kind,
-            });
-          }
+
           client.postMessage({ type: 'PUSH_RECEIVED', data });
           client.postMessage({
             type: 'PLAY_NOTIFICATION_SOUND',
@@ -200,7 +194,7 @@ self.addEventListener('push', (event) => {
             body: 'You have a new alert',
             icon: '/favicon.ico',
             badge: '/favicon.ico',
-            silent: payload.kind === 'missed-checkin',
+            silent: false,
             requireInteraction: true,
           });
         } catch (e) {
@@ -222,13 +216,7 @@ self.addEventListener('sync', (event) => {
           // Sync pending reminders when connection restored
           const clients = await self.clients.matchAll();
           for (const client of clients) {
-          client.postMessage({ type: 'PUSH_RECEIVED', data });
-          if (kind !== 'missed-checkin') {
-            client.postMessage({
-              type: 'PLAY_NOTIFICATION_SOUND',
-              kind,
-            });
-          }
+
             client.postMessage({
               type: 'SYNC_REMINDERS',
             });
