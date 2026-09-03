@@ -540,34 +540,9 @@ const SpecialistRadar = () => {
         const ds = addr.state || addr.region || addr.province || '';
         const dco = addr.country || '';
         const iso = (addr.country_code || '').toUpperCase();
-        const CONTINENT_MAP: Record<string, string> = {
-          NG:'Africa',GH:'Africa',ZA:'Africa',KE:'Africa',EG:'Africa',TZ:'Africa',
-          ET:'Africa',CM:'Africa',SN:'Africa',CI:'Africa',RW:'Africa',UG:'Africa',
-          MA:'Africa',TN:'Africa',DZ:'Africa',MZ:'Africa',AO:'Africa',CD:'Africa',
-          SD:'Africa',MG:'Africa',ZM:'Africa',ZW:'Africa',BJ:'Africa',BF:'Africa',
-          ML:'Africa',NE:'Africa',TD:'Africa',SO:'Africa',LY:'Africa',ER:'Africa',
-          TG:'Africa',SL:'Africa',GN:'Africa',MW:'Africa',LS:'Africa',
-          BW:'Africa',NA:'Africa',GM:'Africa',GA:'Africa',GQ:'Africa',CG:'Africa',
-          GB:'Europe',DE:'Europe',FR:'Europe',IT:'Europe',ES:'Europe',PT:'Europe',
-          NL:'Europe',BE:'Europe',SE:'Europe',NO:'Europe',DK:'Europe',FI:'Europe',
-          CH:'Europe',AT:'Europe',PL:'Europe',CZ:'Europe',SK:'Europe',HU:'Europe',
-          RO:'Europe',BG:'Europe',GR:'Europe',TR:'Europe',UA:'Europe',RU:'Europe',
-          IE:'Europe',HR:'Europe',RS:'Europe',SI:'Europe',LT:'Europe',LV:'Europe',
-          EE:'Europe',LU:'Europe',MT:'Europe',CY:'Europe',IS:'Europe',AL:'Europe',
-          US:'Americas',CA:'Americas',MX:'Americas',BR:'Americas',AR:'Americas',
-          CL:'Americas',CO:'Americas',PE:'Americas',VE:'Americas',EC:'Americas',
-          BO:'Americas',PY:'Americas',UY:'Americas',GY:'Americas',SR:'Americas',
-          GT:'Americas',HN:'Americas',SV:'Americas',NI:'Americas',CR:'Americas',
-          PA:'Americas',CU:'Americas',DO:'Americas',JM:'Americas',TT:'Americas',
-          CN:'Asia',JP:'Asia',IN:'Asia',KR:'Asia',PK:'Asia',BD:'Asia',TH:'Asia',
-          VN:'Asia',ID:'Asia',PH:'Asia',MY:'Asia',SG:'Asia',MM:'Asia',KH:'Asia',
-          LK:'Asia',NP:'Asia',AE:'Asia',SA:'Asia',IL:'Asia',JO:'Asia',LB:'Asia',
-          IQ:'Asia',IR:'Asia',KW:'Asia',QA:'Asia',BH:'Asia',OM:'Asia',YE:'Asia',
-          KZ:'Asia',UZ:'Asia',GE:'Asia',AM:'Asia',AZ:'Asia',TW:'Asia',HK:'Asia',
-          AU:'Oceania',NZ:'Oceania',FJ:'Oceania',PG:'Oceania',
-        };
         const cont = CONTINENT_MAP[iso] || 'Global';
-        setCity(dc); setState(ds); setCountry(dco); setCountryCode(iso);
+        setCity(dc); setState(ds); setCountry(dco); setCountryCode(iso); setContinent(cont);
+
         localStorage.setItem('ss_last_known_location', JSON.stringify({
           lat, lng, city: dc, state: ds, country: dco, countryCode: iso, continent: cont,
         }));
