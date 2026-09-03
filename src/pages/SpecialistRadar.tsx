@@ -709,7 +709,7 @@ const SpecialistRadar = () => {
           {/* Scope selector */}
           <div className="flex rounded-xl p-0.5 gap-0.5"
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-            {(['city', 'state', 'country'] as ScopeFilter[]).map(s => (
+            {(['state', 'country', 'continent'] as ScopeFilter[]).map(s => (
               <button key={s} onClick={() => setScope(s)}
                 className="flex-1 py-2 rounded-[10px] text-[11px] font-bold capitalize transition-all"
                 style={{
@@ -717,7 +717,7 @@ const SpecialistRadar = () => {
                   color: scope === s ? '#00BCD4' : 'rgba(255,255,255,0.35)',
                   border: scope === s ? '1px solid rgba(0,188,212,0.38)' : '1px solid transparent',
                 }}>
-                {SCOPE_LABELS[s]}
+                {scopeLabel(s, countryCode)}
               </button>
             ))}
           </div>
@@ -781,12 +781,12 @@ const SpecialistRadar = () => {
         <div className="flex-1 overflow-y-auto px-4 pt-4 pb-28">
 
           {showGreeting && !isLoading && meta && (
-            <AIGreeting profile={profile} hdss={hdss} meta={meta} state={meta?.boundary || (scope === 'city' ? city : scope === 'country' ? country : state)} onDismiss={() => setShowGreeting(false)} />
+            <AIGreeting profile={profile} hdss={hdss} meta={meta} state={meta?.boundary || (scope === 'continent' ? continent : scope === 'country' ? country : state)} onDismiss={() => setShowGreeting(false)} />
           )}
 
           {/* Care gap */}
           {!isLoading && meta?.careGap && physical.length === 0 && (
-            <CareGapCard onWiden={() => setScope(scope === 'city' ? 'state' : 'country')} hideWiden={scope === 'country'} />
+            <CareGapCard onWiden={() => setScope(scope === 'state' ? 'country' : 'continent')} hideWiden={scope === 'continent'} />
           )}
 
           {/* Loading */}
