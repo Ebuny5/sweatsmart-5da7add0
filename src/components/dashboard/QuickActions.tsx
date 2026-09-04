@@ -71,7 +71,7 @@ const ClimateCard = ({ onNavigate }: { onNavigate: () => void }) => {
   };
 
   // If we don't have weather data yet, show either error or loading state
-  if (!weather) {
+  if (!weather && error) {
     if (error) {
       return (
         <div className="rounded-2xl bg-gray-50 border border-gray-200 p-4 flex items-center gap-3">
@@ -90,7 +90,9 @@ const ClimateCard = ({ onNavigate }: { onNavigate: () => void }) => {
         </div>
       );
     }
+  }
 
+  if (!weather) {
     return (
       <div className="rounded-2xl bg-white border border-gray-100 p-4 shadow-sm animate-pulse">
         <div className="h-3 w-28 bg-gray-100 rounded mb-3" />
