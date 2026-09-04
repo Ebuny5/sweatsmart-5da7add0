@@ -48,6 +48,34 @@ export function useClimateData(): ClimateSnapshot {
   const [lastUpdated, setLastUpdated]   = useState<number | null>(null);
   const [coords, setCoords]             = useState<GeolocationCoordinates | null>(null);
 
+
+  // ── Helper: apply simulated fallback ──────────────────────────────────────
+  const applySimulatedFallback = useCallback((errorMessage?: string) => {
+    const temp = 25;
+    const hum = 60;
+    const uv = 5;
+
+    const w: WeatherData = {
+      temperature: temp,
+      humidity: hum,
+      uvIndex: uv,
+      sky: 'sunny',
+      heatIndex: 26,
+      dewPoint: 16.7,
+      realFeel: 28.5,
+      isSimulated: true,
+      lastUpdated: Date.now(),
+    };
+    const risk = calculateSweatRisk(temp, hum, uv, 0, false, 'sunny');
+    setWeather(w);
+    setSweatRisk(risk.level);
+    setRiskMessage(risk.message);
+    setRiskDescription(risk.description || (RISK_LABEL[risk.level] ?? ""));
+    setCity("Simulated Location");
+    if (errorMessage) setError(errorMessage); // Keep error for logging but weather is set
+    setLoading(false);
+  }, []);
+
   // ── Helper: get geolocation ───────────────────────────────────────────────
   const getCoords = useCallback(() => {
     if (!navigator.geolocation) {
@@ -71,12 +99,12 @@ export function useClimateData(): ClimateSnapshot {
         } else {
           msg = "Location unavailable — check your connection";
         }
-        setError(msg);
-        setLoading(false);
+        // Fallback to simulated data if location fails
+        applySimulatedFallback(msg);
       },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
     );
-  }, []);
+  }, [applySimulatedFallback]);
 
   // ── Step 1: Initial load ──────────────────────────────────────────────────
   useEffect(() => {
@@ -161,11 +189,11 @@ export function useClimateData(): ClimateSnapshot {
       setRiskDescription(risk.description || (RISK_LABEL[risk.level] ?? ""));
       setLastUpdated(Date.now());
     } catch (err: any) {
-      setError(err.message || "Could not fetch weather data");
+      applySimulatedFallback(err.message || "Could not fetch weather data");
     } finally {
       setLoading(false);
     }
-  }, [coords]);
+  }, [coords, applySimulatedFallback]);
 
   const refresh = useCallback(async (options?: { bypassCache?: boolean }) => {
     if (!coords) {
