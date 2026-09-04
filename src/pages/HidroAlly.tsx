@@ -331,7 +331,6 @@ const HidroAlly = () => {
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const messagesEndRef   = useRef<HTMLDivElement>(null);
-  const recognitionRef   = useRef<SpeechRecognition | null>(null);
   const textareaRef      = useRef<HTMLTextAreaElement>(null);
   const imageInputRef    = useRef<HTMLInputElement>(null);
   const abortRef         = useRef<AbortController | null>(null);
