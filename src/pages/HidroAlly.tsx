@@ -16,6 +16,9 @@ import { useClimateData } from '@/hooks/useClimateData';
 import { edaManager } from '@/utils/edaManager';
 import { speakProfessionally, stopProfessionalSpeech } from '@/utils/webSpeechVoice';
 import { useEngagement } from '@/hooks/useEngagement';
+import { useHidroAllySpeech } from '@/features/hidroally/useHidroAllySpeech';
+import { useHidroAllyDictation } from '@/features/hidroally/useHidroAllyDictation';
+
 
 interface Message {
   role: 'user' | 'assistant';
@@ -310,21 +313,24 @@ const HidroAlly = () => {
   const [pendingImage, setPendingImage]   = useState<string | null>(null);
   const [isLoading, setIsLoading]         = useState(false);
   const [copiedIndex, setCopiedIndex]     = useState<number | null>(null);
-  const [isListening, setIsListening]     = useState(false);
+  const { isListening, toggleListening } = useHidroAllyDictation({
+    onPartial: (text) => setInput(text),
+    onError: (message) => toast.error(message),
+  });
+
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen]     = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(true);
 
   // ── Voice state ───────────────────────────────────────────────────────────
-  const [speakingIndex, setSpeakingIndex]     = useState<number | null>(null);
+  const { speak: speakBubble, speakingIndex } = useHidroAllySpeech();
   const [isRecording, setIsRecording]         = useState(false);
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const [voiceMenuOpen, setVoiceMenuOpen]     = useState(false);
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const messagesEndRef   = useRef<HTMLDivElement>(null);
-  const recognitionRef   = useRef<SpeechRecognition | null>(null);
   const textareaRef      = useRef<HTMLTextAreaElement>(null);
   const imageInputRef    = useRef<HTMLInputElement>(null);
   const abortRef         = useRef<AbortController | null>(null);
@@ -936,28 +942,15 @@ const HidroAlly = () => {
     });
   };
 
-  // ── Speech for message readout ──────────────────────────────────────────────
+  // ── Speech for message readout (Deepgram Aura 2 — HidroAlly only) ──────────
   const speakMessage = useCallback(async (text: string, msgIndex: number) => {
-    if (speakingIndex === msgIndex) {
-      stopElevenLabsAudio();
-      setSpeakingIndex(null);
-      return;
-    }
-
-    stopElevenLabsAudio();
-    setSpeakingIndex(null);
-
     try {
-      setSpeakingIndex(msgIndex);
-      await playElevenLabsAudio(text);
-      setSpeakingIndex(null);
-    } catch (err: unknown) {
-      if (err instanceof Error && err.name === 'AbortError') return;
-      console.error('TTS error:', err);
-      setSpeakingIndex(null);
-      toast.error('Speech is unavailable on this device');
+      await speakBubble(text, msgIndex);
+    } catch {
+      toast.error('Speech is unavailable right now — please try again');
     }
-  }, [speakingIndex, stopElevenLabsAudio]);
+  }, [speakBubble]);
+
 
   // ── Helper: play greeting before recording ─────────────────────────────────
   // Tries ElevenLabs first; falls back to browser speech so recording always starts
@@ -1092,67 +1085,11 @@ const HidroAlly = () => {
     mediaRecorderRef.current?.stop();
   };
 
-  // ── Mic button: real-time voice-to-text via Web Speech API ────────────────
-  // Uses the browser's built-in speech recognition — no API key required.
-  // Words appear live in the text box as you speak.
+  // ── Mic button: AssemblyAI dictation (HidroAlly-scoped hook) ──────────────
   const toggleVoice = () => {
-    if (isListening) {
-      recognitionRef.current?.stop();
-      recognitionRef.current = null;
-      setIsListening(false);
-      return;
-    }
-
-    const SpeechRecognitionAPI =
-      (window as unknown as { SpeechRecognition?: typeof SpeechRecognition; webkitSpeechRecognition?: typeof SpeechRecognition })
-        .SpeechRecognition ||
-      (window as unknown as { SpeechRecognition?: typeof SpeechRecognition; webkitSpeechRecognition?: typeof SpeechRecognition })
-        .webkitSpeechRecognition;
-
-    if (!SpeechRecognitionAPI) {
-      toast.error('Speech recognition is not supported in this browser. Try Chrome or Safari.');
-      return;
-    }
-
-    const recognition = new SpeechRecognitionAPI();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
-
-    let finalTranscript = '';
-
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      let interimTranscript = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const result = event.results[i];
-        if (result.isFinal) {
-          finalTranscript += result[0].transcript;
-        } else {
-          interimTranscript += result[0].transcript;
-        }
-      }
-      // Show final + current interim in the text box live
-      setInput(finalTranscript + interimTranscript);
-    };
-
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      if (event.error !== 'aborted') {
-        console.error('Speech recognition error:', event.error);
-        toast.error('Microphone error — please try again');
-      }
-      setIsListening(false);
-      recognitionRef.current = null;
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-      recognitionRef.current = null;
-    };
-
-    recognitionRef.current = recognition;
-    recognition.start();
-    setIsListening(true);
+    toggleListening();
   };
+
 
   const handleStop = () => {
     abortRef.current?.abort();
