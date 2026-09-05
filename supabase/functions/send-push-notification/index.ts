@@ -35,7 +35,7 @@ function normalizeReminderNotification(notification: any) {
     body: isMissed ? MISSED_REMINDER_BODY : LOG_REMINDER_BODY,
     tag: 'logging-reminder',
     type: 'reminder',
-    kind: 'reminder',
+    kind: isMissed ? 'missed-checkin' : 'reminder',
     url: notification.url || '/log-episode',
   };
 }
@@ -510,6 +510,7 @@ serve(async (req) => {
       const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000;
       const now = Date.now();
       let sent = 0, skipped = 0, failed = 0;
+      const skipReasons = { quietHours: 0, dailyLimit: 0, recentReminder: 0, recentLog: 0 };
 
       for (const sub of subs || []) {
         try {
@@ -525,6 +526,7 @@ serve(async (req) => {
             if (localHour >= 22 || localHour < 6) {
               console.log(`⏭️ Sub ${sub.id}: Skipping reminder due to quiet hours (estimated local hour ${localHour})`);
               skipped++;
+              skipReasons.quietHours++;
               continue;
             }
           }
@@ -533,6 +535,7 @@ serve(async (req) => {
           if (todayCount >= 4) {
             console.log(`⏭️ Sub ${sub.id}: Max today (${todayCount})`);
             skipped++;
+            skipReasons.dailyLimit++;
             continue;
           }
 
@@ -541,6 +544,7 @@ serve(async (req) => {
             if (now - lastSent < EIGHT_HOURS_MS) {
               console.log(`⏭️ Sub ${sub.id}: Sent recently (${Math.round((now - lastSent)/1000/60)}m ago)`);
               skipped++;
+              skipReasons.recentReminder++;
               continue;
             }
           }
@@ -559,6 +563,7 @@ serve(async (req) => {
               if (now - lastLogTime < EIGHT_HOURS_MS) {
                 console.log(`⏭️ Sub ${sub.id}: User logged recently (${Math.round((now - lastLogTime)/1000/60)}m ago)`);
                 skipped++;
+                skipReasons.recentLog++;
                 continue;
               }
             } else {
@@ -598,7 +603,7 @@ serve(async (req) => {
               body: reminderBody,
               tag: 'logging-reminder',
               type: 'reminder',
-              kind: 'reminder',
+              kind: reminderTitle === MISSED_REMINDER_TITLE ? 'missed-checkin' : 'reminder',
               url: '/log-episode',
             },
             vapidPublicKey, vapidPrivateKey, vapidSubject
@@ -624,8 +629,8 @@ serve(async (req) => {
         }
       }
 
-      console.log(`Logging reminders: sent=${sent}, skipped=${skipped}, failed=${failed}`);
-      return new Response(JSON.stringify({ success: true, sent, skipped, failed }), {
+      console.log(`Logging reminders: sent=${sent}, skipped=${skipped}, failed=${failed}`, skipReasons);
+      return new Response(JSON.stringify({ success: true, sent, skipped, failed, skipReasons }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
@@ -710,7 +715,7 @@ serve(async (req) => {
 
           // 15-minute cooldown timer logic for repeated alerts of the exact same tier (prevents spam on fast crons)
           const { data: lastNotif } = await supabase
-             .from('notification_logs')
+             .from('notification_log')
              .select('created_at, notification_type')
              .eq('subscription_id', sub.id)
              .in('notification_type', ['climate_extreme', 'climate_high', 'climate_moderate'])

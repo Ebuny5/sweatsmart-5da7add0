@@ -67,10 +67,11 @@ function isSoundEnabled(): boolean {
 }
 
 function resolveVoicePath(kind: AlertKind, gender: VoiceGender): string {
+  const safeKind: AlertKind = kind in FEMALE_VOICES ? kind : 'reminder';
   if (gender === 'male') {
-    return MALE_VOICES[kind] ?? FEMALE_VOICES[kind];
+    return MALE_VOICES[safeKind] ?? FEMALE_VOICES[safeKind];
   }
-  return FEMALE_VOICES[kind];
+  return FEMALE_VOICES[safeKind];
 }
 
 function vibrateForKind(kind: AlertKind) {
@@ -178,7 +179,7 @@ class AudioAlertPlayer {
   }
 
   /**
-   * Play the full alert sequence: water sound and voice clip simultaneously.
+   * Play the full alert sequence: short water cue, then the matching voice clip.
    * Fire-and-forget safe — never throws.
    */
   async playAlert(kind: AlertKind): Promise<void> {
@@ -193,12 +194,10 @@ class AudioAlertPlayer {
     vibrateForKind(kind);
 
     const voicePath = resolveVoicePath(kind, getGender());
-    console.log(`🔊 Playing water sound and voice clip together: ${WATER_SOUND_PATH} & ${voicePath} (Gender: ${getGender()})`);
+    console.log(`🔊 Playing water cue then voice clip: ${WATER_SOUND_PATH} & ${voicePath} (Gender: ${getGender()})`);
 
-    await Promise.all([
-      this.playClip(WATER_SOUND_PATH, 550),
-      this.playClip(voicePath, 12000)
-    ]);
+    await this.playClip(WATER_SOUND_PATH, 1200);
+    await this.playClip(voicePath, 12000);
   }
 }
 
