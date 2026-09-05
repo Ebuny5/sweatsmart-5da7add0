@@ -250,7 +250,7 @@ const WarriorLaunchpad = () => {
   }, [nonDryEpisodes.length]);
 
   const rawWarriorInsight = useMemo(() => getWarriorInsight(episodes), [episodes]);
-  const isMissedCheckIn = rawWarriorInsight.message.includes("missed your 6-hour check-in");
+  const isMissedCheckIn = rawWarriorInsight.message.includes("missed your 8-hour check-in");
 
   const dynamicInsight = useMemo(() => {
     if (sweatRisk === "extreme") return "⚠️ Extreme sweat risk today — consider rescheduling outdoor plans";

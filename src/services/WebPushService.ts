@@ -482,11 +482,12 @@ class WebPushService {
           action: 'send_to_endpoint',
           endpoint: this.subscription.endpoint,
           notification: {
-            title: '✅ Test Notification',
-            body: "Web Push is working! You'll receive climate alerts even when the app is closed.",
-            tag: 'test-push',
-            type: 'info',
-            url: '/climate',
+            title: '⏰ Time for Your Eight-Hour Check-In',
+            body: "It's time to check-in 🤗",
+            tag: 'logging-reminder-test',
+            type: 'reminder',
+            kind: 'reminder',
+            url: '/log-episode',
           },
         },
       });

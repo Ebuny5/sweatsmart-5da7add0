@@ -186,7 +186,7 @@ const LogEpisode = () => {
         trackAction("episodes_logged");
       }
 
-      // Reschedule the next reminder 6 hours from now
+      // Reschedule the next reminder 8 hours from now
       loggingReminderService.handleLogSaved();
 
       setIsLoadingInsights(true);

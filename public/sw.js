@@ -1,7 +1,7 @@
 // Professional Service Worker for SweatSmart App - FIXED FOR ANDROID
 // NOW INCLUDES: High-priority push notifications + Android support
 // Version control for cache busting
-const CACHE_VERSION = 'v2.6.1-android-notification-fix';
+const CACHE_VERSION = 'v2.6.2-eight-hour-reminder-fix';
 const CACHE_NAME = `sweatsmart-${CACHE_VERSION}`;
 
 const OFFLINE_FALLBACK_URL = '/offline.html';
@@ -21,13 +21,15 @@ function normalizeReminderPayload(payload = {}) {
 
   if (!isLogReminder) return payload;
 
+  const isMissed = body.toLowerCase().includes('missed') || title.toLowerCase().includes('missed') || payload.kind === 'missed-checkin';
+
   return {
     ...payload,
-    title: LOG_REMINDER_TITLE,
-    body: LOG_REMINDER_BODY,
+    title: isMissed ? '⏰ Missed Check-In' : LOG_REMINDER_TITLE,
+    body: isMissed ? 'You missed your 8-hour check-in' : LOG_REMINDER_BODY,
     tag: 'logging-reminder',
     type: 'reminder',
-    kind: 'reminder',
+    kind: isMissed ? 'missed-checkin' : 'reminder',
     url: payload.url || '/log-episode',
   };
 }
@@ -176,14 +178,19 @@ self.addEventListener('push', (event) => {
 
         // Notify open clients for audio playback (only if app is open)
         const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-        const kind = data.kind || data.type || 'reminder';
+        const supportedKinds = ['reminder', 'checkin', 'missed-checkin', 'low', 'moderate', 'high', 'extreme'];
+        const candidateKind = data.kind || data.type || 'reminder';
+        const kind = supportedKinds.includes(candidateKind) ? candidateKind : 'reminder';
         for (const client of clients) {
 
           client.postMessage({ type: 'PUSH_RECEIVED', data });
-          client.postMessage({
-            type: 'PLAY_NOTIFICATION_SOUND',
-            kind,
-          });
+          // A missed check-in is informational; never play the due-now voice for it.
+          if (kind !== 'missed-checkin') {
+            client.postMessage({
+              type: 'PLAY_NOTIFICATION_SOUND',
+              kind,
+            });
+          }
         }
 
       } catch (error) {

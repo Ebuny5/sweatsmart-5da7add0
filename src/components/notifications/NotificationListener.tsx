@@ -28,7 +28,10 @@ const NotificationListener = () => {
     // Listen for Service Worker messages (Background PUSH wake-ups)
     const handleSWMessage = (event: MessageEvent) => {
       if (event.data && event.data.type === 'PLAY_NOTIFICATION_SOUND') {
-        const kind = (event.data.kind || 'reminder') as AlertKind;
+        const supportedKinds: AlertKind[] = ['reminder', 'checkin', 'missed-checkin', 'low', 'moderate', 'high', 'extreme'];
+        const candidate = event.data.kind;
+        const kind: AlertKind = supportedKinds.includes(candidate) ? candidate : 'reminder';
+        if (kind === 'missed-checkin') return;
         console.log(`📱 Background Trigger: Playing voice alert for "${kind}"`);
         audioAlertPlayer.playAlert(kind).catch(err => {
           console.warn('📱 Background audio trigger failed (user interaction required?):', err);
