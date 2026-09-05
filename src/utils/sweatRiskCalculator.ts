@@ -194,15 +194,25 @@ export function calculateSweatRiskV2(input: SweatRiskInput): SweatRiskResult {
   if (finalScore >= 85 || dewPoint >= 24 || (humidity >= 90 && temperature >= 28)) {
     level = 'extreme';
     message = 'Extreme Evaporative Block';
-    description = `Severe ambient humidity (${humidity.toFixed(0)}%) completely blocks sweat evaporation. Immediate cooling and rest required.`;
   } else if (finalScore >= 65 || dewPoint >= 21.5 || (humidity >= 85 && temperature >= 22)) {
     level = 'high';
     message = 'Evaporative Impairment Flare Risk';
-    description = `High ambient humidity (${humidity.toFixed(0)}%) prevents sweat from evaporating naturally. Expect lingering skin moisture and compensatory pooling even at rest.`;
   } else if (finalScore >= 40 || dewPoint >= 18 || humidity >= 75) {
     level = 'moderate';
     message = 'Elevated Moisture Load';
-    description = `Atmospheric moisture slows skin drying. Maintain airflow with fans or light moisture-wicking fabrics.`;
+  }
+
+  const roundedRealFeel = Math.round(realFeel);
+  const uvVal = uvIndex != null && !isNaN(uvIndex) ? uvIndex : 0;
+
+  if (uvVal >= 7 && temperature >= 30 && humidity < 70) {
+    description = `Feels like ${roundedRealFeel}°C due to ${temperature.toFixed(1)}°C heat and intense UV ${uvVal.toFixed(1)}. Seek shade, find cool air, and hydrate.`;
+  } else if (temperature >= 30 && humidity >= 70) {
+    description = `Feels like ${roundedRealFeel}°C under combined high heat and ${humidity.toFixed(0)}% humidity. High risk for severe autonomic sweating; stay in air-conditioned areas.`;
+  } else if (humidity >= 75 && temperature < 30) {
+    description = `Feels like ${roundedRealFeel}°C with heavy ${humidity.toFixed(0)}% humidity slowing natural sweat evaporation. Keep airflow active with fans.`;
+  } else {
+    description = `Feels like ${roundedRealFeel}°C. Moisture and temperature are within optimal baseline thresholds.`;
   }
 
   const triggers: string[] = [];
