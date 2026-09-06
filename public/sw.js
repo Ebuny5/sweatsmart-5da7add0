@@ -1,7 +1,7 @@
 // Professional Service Worker for SweatSmart App - FIXED FOR ANDROID
 // NOW INCLUDES: High-priority push notifications + Android support
 // Version control for cache busting
-const CACHE_VERSION = 'v2.6.2-eight-hour-reminder-fix';
+const CACHE_VERSION = 'v2.7.0-real-notification-text';
 const CACHE_NAME = `sweatsmart-${CACHE_VERSION}`;
 
 const OFFLINE_FALLBACK_URL = '/offline.html';
