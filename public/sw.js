@@ -1,7 +1,7 @@
 // Professional Service Worker for SweatSmart App - FIXED FOR ANDROID
 // NOW INCLUDES: High-priority push notifications + Android support
 // Version control for cache busting
-const CACHE_VERSION = 'v2.6.2-eight-hour-reminder-fix';
+const CACHE_VERSION = 'v2.7.0-real-notification-text';
 const CACHE_NAME = `sweatsmart-${CACHE_VERSION}`;
 
 const OFFLINE_FALLBACK_URL = '/offline.html';
@@ -124,26 +124,45 @@ self.addEventListener('notificationclose', (event) => {
 self.addEventListener('push', (event) => {
   console.log('📱 [SW] Push event received!');
 
+  // Resolve payload OUTSIDE the try so a later failure still shows real text.
+  let data = {};
+  try {
+    if (event.data) {
+      try {
+        data = event.data.json();
+      } catch (e) {
+        data = { title: 'SweatSmart', body: event.data.text() };
+      }
+    }
+  } catch (e) {
+    data = {};
+  }
+
+  data = normalizeReminderPayload(data);
+
+  // If the payload was stripped/empty, fall back to the check-in reminder copy
+  // instead of a meaningless "You have a new alert".
+  if (!data.body) {
+    data = {
+      ...data,
+      title: data.title || LOG_REMINDER_TITLE,
+      body: LOG_REMINDER_BODY,
+      tag: data.tag || 'logging-reminder',
+      type: data.type || 'reminder',
+      kind: data.kind || 'reminder',
+      url: data.url || '/log-episode',
+    };
+  }
+
+  const title = data.title || LOG_REMINDER_TITLE;
+  const tag = data.tag || 'sweatsmart-push';
+  const url = data.url || '/';
+
   event.waitUntil(
     (async () => {
       try {
-        let data = {};
-        if (event.data) {
-          try {
-            data = event.data.json();
-          } catch (e) {
-            data = { title: 'SweatSmart', body: event.data.text() };
-          }
-        }
-
-        data = normalizeReminderPayload(data);
-
-        const title = data.title || 'SweatSmart';
-        const tag = data.tag || 'sweatsmart-push';
-        const url = data.url || '/';
-
         // ANDROID FIX: Set proper notification options and channels
-        const channelId = (data.channel === 'climate' || data.type === 'climate')
+        const channelId = (data.channel === 'climate' || data.type === 'climate' || String(data.tag || '').includes('climate'))
           ? 'climate-alerts'
           : 'check-in-reminders';
 
@@ -195,12 +214,14 @@ self.addEventListener('push', (event) => {
 
       } catch (error) {
         console.error('📱 [SW] Push error:', error);
-        // Fallback: show generic notification even if parsing failed
+        // Fallback still carries the real message text.
         try {
-          await self.registration.showNotification('SweatSmart Alert', {
-            body: 'You have a new alert',
+          await self.registration.showNotification(title, {
+            body: data.body || LOG_REMINDER_BODY,
             icon: '/favicon.ico',
             badge: '/favicon.ico',
+            tag: tag,
+            data: { url },
             silent: false,
             requireInteraction: true,
           });
@@ -211,6 +232,7 @@ self.addEventListener('push', (event) => {
     })()
   );
 });
+
 
 // ============= BACKGROUND SYNC (For offline reminders) =============
 self.addEventListener('sync', (event) => {

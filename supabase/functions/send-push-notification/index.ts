@@ -716,15 +716,16 @@ serve(async (req) => {
           // 15-minute cooldown timer logic for repeated alerts of the exact same tier (prevents spam on fast crons)
           const { data: lastNotif } = await supabase
              .from('notification_log')
-             .select('created_at, notification_type')
+             .select('sent_at, notification_type')
              .eq('subscription_id', sub.id)
              .in('notification_type', ['climate_extreme', 'climate_high', 'climate_moderate'])
-             .order('created_at', { ascending: false })
+             .order('sent_at', { ascending: false })
              .limit(1)
              .maybeSingle();
 
           if (lastNotif) {
-             const lastSentMs = new Date(lastNotif.created_at).getTime();
+             const lastSentMs = new Date(lastNotif.sent_at).getTime();
+
              const nowMs = Date.now();
              const fifteenMinMs = 15 * 60 * 1000;
 
