@@ -6,6 +6,7 @@ import AppLayout from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -15,13 +16,15 @@ import BodyAreaSelector from "@/components/episode/BodyAreaSelector";
 import TriggerSelector from "@/components/episode/TriggerSelector";
 import AIGeneratedInsights from "@/components/episode/AIGeneratedInsights";
 import { SeverityLevel, BodyArea, Trigger } from "@/types";
-import { CalendarIcon, Clock, Loader2, CheckCircle2, LayoutDashboard, History, Plus, Mic, MicOff, Droplets, Square } from "lucide-react";
+import { CalendarIcon, Clock, Loader2, CheckCircle2, LayoutDashboard, History, Plus, Mic, MicOff, Droplets, Square, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useEngagement } from "@/hooks/useEngagement";
 import { useEpisodes } from "@/hooks/useEpisodes";
-import { generateFallbackInsights } from "@/engine/recommendationEngine";
-import { loggingReminderService } from "@/services/LoggingReminderService";
+import { generateFallbackInsights } from "@/components/recommendationEngine";
+import { loggingReminderService, LAST_LOG_TIME_KEY, CURRENT_HDSS_KEY } from "@/services/LoggingReminderService";
 import { useVoiceLogging } from "@/hooks/useVoiceLogging";
+import VoiceVisualizer from "@/components/episode/VoiceVisualizer";
 
 // ── Section wrapper ──────────────────────────────────────────────────────────
 const Section = ({
@@ -59,6 +62,7 @@ const LogEpisode = () => {
   const location = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { trackAction } = useEngagement();
   const { episodes } = useEpisodes();
   const searchParams = new URLSearchParams(location.search);
   const isNow = searchParams.get("now") === "true";
@@ -71,6 +75,7 @@ const LogEpisode = () => {
   const [triggers, setTriggers] = useState<Trigger[]>([]);
   const [notes, setNotes] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isDryDay, setIsDryDay] = useState<boolean>(false);
   const [showInsights, setShowInsights] = useState<boolean>(false);
   const [aiInsights, setAiInsights] = useState<any>(null);
   const [isLoadingInsights, setIsLoadingInsights] = useState<boolean>(false);
@@ -80,7 +85,7 @@ const LogEpisode = () => {
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    const lastLogTime = localStorage.getItem("sweatsmart_last_log_time");
+    const lastLogTime = localStorage.getItem(LAST_LOG_TIME_KEY);
     if (lastLogTime) {
       setLastLoggedDisplay(format(new Date(parseInt(lastLogTime)), "MMM d, h:mm a"));
     } else {
@@ -104,10 +109,11 @@ const LogEpisode = () => {
   }, [episodes]);
 
   // ── All original logic ─────────────────────────────────────────────────────
-  const handleSubmit = useCallback(async (e?: React.FormEvent, manualNotes?: string, manualBodyAreas?: BodyArea[], manualTriggers?: Trigger[]) => {
+  const handleSubmit = useCallback(async (e?: React.FormEvent, manualNotes?: string, manualBodyAreas?: BodyArea[], manualTriggers?: Trigger[], manualSeverity?: SeverityLevel) => {
     if (e) e.preventDefault();
-    const finalBodyAreas = manualBodyAreas ?? bodyAreas;
-    const finalTriggers = manualTriggers ?? triggers;
+    const finalBodyAreas = isDryDay ? [] : (manualBodyAreas ?? bodyAreas);
+    const finalTriggers = isDryDay ? [] : (manualTriggers ?? triggers);
+    const finalSeverity = isDryDay ? (1 as SeverityLevel) : (manualSeverity ?? severity);
 
     if (!user) {
       toast({ title: "Authentication required", description: "Please log in to save episodes.", variant: "destructive" });
@@ -118,16 +124,15 @@ const LogEpisode = () => {
       toast({ title: "Date required", description: "Please select a date for the episode.", variant: "destructive" });
       return;
     }
-    if (finalBodyAreas.length === 0) {
-      toast({ title: "Body areas required", description: "Please select at least one affected body area.", variant: "destructive" });
-
-      // If this was an auto-save attempt, give voice feedback
-      if (manualNotes !== undefined) {
-        const utterance = new SpeechSynthesisUtterance("I couldn't identify the affected body area. Please select it manually or try describing it again.");
-        window.speechSynthesis.speak(utterance);
+    if (!isDryDay && finalBodyAreas.length === 0) {
+      if (manualNotes === undefined) {
+        toast({ title: "Body areas required", description: "Please select at least one affected body area.", variant: "destructive" });
+        return;
       }
-      return;
+
+      console.warn('[voice] saving transcript-only episode with no body areas detected. Transcript:', manualNotes);
     }
+
 
     setIsSubmitting(true);
 
@@ -135,7 +140,10 @@ const LogEpisode = () => {
     const datetime = new Date(date);
     datetime.setHours(hours, minutes);
 
-    const finalNotes = manualNotes !== undefined ? manualNotes : notes;
+    const baseNotes = manualNotes !== undefined ? manualNotes : notes;
+    const finalNotes = isDryDay
+      ? (baseNotes?.trim() ? `Dry day / treatment — ${baseNotes.trim()}` : "Dry day / treatment logged")
+      : baseNotes;
 
     try {
       const triggerStrings = finalTriggers.map((trigger) =>
@@ -144,45 +152,78 @@ const LogEpisode = () => {
 
       const { data, error } = await supabase.from("episodes").insert({
         user_id: user.id,
-        severity: severity,
+        severity: finalSeverity,
         body_areas: finalBodyAreas,
         triggers: triggerStrings,
         notes: finalNotes || null,
         date: datetime.toISOString(),
+        is_dry_day: isDryDay,
       }).select();
+
 
       if (error) throw error;
 
       if (data && data[0]) {
         setLastSavedEpisodeId(data[0].id);
+        localStorage.setItem(CURRENT_HDSS_KEY, finalSeverity.toString());
+        // Keep local storage in sync
+        const existingLogsStr = localStorage.getItem("sweatSmartLogs");
+        const existingLogs = existingLogsStr ? JSON.parse(existingLogsStr) : [];
+        const newLog = {
+          id: data[0].id,
+          datetime: datetime.toISOString(),
+          severityLevel: finalSeverity,
+          is_dry_day: isDryDay,
+          hdssLevel: finalSeverity
+        };
+        localStorage.setItem("sweatSmartLogs", JSON.stringify([newLog, ...existingLogs]));
       }
 
-      // Reschedule the next reminder 6 hours from now
+      // Track actions based on log type
+      if (isDryDay) {
+        trackAction("dry_mode_entries");
+      } else {
+        trackAction("episodes_logged");
+      }
+
+      // Reschedule the next reminder 8 hours from now
       loggingReminderService.handleLogSaved();
 
-      toast({ title: "Episode logged successfully", description: "Generating your personalised insights..." });
-
-      // Generate insights using the deterministic recommendation engine
       setIsLoadingInsights(true);
       try {
-        const triggerData = finalTriggers.map(t => ({
+        const triggerData = (finalTriggers || []).map(t => ({
           type: t.type,
           value: t.value,
           label: t.label,
         }));
 
+        // Include the newly logged episode in the episodes list for real-time calculations
+        const newEpisodeForStreak = {
+          id: data?.[0]?.id || 'temp',
+          datetime: datetime.toISOString(),
+          severityLevel: finalSeverity,
+          is_dry_day: isDryDay,
+          hdssLevel: finalSeverity
+        };
+
+        const fullEpisodesList = [newEpisodeForStreak, ...(episodes || [])];
+
         const insights = generateFallbackInsights(
-          severity,
+          finalSeverity,
           finalBodyAreas,
           triggerData,
           finalNotes,
+          undefined,
+          isDryDay,
+          fullEpisodesList
         );
 
         setAiInsights(insights);
-        toast({
-          title: "Insights ready",
-          description: "Your personalised insights are below.",
-        });
+        toast(
+          isDryDay
+            ? { title: "Dry day logged! ✨", description: "Nice work — no sweating today." }
+            : { title: "Episode logged 🎉", description: "Your personalised insights are below." }
+        );
       } catch (insightError) {
         console.error("Insight generation error:", insightError);
         toast({
@@ -199,7 +240,7 @@ const LogEpisode = () => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [user, date, time, severity, bodyAreas, triggers, notes, navigate, toast]);
+  }, [user, date, time, severity, bodyAreas, triggers, notes, isDryDay, navigate, toast]);
 
   const handleUndo = async () => {
     if (!lastSavedEpisodeId) return;
@@ -220,6 +261,11 @@ const LogEpisode = () => {
       setLastSavedEpisodeId(null);
       setShowInsights(false);
       setAiInsights(null);
+
+      // Also clean up local storage if we just undid the log
+      const existingLogsStr = localStorage.getItem('sweatSmartLogs');
+      const existingLogs = existingLogsStr ? JSON.parse(existingLogsStr) : [];
+      localStorage.setItem('sweatSmartLogs', JSON.stringify(existingLogs.filter((log: any) => log.id !== lastSavedEpisodeId)));
     } catch (error) {
       console.error("Undo failed:", error);
       toast({
@@ -237,22 +283,34 @@ const LogEpisode = () => {
     startListening,
     stopListening,
     transcript,
+    volume,
   } = useVoiceLogging({
-    onAnalysisComplete: async (detectedAreas, detectedTriggers, transcriptText) => {
+    onAnalysisComplete: async (detectedAreas, detectedTriggers, transcriptText, extractedSeverity) => {
       setBodyAreas(detectedAreas);
       setTriggers(detectedTriggers);
       setNotes(transcriptText);
 
-      // Save directly with currently selected severity
-      await handleSubmit(undefined, transcriptText, detectedAreas, detectedTriggers);
+      const finalSeverity = extractedSeverity ? (extractedSeverity as SeverityLevel) : severity;
+      if (extractedSeverity) {
+        setSeverity(finalSeverity);
+      }
+
+      // Save directly with updated severity
+      await handleSubmit(
+        undefined,
+        transcriptText,
+        detectedAreas,
+        detectedTriggers,
+        finalSeverity
+      );
     }
   });
 
   const voiceUIStatus = {
     LISTENING: { label: "LISTENING", hint: "Speak naturally about your episode" },
-    CONFIRMING: { label: "CONFIRMING", hint: "Is that all?" },
+    CONFIRMING: { label: "CONFIRMING", hint: "Got it, anything else?" },
     REASONING: { label: "REASONING", hint: "Analysing your episode" },
-    SAVING: { label: "SAVING", hint: "Generating your episode" },
+    SAVING: { label: "SAVING", hint: "Saving your episode" },
   }[voiceStatus as string] || { label: "Voice log", hint: "Tap and speak naturally" };
 
   // ── Success / Insights screen ──────────────────────────────────────────────
@@ -260,17 +318,7 @@ const LogEpisode = () => {
     return (
       <AppLayout>
         <div className="min-h-screen bg-[#EE82EE]">
-          <div className="max-w-lg mx-auto pb-10">
-            {/* Success hero */}
-            <div className="bg-gradient-to-br from-green-400 via-emerald-400 to-teal-400 px-6 pt-10 pb-12 rounded-b-[2.5rem] shadow-lg shadow-green-100 text-center mb-6">
-            <div className="w-16 h-16 rounded-full bg-white/30 flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
-              <CheckCircle2 className="h-9 w-9 text-white" />
-            </div>
-            <h1 className="text-white text-2xl font-black tracking-tight">Episode Logged! 🎉</h1>
-            <p className="text-green-100 text-sm mt-1">Your data helps build a better understanding of your triggers</p>
-          </div>
-
-          <div className="px-4 space-y-4">
+          <div className="max-w-lg mx-auto py-6 px-4 space-y-4">
             {isLoadingInsights ? (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 flex flex-col items-center gap-4">
                 <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
@@ -307,6 +355,7 @@ const LogEpisode = () => {
                     setBodyAreas([]);
                     setTriggers([]);
                     setNotes("");
+                    setIsDryDay(false);
                     setShowInsights(false);
                     setAiInsights(null);
                   }}
@@ -326,7 +375,6 @@ const LogEpisode = () => {
             </div>
           </div>
         </div>
-      </div>
       </AppLayout>
     );
   }
@@ -342,7 +390,7 @@ const LogEpisode = () => {
           <div className="flex items-start justify-between mb-2">
             <div>
               <p className="text-blue-100 text-xs font-semibold uppercase tracking-widest mb-1">
-                SweatSmart
+                HidroAlly
               </p>
               <h1 className="text-white text-2xl font-black tracking-tight leading-tight">
                 Log Sweating<br />Episode 💧
@@ -443,6 +491,24 @@ const LogEpisode = () => {
               </div>
             </Section>
 
+            {/* Dry Day Toggle */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4 p-5 flex items-center justify-between">
+              <div>
+                <Label htmlFor="dry-day-toggle" className="text-base font-bold text-gray-800 flex items-center gap-2">
+                  <span className="text-xl">✨</span> Dry Day / Treatment
+                </Label>
+                <p className="text-xs text-gray-500 mt-1">Track days with no sweating or treatment days</p>
+              </div>
+              <Switch
+                id="dry-day-toggle"
+                checked={isDryDay}
+                onCheckedChange={setIsDryDay}
+                className="data-[state=checked]:bg-green-500"
+              />
+            </div>
+
+            {!isDryDay && (
+              <>
             {/* Symptom Details */}
             <Section emoji="🩺" title="Symptom Details" subtitle="How would you describe this episode?">
               <div className="space-y-6">
@@ -482,14 +548,19 @@ const LogEpisode = () => {
                 onTriggersChange={setTriggers}
               />
             </Section>
+              </>
+            )}
 
             {/* Action buttons */}
             <div className="flex flex-col gap-3 pt-2 pb-6 px-4">
               <div className="flex items-center gap-3">
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="flex-[2] py-3.5 rounded-xl bg-[#4B0082] hover:opacity-90 disabled:opacity-60 text-white font-bold transition-all shadow-md text-sm flex items-center justify-center gap-2"
+                  disabled={isSubmitting || (severity === null && !isDryDay)}
+                  className={cn(
+                    "flex-[2] py-3.5 rounded-xl bg-[#4B0082] hover:opacity-90 disabled:opacity-60 text-white font-bold transition-all shadow-md text-sm flex items-center justify-center gap-2",
+                    severity === null && !isDryDay && "opacity-50 cursor-not-allowed"
+                  )}
                 >
                   {isSubmitting ? (
                     <>
@@ -531,6 +602,8 @@ const LogEpisode = () => {
               <p className="text-xs text-gray-600 italic line-clamp-3">
                 {voiceUIStatus.hint}
               </p>
+              <VoiceVisualizer volume={volume} isListening={voiceStatus === 'LISTENING'} />
+
               {['LISTENING', 'CONFIRMING', 'REASONING', 'SAVING'].includes(voiceStatus || '') && transcript && (
                 <p className="text-[10px] text-blue-400 mt-2 line-clamp-2 italic border-t border-blue-100 pt-1">
                   "{transcript}"

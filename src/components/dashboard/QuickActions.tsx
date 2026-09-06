@@ -1,12 +1,29 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { useEpisodes } from "@/hooks/useEpisodes";
 import { useClimateData } from "@/hooks/useClimateData";
-import { Thermometer, Droplets, Sun, Wind, RefreshCw, ChevronRight, AlertTriangle } from "lucide-react";
+import { gaugeHDSS } from "@/utils/hdssGauger";
+import { CURRENT_HDSS_KEY, LAST_LOG_TIME_KEY } from "@/services/LoggingReminderService";
+import { Thermometer, Droplets, Sun, Wind, RefreshCw, ChevronRight, AlertTriangle, Shield, Loader2, Activity, Heart } from "lucide-react";
 import WarriorBadge from "@/components/dashboard/WarriorBadge";
+import { edaManager } from "@/utils/edaManager";
 import { getWarriorInsight } from "@/utils/warriorLogic";
+import { useEngagement } from "@/hooks/useEngagement";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import SeveritySelector from "@/components/episode/SeveritySelector";
+import { SeverityLevel } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -40,6 +57,8 @@ const COMMUNITY_TIPS = [
 const ClimateCard = ({ onNavigate }: { onNavigate: () => void }) => {
   const { weather, sweatRisk, riskDescription, city, loading, error, lastUpdated, refresh } =
     useClimateData();
+  const { episodes } = useEpisodes();
+  const navigate = useNavigate();
 
   const cfg = RISK_CONFIG[sweatRisk ?? "moderate"];
 
@@ -51,7 +70,29 @@ const ClimateCard = ({ onNavigate }: { onNavigate: () => void }) => {
     return `${Math.floor(diff / 3600)}h ago`;
   };
 
-  if (loading) {
+  // If we don't have weather data yet, show either error or loading state
+  if (!weather && error) {
+    if (error) {
+      return (
+        <div className="rounded-2xl bg-gray-50 border border-gray-200 p-4 flex items-center gap-3">
+          <AlertTriangle className="h-5 w-5 text-gray-400 shrink-0" />
+          <div className="flex-1">
+            <p className="text-xs font-semibold text-gray-600">Climate unavailable</p>
+            <p className="text-[10px] text-gray-400">{error || "Enable location for real-time sweat risk"}</p>
+          </div>
+          <button
+            onClick={() => { refresh(); }}
+            disabled={loading}
+            className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition-all disabled:opacity-50"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      );
+    }
+  }
+
+  if (!weather) {
     return (
       <div className="rounded-2xl bg-white border border-gray-100 p-4 shadow-sm animate-pulse">
         <div className="h-3 w-28 bg-gray-100 rounded mb-3" />
@@ -63,23 +104,17 @@ const ClimateCard = ({ onNavigate }: { onNavigate: () => void }) => {
     );
   }
 
-  if (error || !weather) {
-    return (
-      <div className="rounded-2xl bg-gray-50 border border-gray-200 p-4 flex items-center gap-3">
-        <AlertTriangle className="h-5 w-5 text-gray-400 shrink-0" />
-        <div className="flex-1">
-          <p className="text-xs font-semibold text-gray-600">Climate unavailable</p>
-          <p className="text-[10px] text-gray-400">{error || "Enable location for real-time sweat risk"}</p>
-        </div>
-        <button onClick={() => { refresh(); }} className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition-all">
-          <RefreshCw className="h-3.5 w-3.5 text-gray-500" />
-        </button>
-      </div>
-    );
-  }
-
   const safeUV    = Math.min(11, weather.uvIndex);
-  const windSpeed = (weather as any).windSpeed ?? (weather as any).wind_speed ?? null;
+
+  // Gauged HDSS Logic
+  const localLogsJson = localStorage.getItem('sweatSmartLogs');
+  const localLogs = localLogsJson ? JSON.parse(localLogsJson) : [];
+
+  // Use the gager utility
+  const gauged = gaugeHDSS(localLogs, episodes, weather);
+
+  const lastLogTime = parseInt(localStorage.getItem('sweatsmart_last_log_time') || '0', 10);
+  const isStale = Date.now() - lastLogTime > 4 * 60 * 60 * 1000;
 
   return (
     <div className={`rounded-2xl border ${cfg.bg} ${cfg.border} p-4 shadow-sm`}>
@@ -97,11 +132,12 @@ const ClimateCard = ({ onNavigate }: { onNavigate: () => void }) => {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={refresh}
-            className={`p-2 rounded-xl ${cfg.badge} hover:opacity-80 transition-all`}
+            onClick={() => { void refresh({ bypassCache: true }); }}
+            disabled={loading}
+            className={`p-2 rounded-xl ${cfg.badge} hover:opacity-80 transition-all disabled:opacity-50`}
             title="Refresh"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${cfg.text}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${cfg.text} ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
@@ -112,13 +148,24 @@ const ClimateCard = ({ onNavigate }: { onNavigate: () => void }) => {
           { Icon: Thermometer, value: `${weather.temperature.toFixed(1)}°C`, label: "Temperature", color: "text-orange-500" },
           { Icon: Droplets,    value: `${weather.humidity.toFixed(0)}%`,      label: "Humidity",    color: "text-blue-500"   },
           { Icon: Sun,         value: `UV ${safeUV.toFixed(1)}`,              label: "UV Index",    color: "text-amber-500"  },
-          { Icon: Wind,        value: windSpeed != null ? `${windSpeed} km/h` : "—", label: "Wind Speed", color: "text-teal-500" },
-        ].map(({ Icon, value, label, color }) => (
-          <div key={label} className="bg-white/70 rounded-xl p-2.5 flex items-center gap-2">
+          {
+            Icon: Shield,
+            value: `HDSS ${gauged.level}`,
+            label: gauged.status,
+            color: isStale ? "text-red-500" : "text-indigo-600",
+            onClick: () => navigate("/log-episode"),
+            className: "cursor-pointer hover:bg-white/90 transition-colors animate-pulse"
+          },
+        ].map(({ Icon, value, label, color, onClick, className }) => (
+          <div
+            key={label}
+            onClick={onClick}
+            className={`bg-white/70 rounded-xl p-2.5 flex items-center gap-2 ${className || ""}`}
+          >
             <Icon className={`h-4 w-4 ${color} shrink-0`} />
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-black text-gray-800 leading-none">{value}</p>
-              <p className="text-[10px] text-gray-400 leading-tight">{label}</p>
+              <p className="text-[10px] text-gray-400 leading-tight truncate">{label}</p>
             </div>
           </div>
         ))}
@@ -148,10 +195,39 @@ const WarriorLaunchpad = () => {
   const navigate    = useNavigate();
   const { user }    = useAuth();
   const { profile } = useProfile();
-  const { episodes } = useEpisodes();
+  const { episodes, refetch: refetchEpisodes } = useEpisodes();
   const { sweatRisk } = useClimateData();
+  const { consistencyPercentage: trackingConsistencyPercentage, trackAction } = useEngagement();
+
+  useEffect(() => {
+    trackAction("app_opens");
+  }, [trackAction]);
+
+  // Wearable EDA data for Dashboard
+  const [edaData, setEdaData] = useState<{ value: number; hr?: number; source: "wearable" | "simulator" } | null>(null);
+
+  useEffect(() => {
+    const fetchEda = () => {
+      const stored = edaManager.getEDA();
+      if (stored && edaManager.isFresh()) {
+        setEdaData({ value: stored.value, hr: stored.hr, source: stored.source });
+      } else {
+        // Fallback to simulator resting range if missing or stale
+        const simEda = (Math.random() * (5.0 - 2.0) + 2.0).toFixed(1);
+        const simHr = Math.floor(Math.random() * (72 - 60 + 1)) + 60;
+        setEdaData({ value: parseFloat(simEda), hr: simHr, source: "simulator" });
+      }
+    };
+
+    fetchEda();
+    const interval = setInterval(fetchEda, 3000); // refresh every 3 seconds
+    return () => clearInterval(interval);
+  }, []);
 
   const [tipIndex] = useState(() => Math.floor(Math.random() * COMMUNITY_TIPS.length));
+  const [quickLogOpen, setQuickLogOpen] = useState(false);
+  const [quickHDSS, setQuickHDSS] = useState<SeverityLevel | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const displayName = profile?.display_name || user?.email?.split("@")[0] || "Warrior";
   const firstName   = displayName.split(" ")[0];
@@ -160,26 +236,123 @@ const WarriorLaunchpad = () => {
     weekday: "long", day: "numeric", month: "long",
   });
 
+  const nonDryEpisodes = useMemo(() => episodes.filter(e => !e.is_dry_day), [episodes]);
+  const [showWarriorModal, setShowWarriorModal] = useState(false);
+
+  useEffect(() => {
+    if (nonDryEpisodes.length === 1) {
+      const hasSeen = localStorage.getItem("has_seen_first_episode_badge");
+      if (!hasSeen) {
+        setShowWarriorModal(true);
+        localStorage.setItem("has_seen_first_episode_badge", "true");
+      }
+    }
+  }, [nonDryEpisodes.length]);
+
+  const rawWarriorInsight = useMemo(() => getWarriorInsight(episodes), [episodes]);
+  const isMissedCheckIn = rawWarriorInsight.message.includes("missed your 8-hour check-in");
+
   const dynamicInsight = useMemo(() => {
     if (sweatRisk === "extreme") return "⚠️ Extreme sweat risk today — consider rescheduling outdoor plans";
     if (sweatRisk === "high") return "🌡️ High humidity today — carry cooling wipes and stay hydrated";
-    return getWarriorInsight(episodes).message;
-  }, [sweatRisk, episodes]);
+    return isMissedCheckIn ? "Check out your insights & recommendations today" : rawWarriorInsight.message;
+  }, [sweatRisk, isMissedCheckIn, rawWarriorInsight.message]);
 
   const tip = COMMUNITY_TIPS[tipIndex];
+
+  const handleQuickSave = async () => {
+    if (!user || quickHDSS === null) return;
+    setIsSaving(true);
+    try {
+      const now = new Date();
+      const isoDate = now.toISOString();
+
+      const { data, error: supabaseError } = await supabase
+        .from('episodes')
+        .insert({
+          user_id: user.id,
+          date: isoDate,
+          severity: quickHDSS,
+          body_areas: [], // HDSS-only capture, no default body areas
+          triggers: [],
+          notes: "Quick HDSS Capture"
+        })
+        .select()
+        .single();
+
+      if (supabaseError) throw supabaseError;
+
+      // Update local storage for immediate UI sync (HDSS gager etc)
+      const existingLogsStr = localStorage.getItem('sweatSmartLogs');
+      const existingLogs = existingLogsStr ? JSON.parse(existingLogsStr) : [];
+      const newLog = {
+        id: data.id,
+        datetime: isoDate,
+        severityLevel: quickHDSS,
+        hdssLevel: quickHDSS,
+        bodyAreas: [],
+        triggers: [],
+        notes: "Quick HDSS Capture"
+      };
+      localStorage.setItem('sweatSmartLogs', JSON.stringify([newLog, ...existingLogs]));
+      localStorage.setItem(LAST_LOG_TIME_KEY, Date.now().toString());
+      localStorage.setItem(CURRENT_HDSS_KEY, quickHDSS.toString());
+
+      toast.success("HDSS Level logged successfully!");
+      setQuickLogOpen(false);
+      refetchEpisodes();
+    } catch (error) {
+      console.error("Error saving quick log:", error);
+      toast.error("Failed to save log. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="min-h-screen pb-24" style={{ backgroundColor: "#f5f4f7" }}>
 
       {/* ── HERO GREETING ───────────────────────────────────────────── */}
       <div className="px-6 pt-8 pb-16 rounded-b-[2.5rem] shadow-lg shadow-purple-200" style={{ backgroundColor: "#7c3aed" }}>
-        <p className="text-purple-200 text-xs font-semibold uppercase tracking-widest mb-1">
-          SweatSmart {greeting.emoji}
-        </p>
         <h1 className="text-white text-2xl font-black tracking-tight leading-tight">
           {greeting.text}, {firstName}!
         </h1>
         <p className="text-purple-100 text-xs mt-1">{today}</p>
+
+        {/* ── STATS CARDS ──────────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 gap-2 mt-5">
+          {/* Card 1: Episodes Logged */}
+          <div className="bg-purple-50 rounded-2xl p-3 flex flex-col items-center justify-center gap-1 shadow-sm border border-purple-100">
+            <span className="text-lg">📋</span>
+            <span className="text-2xl font-black text-purple-700 leading-none">{episodes.filter(e => !e.is_dry_day).length}</span>
+            <span className="text-[9px] font-bold text-purple-600/80 text-center uppercase tracking-wide">Episodes</span>
+          </div>
+
+          {/* Card 2: Tracking Consistency */}
+          <div className="bg-teal-50 rounded-2xl p-3 flex flex-col items-center justify-center gap-1 shadow-sm border border-teal-100">
+            <span className="text-lg">🗓️</span>
+            <span className="text-2xl font-black text-teal-700 leading-none">{trackingConsistencyPercentage}%</span>
+            <span className="text-[9px] font-bold text-teal-600/80 text-center uppercase tracking-wide">Consistency</span>
+          </div>
+
+          {/* Card 3: EDA (Skin Conductance) */}
+          <div className="bg-orange-50 rounded-2xl p-3 flex flex-col items-center justify-center gap-1 shadow-sm border border-orange-100">
+            <img src="/eda-icon.webp" alt="EDA Icon" className="h-8 w-8 mb-0.5 animate-pulse object-contain" />
+            <span className="text-2xl font-black text-orange-700 leading-none">
+              {edaData ? edaData.value.toFixed(1) : "—"}
+            </span>
+            <span className="text-[9px] font-bold text-orange-600/80 text-center uppercase tracking-wide">EDA (µS)</span>
+          </div>
+
+          {/* Card 4: Heart Rate */}
+          <div className="bg-rose-50 rounded-2xl p-3 flex flex-col items-center justify-center gap-1 shadow-sm border border-rose-100">
+            <div className="text-2xl mb-0.5 animate-pulse">🫀</div>
+            <span className="text-2xl font-black text-rose-700 leading-none">
+              {edaData?.hr || "—"}
+            </span>
+            <span className="text-[9px] font-bold text-rose-600/80 text-center uppercase tracking-wide">Heart Rate</span>
+          </div>
+        </div>
 
         {/* Warrior Status Banner */}
         <div className="mt-4 bg-white/15 backdrop-blur-sm rounded-2xl px-4 py-3 border border-white/20">
@@ -234,11 +407,23 @@ const WarriorLaunchpad = () => {
 
           {/* 2×2 grid */}
           <div className="grid grid-cols-2 gap-3 mb-3">
+            <button
+              onClick={() => setQuickLogOpen(true)}
+              className="bg-gradient-to-br from-cyan-400 to-teal-500 rounded-2xl p-4 flex flex-col items-start gap-2 shadow-md shadow-teal-200 hover:shadow-lg hover:scale-[1.02] transition-all text-left min-h-[100px]"
+            >
+              <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl shadow-inner">
+                ⚡
+              </div>
+              <div>
+                <p className="text-white font-black text-xs leading-tight">Quick Capture</p>
+                <p className="text-white/70 text-[10px] leading-tight mt-0.5">log your HDSS level</p>
+              </div>
+            </button>
+
             {[
-              { emoji: "⚡", title: "Quick Capture",    subtitle: "Log this moment now",      gradient: "from-cyan-400 to-teal-500",    shadow: "shadow-teal-200",   path: "/log-episode?now=true" },
               { emoji: "🗺️", title: "My Sweat Journey", subtitle: "Full episode history",    gradient: "from-pink-400 to-rose-500",    shadow: "shadow-pink-200",   path: "/history"             },
               { emoji: "🔬", title: "Growth Radar",     subtitle: "Insights & treatment",   gradient: "from-amber-400 to-orange-500", shadow: "shadow-amber-200",  path: "/insights"            },
-              { emoji: "🤖", title: "HidroAlly",         subtitle: "Your 24/7 companion",    gradient: "from-indigo-400 to-violet-500",shadow: "shadow-indigo-200", path: "/hyper-ai"            },
+              { emoji: "🤖", title: "HidroAlly",         subtitle: "Your 24/7 companion",    gradient: "from-indigo-400 to-violet-500",shadow: "shadow-indigo-200", path: "/hidro-ally"            },
             ].map(({ emoji, title, subtitle, gradient, shadow, path }) => (
               <button
                 key={path}
@@ -256,18 +441,6 @@ const WarriorLaunchpad = () => {
             ))}
           </div>
 
-          {/* Climate full-page CTA */}
-          <button
-            onClick={() => navigate("/climate")}
-            className="w-full bg-gradient-to-r from-sky-400 to-blue-500 rounded-2xl p-4 flex items-center gap-3 shadow-md shadow-sky-200 hover:shadow-lg transition-all text-left"
-          >
-            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-2xl shrink-0">🌡️</div>
-            <div className="flex-1">
-              <p className="text-white font-black text-xs">Full Climate Alert Centre</p>
-              <p className="text-sky-100 text-[10px] mt-0.5">Push notifications · EDA · Thresholds · Log reminders</p>
-            </div>
-            <ChevronRight className="h-4 w-4 text-white/60 shrink-0" />
-          </button>
         </div>
 
         {/* Community snippet */}
@@ -278,6 +451,19 @@ const WarriorLaunchpad = () => {
               Join <ChevronRight className="h-3 w-3" />
             </button>
           </div>
+
+          {isMissedCheckIn && (
+            <div className="mb-3 bg-amber-50 rounded-2xl border border-amber-200 p-4 flex items-start gap-3 shadow-sm text-left">
+              <div className="text-xl shrink-0">⏰</div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-amber-900 leading-snug">{rawWarriorInsight.message}</p>
+                <button onClick={() => navigate("/log-episode")} className="text-[10px] text-amber-700 mt-1 font-bold underline hover:text-amber-800 transition-colors">
+                  Log now →
+                </button>
+              </div>
+            </div>
+          )}
+
           <button
             onClick={() => navigate("/community")}
             className="w-full bg-white rounded-2xl border border-purple-100 p-4 flex items-start gap-3 shadow-sm hover:shadow-md transition-all text-left"
@@ -300,18 +486,75 @@ const WarriorLaunchpad = () => {
         </div>
 
 
-        {/* ── WARRIOR BADGE ─────────────────────────────────────────── */}
-        <div>
-          <div className="px-1 mb-3">
-            <p className="text-xs font-black text-gray-600 uppercase tracking-wide">🏅 Your Warrior Badge</p>
-            <p className="text-[10px] text-gray-400 mt-0.5">Download &amp; share your journey on social media</p>
-          </div>
-          <WarriorBadge
-            userName={displayName}
-            episodeCount={episodes.length}
-            episodes={episodes.map(e => ({ datetime: e.datetime }))}
-          />
-        </div>
+        {/* ── QUICK LOG MODAL ─────────────────────────────────────────── */}
+        <Dialog open={quickLogOpen} onOpenChange={setQuickLogOpen}>
+          <DialogContent className="max-w-[90vw] sm:max-w-md rounded-3xl p-6 max-h-[85vh] overflow-y-auto flex flex-col">
+            <DialogHeader className="shrink-0">
+              <DialogTitle className="text-xl font-black text-gray-800">Quick HDSS Log</DialogTitle>
+              <DialogDescription className="text-sm text-gray-500">
+                Log your current sweating severity level immediately.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="py-4 flex-1 overflow-y-auto">
+              <SeveritySelector
+                value={quickHDSS}
+                onChange={setQuickHDSS}
+              />
+            </div>
+
+            <DialogFooter className="flex flex-col gap-2 sm:flex-row shrink-0 mt-4">
+              <Button
+                variant="outline"
+                onClick={() => setQuickLogOpen(false)}
+                className="rounded-xl font-bold border-gray-200"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleQuickSave}
+                disabled={isSaving || quickHDSS === null}
+                className="rounded-xl font-black bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-200"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Log Severity Now"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── WARRIOR BADGE (EVENT TRIGGERED) ────────────────────────── */}
+        <Dialog open={showWarriorModal} onOpenChange={setShowWarriorModal}>
+          <DialogContent className="max-w-[90vw] sm:max-w-md rounded-3xl p-6 flex flex-col gap-4">
+            <DialogHeader className="text-center">
+              <DialogTitle className="text-xl font-black text-gray-800 text-center">
+                Congratulations! You've logged your first episode 🎉
+              </DialogTitle>
+            </DialogHeader>
+            <div className="py-2">
+              <WarriorBadge
+                userName={displayName}
+                episodeCount={nonDryEpisodes.length}
+                episodes={episodes.map(e => ({ datetime: e.datetime }))}
+              />
+            </div>
+            <DialogFooter className="sm:justify-center">
+              <Button
+                variant="outline"
+                onClick={() => setShowWarriorModal(false)}
+                className="rounded-xl font-bold border-gray-200"
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
       </div>
     </div>

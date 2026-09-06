@@ -1,13 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Lightbulb, Stethoscope, Heart, Activity, AlertCircle, Copy, Download } from 'lucide-react';
+import { Lightbulb, Stethoscope, Heart, Activity, AlertCircle, Copy, Download, Volume2, Square, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { useReadAloud } from '@/hooks/useReadAloud';
 import jsPDF from 'jspdf';
 import { cn } from '@/lib/utils';
+
+const cleanTextForPdf = (text: string): string => {
+  if (!text) return "";
+  return text
+    .replace(/[^\x00-\x7F]/g, "") // Strips non-ASCII characters that cause Ø=Þáþ artifacts
+    .trim();
+};
 
 interface AIInsightsProps {
   insights: {
@@ -17,107 +25,69 @@ interface AIInsightsProps {
     lifestyleModifications: string[];
     medicalAttention: string;
     emotionalOpener?: string;
+    emotionalSupport?: string;
     cta?: string;
+    isDryDay?: boolean;
+    dryDayMetrics?: {
+      currentStreak: number;
+      dryDaysLast7: number;
+      monthlyDryTotal: number;
+      header: string;
+    };
   };
 }
 
 const AIGeneratedInsights: React.FC<AIInsightsProps> = ({ insights }) => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [isSpeaking, setIsSpeaking] = useState(false);
+  const { toggle, stop, isSpeaking, isLoading: isAudioLoading, activeKey } = useReadAloud();
 
-  // Cancel speech when component unmounts
-  useEffect(() => {
-    return () => {
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
-    };
-  }, []);
-
-  const buildInsightText = () => {
-    return [
-      insights.emotionalOpener,
-      insights.clinicalAnalysis,
-      ...(insights.immediateRelief ?? []),
-      ...(insights.treatmentOptions ?? []),
-      ...(insights.lifestyleModifications ?? []),
-      insights.medicalAttention,
-    ]
-      .filter(Boolean)
-      .join('. ');
+  const ListenButton = ({
+    text,
+    sectionKey,
+    label,
+    full = false,
+  }: { text: string; sectionKey: string; label: string; full?: boolean }) => {
+    const active = activeKey === sectionKey;
+    const loading = active && isAudioLoading;
+    const playing = active && isSpeaking;
+    return (
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => toggle(text, sectionKey)}
+        className={cn(
+          'min-h-[44px] rounded-xl shrink-0',
+          full && 'w-full sm:w-auto min-h-[56px]',
+          playing && 'border-primary text-primary',
+        )}
+        aria-label={playing ? `Stop reading ${label}` : `Listen to ${label}`}
+      >
+        {loading ? (
+          <><Loader2 className="h-4 w-4 sm:mr-2 animate-spin" /><span className="hidden sm:inline">Preparing…</span></>
+        ) : playing ? (
+          <><Square className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Stop</span></>
+        ) : (
+          <><Volume2 className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Listen</span></>
+        )}
+      </Button>
+    );
   };
 
-  const doSpeak = (utterance: SpeechSynthesisUtterance) => {
-    const synth = window.speechSynthesis;
-    synth.cancel();
+  const listify = (title: string, items: string[]) =>
+    `${title}. ${items.map((item, i) => `${i + 1}. ${item}`).join(' ')}`;
 
-    const voices = synth.getVoices();
-    const preferred = voices.find(v =>
-      v.lang.startsWith('en') &&
-      ['samantha', 'victoria', 'karen', 'aria', 'zira', 'hazel', 'google uk english female']
-        .some(k => v.name.toLowerCase().includes(k))
-    ) || voices.find(v => v.lang.startsWith('en'));
-    if (preferred) utterance.voice = preferred;
+  const fullText = [
+    insights.emotionalSupport,
+    `Clinical analysis. ${insights.clinicalAnalysis}`,
+    listify('Immediate relief strategies', insights.immediateRelief),
+    listify('Treatment recommendations', insights.treatmentOptions),
+    listify('Lifestyle modifications', insights.lifestyleModifications),
+    `When to seek medical attention. ${insights.medicalAttention}`,
+  ].filter(Boolean).join(' ');
 
-    let heartbeat: ReturnType<typeof setInterval> | null = null;
-    const cleanup = () => {
-      if (heartbeat) { clearInterval(heartbeat); heartbeat = null; }
-      setIsSpeaking(false);
-    };
 
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = cleanup;
-    utterance.onerror = (e) => {
-      console.warn('Speech error:', e);
-      cleanup();
-      toast({
-        title: 'Speech unavailable',
-        description: 'Your browser blocked the reader. Please tap Listen again.',
-        variant: 'destructive',
-      });
-    };
-
-    heartbeat = setInterval(() => {
-      if (!synth.speaking && !synth.pending) { cleanup(); return; }
-      if (synth.paused) synth.resume();
-    }, 5000);
-
-    setIsSpeaking(true);
-    synth.speak(utterance);
-  };
-
-  const handleToggleSpeak = () => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      toast({
-        title: 'Speech unavailable',
-        description: 'Your browser does not support text-to-speech.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    const synth = window.speechSynthesis;
-
-    // If already speaking — stop
-    if (isSpeaking || synth.speaking) {
-      synth.cancel();
-      setIsSpeaking(false);
-      return;
-    }
-
-    const text = buildInsightText();
-    if (!text.trim()) return;
-
-    // Create and speak synchronously inside the tap. Android Chrome can silently
-    // block speech if utterance creation/speak() is delayed by timers/promises.
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'en-US';
-    utterance.rate = 0.95;
-    utterance.pitch = 1.05;
-    utterance.volume = 1.0;
-    doSpeak(utterance);
-  };
 
   const handleCopyInsights = async () => {
     const insightsText = `
@@ -140,23 +110,23 @@ WHEN TO SEEK MEDICAL ATTENTION
 ${insights.medicalAttention}
 
 ---
-Generated by SweatSmart AI
-Disclaimer: These insights are AI-generated and for educational purposes only. Always consult with a healthcare provider for personalized medical advice.
+Generated by HidroAlly AI
+Disclaimer: These insights are AI-generated and for educational purposes only.
+Always consult with a healthcare provider for personalized medical advice.
     `.trim();
 
     try {
       await navigator.clipboard.writeText(insightsText);
-      toast({
-        title: 'Copied to clipboard',
-        description: 'AI insights have been copied to your clipboard.',
-      });
-    } catch (error) {
-      toast({
-        title: 'Copy failed',
-        description: 'Could not copy to clipboard. Please try again.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Copied to clipboard', description: 'AI insights have been copied to your clipboard.' });
+    } catch {
+      toast({ title: 'Copy failed', description: 'Could not copy to clipboard.', variant: 'destructive' });
     }
+  };
+
+  const handleContinueToChat = () => {
+    // Store current insights in localStorage for HidroAlly to pick up
+    localStorage.setItem('last_episode_insight', JSON.stringify(insights));
+    navigate('/hidro-ally?from=episode_insight');
   };
 
   const handleDownloadPDF = () => {
@@ -168,6 +138,8 @@ Disclaimer: These insights are AI-generated and for educational purposes only. A
       let y = 20;
 
       const addSection = (title: string, content: string | string[]) => {
+        title = cleanTextForPdf(title);
+        content = Array.isArray(content) ? content.map(cleanTextForPdf) : cleanTextForPdf(content);
         if (y > 250) { doc.addPage(); y = 20; }
         doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
@@ -175,30 +147,29 @@ Disclaimer: These insights are AI-generated and for educational purposes only. A
         y += 7;
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
-        const lines = Array.isArray(content)
-          ? content.flatMap((item, i) => doc.splitTextToSize(`${i + 1}. ${item}`, maxWidth - 5))
-          : doc.splitTextToSize(content, maxWidth);
-        lines.forEach((line: string) => {
-          if (y > 270) { doc.addPage(); y = 20; }
-          doc.text(line, margin + (Array.isArray(content) ? 5 : 0), y);
-          y += 5;
+        const items = Array.isArray(content) ? content : [content];
+        items.forEach((item, i) => {
+          const prefix = Array.isArray(content) ? `${i + 1}. ` : '';
+          const lines = doc.splitTextToSize(prefix + item, maxWidth - (Array.isArray(content) ? 5 : 0));
+          lines.forEach((line: string) => {
+            if (y > 270) { doc.addPage(); y = 20; }
+            doc.text(line, margin + (Array.isArray(content) ? 5 : 0), y);
+            y += 5;
+          });
+          y += 3;
         });
-        y += 8;
+        y += 5;
       };
 
       doc.setFontSize(18);
       doc.setFont('helvetica', 'bold');
-      doc.text('SweatSmart AI Insights', margin, y);
+      doc.text(cleanTextForPdf('HidroAlly AI Insights'), margin, y);
       y += 10;
-
       doc.setFontSize(9);
       doc.setFont('helvetica', 'italic');
-      const disclaimer = doc.splitTextToSize(
-        'These insights are AI-generated for educational purposes only. Always consult with a healthcare provider for personalized medical advice.',
-        maxWidth
-      );
-      doc.text(disclaimer, margin, y);
-      y += disclaimer.length * 4 + 10;
+      const disc = doc.splitTextToSize(cleanTextForPdf('These insights are AI-generated for educational purposes only. Always consult a healthcare provider for personalized advice.'), maxWidth);
+      doc.text(disc, margin, y);
+      y += disc.length * 4 + 10;
 
       addSection('Clinical Analysis', insights.clinicalAnalysis);
       addSection('Immediate Relief Strategies', insights.immediateRelief);
@@ -209,34 +180,42 @@ Disclaimer: These insights are AI-generated and for educational purposes only. A
       doc.save(`sweatsmart-insights-${new Date().toISOString().split('T')[0]}.pdf`);
       toast({ title: 'PDF downloaded', description: 'Your AI insights have been saved as a PDF.' });
     } catch (error) {
-      console.error('PDF generation error:', error);
-      toast({ title: 'Download failed', description: 'Could not generate PDF. Please try again.', variant: 'destructive' });
+      toast({ title: 'Download failed', description: 'Could not generate PDF.', variant: 'destructive' });
     }
   };
 
   return (
     <div className="space-y-4">
-      {/* HidroAlly greeting card */}
-      {insights.emotionalOpener && (
-        <Card className="border-none bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg overflow-hidden relative">
-          <div className="absolute top-0 right-0 p-4 opacity-10">
-            <Heart className="h-24 w-24 rotate-12" />
-          </div>
-          <CardHeader className="pb-2">
+      {/* HidroAlly Hears You - Emotional Support Card */}
+      {insights.emotionalSupport && (
+        <Card className="border-l-4 border-l-pink-400 bg-pink-50/50">
+          <CardHeader>
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
-                <span className="text-sm">🛡️</span>
-              </div>
-              <CardTitle className="text-lg font-bold">HidroAlly Analysis</CardTitle>
+              <span>💜</span>
+              <CardTitle className="text-pink-700">HidroAlly Hears You</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
-            <p className="text-sm leading-relaxed whitespace-pre-wrap font-medium">
-              {insights.emotionalOpener}
+            <p className="text-gray-700 leading-relaxed italic">
+              {insights.emotionalSupport}
             </p>
           </CardContent>
         </Card>
       )}
+
+      {/* HidroAlly greeting - Short & Classy version */}
+      <Card className="border-none bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md rounded-2xl overflow-hidden">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0 backdrop-blur-sm">
+              <span className="text-lg">✨</span>
+            </div>
+            <p className="text-[15px] font-semibold leading-snug tracking-tight">
+              {insights.isDryDay && insights.dryDayMetrics ? insights.dryDayMetrics.header : "I've analyzed your triggers. Here is a detailed analysis of your episode 😊"}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Action bar */}
       <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
@@ -246,19 +225,22 @@ Disclaimer: These insights are AI-generated and for educational purposes only. A
             These insights are generated by AI trained on hyperhidrosis knowledge. Always consult a healthcare provider for personal medical advice.
           </AlertDescription>
         </Alert>
-        <div className="flex gap-2 w-full sm:w-auto">
-          {/* 🔊 Listen / Stop button */}
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           <Button
-            variant="outline"
+            type="button"
+            variant={activeKey === 'all' && isSpeaking ? 'default' : 'outline'}
             size="sm"
-            onClick={handleToggleSpeak}
-            className={cn(
-              'flex-1 sm:flex-none font-semibold gap-2',
-              isSpeaking ? 'bg-primary text-primary-foreground hover:bg-primary/90' : ''
-            )}
+            onClick={() => toggle(fullText, 'all')}
+            className="flex-1 sm:flex-none min-h-[44px] rounded-xl"
+            aria-label={activeKey === 'all' && isSpeaking ? 'Stop reading all insights' : 'Listen to all insights'}
           >
-            <span>{isSpeaking ? '⏹' : '🔊'}</span>
-            {isSpeaking ? 'Stop' : 'Listen'}
+            {activeKey === 'all' && isAudioLoading ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Preparing…</>
+            ) : activeKey === 'all' && isSpeaking ? (
+              <><Square className="h-4 w-4 mr-2" /> Stop</>
+            ) : (
+              <><Volume2 className="h-4 w-4 mr-2" /> Listen to all</>
+            )}
           </Button>
           <Button variant="outline" size="sm" onClick={handleCopyInsights} className="flex-1 sm:flex-none">
             <Copy className="h-4 w-4 mr-2" /> Copy
@@ -269,28 +251,68 @@ Disclaimer: These insights are AI-generated and for educational purposes only. A
         </div>
       </div>
 
+      {/* Dry Day Metrics Row */}
+      {insights.isDryDay && insights.dryDayMetrics && (
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          <Card className="border-none bg-blue-50/50 shadow-sm">
+            <CardContent className="p-3 text-center">
+              <p className="text-xs text-blue-600 font-bold uppercase tracking-wider mb-1">Current Streak</p>
+              <p className="text-xl font-black text-blue-900">{insights.dryDayMetrics.currentStreak} Days</p>
+            </CardContent>
+          </Card>
+          <Card className="border-none bg-emerald-50/50 shadow-sm">
+            <CardContent className="p-3 text-center">
+              <p className="text-xs text-emerald-600 font-bold uppercase tracking-wider mb-1">7-Day Control</p>
+              <p className="text-xl font-black text-emerald-900">{insights.dryDayMetrics.dryDaysLast7} / 7</p>
+            </CardContent>
+          </Card>
+          <Card className="border-none bg-purple-50/50 shadow-sm">
+            <CardContent className="p-3 text-center">
+              <p className="text-xs text-purple-600 font-bold uppercase tracking-wider mb-1">30-Day Total</p>
+              <p className="text-xl font-black text-purple-900">{insights.dryDayMetrics.monthlyDryTotal}</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Clinical Analysis */}
       <Card className="border-l-4 border-l-blue-500">
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <div className="flex items-center space-x-2">
               <Stethoscope className="h-5 w-5 text-blue-600" />
-              <CardTitle>Clinical Analysis</CardTitle>
+              <CardTitle>{insights.isDryDay ? 'Dry Day Insights' : 'Clinical Analysis'}</CardTitle>
             </div>
-            <Badge variant="outline">AI-Generated</Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="hidden sm:inline-flex">AI-Generated</Badge>
+              <ListenButton
+                text={`Clinical analysis. ${insights.clinicalAnalysis}`}
+                sectionKey="clinical"
+                label="clinical analysis"
+              />
+            </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground leading-relaxed">{insights.clinicalAnalysis}</p>
+        <CardContent className="space-y-4">
+          <div className="text-muted-foreground leading-relaxed whitespace-pre-wrap font-medium">
+            {insights.clinicalAnalysis}
+          </div>
         </CardContent>
       </Card>
 
       {/* Immediate Relief */}
       <Card className="border-l-4 border-l-green-500">
         <CardHeader>
-          <div className="flex items-center space-x-2">
-            <Heart className="h-5 w-5 text-green-600" />
-            <CardTitle>Immediate Relief Strategies</CardTitle>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center space-x-2">
+              <Heart className="h-5 w-5 text-green-600" />
+              <CardTitle>{insights.isDryDay ? 'Maintenance & Skin Protocol' : 'Immediate Relief Strategies'}</CardTitle>
+            </div>
+            <ListenButton
+              text={listify('Immediate relief strategies', insights.immediateRelief)}
+              sectionKey="relief"
+              label="immediate relief strategies"
+            />
           </div>
           <CardDescription>Evidence-based techniques for symptom management</CardDescription>
         </CardHeader>
@@ -306,12 +328,21 @@ Disclaimer: These insights are AI-generated and for educational purposes only. A
         </CardContent>
       </Card>
 
+      {!insights.isDryDay && (
+      <>
       {/* Treatment Options */}
       <Card className="border-l-4 border-l-purple-500">
         <CardHeader>
-          <div className="flex items-center space-x-2">
-            <Activity className="h-5 w-5 text-purple-600" />
-            <CardTitle>Treatment Recommendations</CardTitle>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center space-x-2">
+              <Activity className="h-5 w-5 text-purple-600" />
+              <CardTitle>Treatment Recommendations</CardTitle>
+            </div>
+            <ListenButton
+              text={listify('Treatment recommendations', insights.treatmentOptions)}
+              sectionKey="treatment"
+              label="treatment recommendations"
+            />
           </div>
           <CardDescription>Based on your episode severity and pattern</CardDescription>
         </CardHeader>
@@ -330,9 +361,16 @@ Disclaimer: These insights are AI-generated and for educational purposes only. A
       {/* Lifestyle Modifications */}
       <Card className="border-l-4 border-l-orange-500">
         <CardHeader>
-          <div className="flex items-center space-x-2">
-            <Lightbulb className="h-5 w-5 text-orange-600" />
-            <CardTitle>Lifestyle Modifications</CardTitle>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center space-x-2">
+              <Lightbulb className="h-5 w-5 text-orange-600" />
+              <CardTitle>Lifestyle Modifications</CardTitle>
+            </div>
+            <ListenButton
+              text={listify('Lifestyle modifications', insights.lifestyleModifications)}
+              sectionKey="lifestyle"
+              label="lifestyle modifications"
+            />
           </div>
           <CardDescription>Actionable changes to reduce episode frequency</CardDescription>
         </CardHeader>
@@ -351,15 +389,26 @@ Disclaimer: These insights are AI-generated and for educational purposes only. A
       {/* When to seek help */}
       <Card className="border-l-4 border-l-red-500">
         <CardHeader>
-          <div className="flex items-center space-x-2">
-            <AlertCircle className="h-5 w-5 text-red-600" />
-            <CardTitle>When to Seek Medical Attention</CardTitle>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center space-x-2">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+              <CardTitle>When to Seek Medical Attention</CardTitle>
+            </div>
+            <ListenButton
+              text={`When to seek medical attention. ${insights.medicalAttention}`}
+              sectionKey="medical"
+              label="when to seek medical attention"
+            />
           </div>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground">{insights.medicalAttention}</p>
         </CardContent>
       </Card>
+
+
+      </>
+      )}
 
       {/* HidroAlly CTA */}
       {insights.cta && (
@@ -370,7 +419,7 @@ Disclaimer: These insights are AI-generated and for educational purposes only. A
                 {insights.cta}
               </p>
               <Button
-                onClick={() => navigate('/hyper-ai')}
+                onClick={handleContinueToChat}
                 className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl px-8"
               >
                 Continue in HidroAlly Chat

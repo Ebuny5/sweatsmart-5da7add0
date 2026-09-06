@@ -70,7 +70,7 @@ const StatusDisplay: React.FC<StatusDisplayProps> = ({ analysis, eda, palmResult
               px-3 py-1 rounded-full text-xs font-medium
               bg-black/30 border border-white/15 text-purple-100
             ">
-              Palm: {palmResult}
+              Scan: {palmResult}
             </span>
           )}
         </div>

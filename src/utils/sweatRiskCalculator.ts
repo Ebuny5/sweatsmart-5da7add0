@@ -1,16 +1,11 @@
 /**
- * Sweat Risk Calculator for Hyperhidrosis
+ * Sweat Risk Calculator for Hyperhidrosis — Upgraded 4-Tier Heat Index & Dew Point Engine
  *
- * Weighted scoring system designed for real-world hyperhidrosis sufferers,
- * including hot/dry climates (e.g., Africa) where temperature alone — without
- * high humidity or UV — is enough to trigger episodes.
- *
- * Primary driver: Temperature
- * Modifiers:    Humidity, UV index, Sky condition (sunny vs overcast)
- *
- * IMPORTANT: Alerts NEVER fire on simulated/fallback data.
- * EDA is intentionally excluded from real alert decisions until reliable
- * wearable data is available — see project requirements.
+ * Tropical / High-Humidity Calibrated Matrix:
+ * - Low Risk (< 27°C RealFeel / HI): Optimal conditions. Normal baseline.
+ * - Moderate Risk (27°C - 29.9°C RealFeel / HI): Thermal threshold crossed. Stay hydrated.
+ * - High Risk (30°C - 34.9°C RealFeel / HI): High Sweat Alert: RealFeel with high humidity.
+ * - Extreme Risk (≥ 35°C RealFeel / HI, or ≥ 32°C with high UV/EDA): Extreme Flare Hazard.
  */
 
 export type SweatRiskLevel = 'safe' | 'low' | 'moderate' | 'high' | 'extreme';
@@ -21,210 +16,243 @@ export interface SweatRiskResult {
   description: string;
   color: string;
   triggers: string[];
-  /** Combined weighted score, useful for debugging / UI */
+  /** Combined heat index / apparent temperature score */
   score: number;
-  /** Heat index ("real feel") in °C — undefined if not computable */
-  heatIndex?: number;
+  /** Rothfusz Heat Index in °C */
+  heatIndex: number;
+  /** Magnus Dew Point in °C */
+  dewPoint: number;
+  /** RealFeel temperature considering solar radiation / UV index in °C */
+  realFeel: number;
   isSimulated?: boolean;
 }
 
 export type SkyCondition = 'sunny' | 'partly_cloudy' | 'overcast' | 'unknown';
 
-/**
- * NOAA Heat Index ("real feel") — Celsius in / Celsius out.
- * Used as an additional severity bump, not as the primary driver.
- */
-function calculateHeatIndex(tempC: number, humidity: number): number {
-  const T = (tempC * 9) / 5 + 32;
-  const R = humidity;
-
-  if (T < 80) {
-    const hiF = 0.5 * (T + 61.0 + (T - 68.0) * 1.2 + R * 0.094);
-    return ((hiF - 32) * 5) / 9;
-  }
-
-  let hiF =
-    -42.379 +
-    2.04901523 * T +
-    10.14333127 * R -
-    0.22475541 * T * R -
-    0.00683783 * T * T -
-    0.05481717 * R * R +
-    0.00122874 * T * T * R +
-    0.00085282 * T * R * R -
-    0.00000199 * T * T * R * R;
-
-  if (R < 13 && T >= 80 && T <= 112) {
-    hiF -= ((13 - R) / 4) * Math.sqrt((17 - Math.abs(T - 95)) / 17);
-  } else if (R > 85 && T >= 80 && T <= 87) {
-    hiF += ((R - 85) / 10) * ((87 - T) / 5);
-  }
-
-  return ((hiF - 32) * 5) / 9;
-}
-
-/** Temperature score — primary driver (0–4). */
-function tempScore(t: number): number {
-  if (t < 24) return 0;
-  if (t < 28) return 1; // Low
-  if (t < 32) return 2; // Moderate (anxiety zone — 28°C+ already counts)
-  if (t < 35) return 3; // High
-  return 4; // Extreme
-}
-
-/** Humidity modifier (0–1.5). */
-function humidityScore(h: number): number {
-  if (h < 40) return 0;
-  if (h < 60) return 0.5;
-  if (h < 75) return 1;
-  return 1.5;
-}
-
-/**
- * UV / sun-exposure modifier (0–2).
- * Do NOT cap UV — values above 11 keep contributing.
- */
-function uvScore(uv: number | null | undefined): number {
-  if (uv == null || isNaN(uv)) return 0;
-  if (uv <= 2) return 0;
-  if (uv <= 5) return 0.5;
-  if (uv <= 7) return 1;
-  if (uv <= 10) return 1.5;
-  return 2; // 11+
-}
-
-/** Sky condition modifier (0–0.5). */
-function skyScore(sky: SkyCondition): number {
-  if (sky === 'sunny') return 0.5;
-  return 0;
-}
-
-/**
- * Convert combined score to risk level.
- * Score ranges tuned so:
- *   - 28°C dry / clear (score ~2.0–2.5) → moderate
- *   - 32°C dry / clear (score ~3.5–4.0) → high
- *   - 35°C+ → extreme regardless of humidity (dry heat still triggers)
- */
-function scoreToLevel(score: number, tempC: number): SweatRiskLevel {
-  // Hard temperature gates so dry heat in hot climates never reads as "low"
-  if (tempC >= 35) return 'extreme';
-  if (tempC >= 32 && score >= 3) return 'high';
-
-  if (score >= 6) return 'extreme';
-  if (score >= 4) return 'high';
-  if (score >= 2) return 'moderate';
-  if (score >= 1) return 'low';
-  return 'safe';
-}
-
-const LEVEL_META: Record<
-  SweatRiskLevel,
-  { message: string; description: string; color: string }
-> = {
-  safe: {
-    message: 'Optimal',
-    description: 'Optimal conditions — no immediate sweat trigger.',
-    color: 'text-green-400',
-  },
-  low: {
-    message: 'Low Risk',
-    description:
-      'Low Risk: Mild sweat risk — stay hydrated and monitor your body closely.',
-    color: 'text-yellow-300',
-  },
-  moderate: {
-    message: 'Moderate Risk',
-    description:
-      'Moderate sweat risk — reduce outdoor exposure and use cooling strategies.',
-    color: 'text-yellow-400',
-  },
-  high: {
-    message: 'High Risk',
-    description:
-      'High sweat risk — stay in AC, reduce outdoor exposure, and use cooling support.',
-    color: 'text-red-400',
-  },
-  extreme: {
-    message: 'Extreme Risk',
-    description:
-      'Extreme sweat risk — avoid heat, stay indoors, and take immediate cooling action.',
-    color: 'text-red-500',
-  },
-};
-
 export interface SweatRiskInput {
   temperature: number;
   humidity: number;
-  /** Real UV index from API. Pass null/undefined when unavailable — no fake fallbacks. */
-  uvIndex: number | null | undefined;
+  /** Real UV index from API. Pass null/undefined when unavailable. */
+  uvIndex?: number | null;
   sky?: SkyCondition;
+  edaValue?: number;
   isSimulated?: boolean;
 }
 
 /**
- * Primary entrypoint — preferred form.
+ * Calculates Magnus Dew Point (°C) given Ambient Temperature (°C) and Relative Humidity (%)
+ */
+export function calculateDewPoint(tempC: number, humidity: number): number {
+  const a = 17.27;
+  const b = 237.7;
+  const r = Math.max(0.1, Math.min(100, humidity)) / 100;
+  const gamma = (a * tempC) / (b + tempC) + Math.log(r);
+  const dp = (b * gamma) / (a - gamma);
+  return Math.round(dp * 10) / 10;
+}
+
+/**
+ * NOAA Rothfusz Heat Index Formula — Celsius input and output.
+ * Mathematically combines ambient temperature and relative humidity to compute human physiological heat load.
+ */
+export function calculateHeatIndex(tempC: number, humidity: number): number {
+  const T = (tempC * 9) / 5 + 32;
+  const R = Math.max(0, Math.min(100, humidity));
+
+  let hiF = 0.5 * (T + 61.0 + (T - 68.0) * 1.2 + R * 0.094);
+  if (hiF >= 80) {
+    hiF =
+      -42.379 +
+      2.04901523 * T +
+      10.14333127 * R -
+      0.22475541 * T * R -
+      0.00683783 * T * T -
+      0.05481717 * R * R +
+      0.00122874 * T * T * R +
+      0.00085282 * T * R * R -
+      0.00000199 * T * T * R * R;
+
+    if (R < 13 && T >= 80 && T <= 112) {
+      hiF -= ((13 - R) / 4) * Math.sqrt((17 - Math.abs(T - 95)) / 17);
+    } else if (R > 85 && T >= 80 && T <= 87) {
+      hiF += ((R - 85) / 10) * ((87 - T) / 5);
+    }
+  }
+
+  const hiC = ((hiF - 32) * 5) / 9;
+  return Math.round(Math.max(tempC, hiC) * 10) / 10;
+}
+
+/**
+ * RealFeel calculation integrating Heat Index + Solar Radiation Adjustment (from UV index).
+ * Direct sun exposure adds ~2.5°C radiant thermal load when UV > 6.
+ */
+export function calculateRealFeel(tempC: number, humidity: number, uvIndex?: number | null): number {
+  const hi = calculateHeatIndex(tempC, humidity);
+  let solarAdj = 0;
+  if (uvIndex != null && !isNaN(uvIndex) && uvIndex > 6) {
+    solarAdj = 2.5;
+  }
+  return Math.round((hi + solarAdj) * 10) / 10;
+}
+
+const LEVEL_META: Record<
+  SweatRiskLevel,
+  { message: string; color: string }
+> = {
+  safe: {
+    message: 'Low Risk',
+    color: 'text-green-400',
+  },
+  low: {
+    message: 'Low Risk',
+    color: 'text-green-400',
+  },
+  moderate: {
+    message: 'Moderate Risk',
+    color: 'text-yellow-400',
+  },
+  high: {
+    message: 'High Sweat Risk',
+    color: 'text-red-400',
+  },
+  extreme: {
+    message: 'Extreme Risk',
+    color: 'text-red-500',
+  },
+};
+
+/**
+ * Primary Sweat Risk Matrix Evaluator V2
  */
 export function calculateSweatRiskV2(input: SweatRiskInput): SweatRiskResult {
-  const { temperature, humidity, uvIndex, sky = 'unknown', isSimulated } = input;
+  const { temperature, humidity, uvIndex, sky = 'unknown', edaValue, isSimulated } = input;
+
+  const heatIndex = calculateHeatIndex(temperature, humidity);
+  const dewPoint = calculateDewPoint(temperature, humidity);
+  const realFeel = calculateRealFeel(temperature, humidity, uvIndex);
 
   if (isSimulated) {
     return {
-      level: 'safe',
-      ...LEVEL_META.safe,
+      level: 'low',
+      message: 'Low Risk',
       description: 'Simulated data — enable location for real weather alerts.',
+      color: 'text-green-400',
       triggers: [],
       score: 0,
+      heatIndex: temperature,
+      dewPoint,
+      realFeel: temperature,
       isSimulated: true,
     };
   }
 
-  const t = tempScore(temperature);
-  const h = humidityScore(humidity);
-  const u = uvScore(uvIndex);
-  const s = skyScore(sky);
+  const isHighUv = uvIndex != null && !isNaN(uvIndex) && uvIndex > 6;
+  const isHighEda = edaValue != null && !isNaN(edaValue) && edaValue > 10;
 
-  const heatIndex = calculateHeatIndex(temperature, humidity);
-  // Real-feel bump: when heat index notably exceeds actual temp (humid heat),
-  // add up to +1. Pure dry heat already scored via tempScore.
-  const heatIndexBump = Math.min(1, Math.max(0, (heatIndex - temperature) / 4));
+  // 1. Calculate Base Thermal-Moisture Score (0 to 100)
+  let score = 0;
 
-  const score = t + h + u + s + heatIndexBump;
-  const level = scoreToLevel(score, temperature);
+  // Temperature component (Base comfort baseline: 18°C)
+  if (temperature > 18) {
+    score += Math.min((temperature - 18) * 3.0, 40);
+  }
+
+  // Moisture / Dew Point component (The Evaporative Barrier)
+  if (dewPoint >= 24) {
+    score += 60; // Critical extreme evaporative block
+  } else if (dewPoint >= 22) {
+    score += 50; // Critical evaporative block
+  } else if (dewPoint >= 20) {
+    score += 40; // Severe impairment
+  } else if (dewPoint >= 16) {
+    score += 25; // Moderate sticky threshold
+  } else if (dewPoint >= 12) {
+    score += 10;
+  }
+
+  // Extreme Relative Humidity Multiplier
+  if (humidity >= 85) {
+    score += 15; // Direct sweat evaporation failure bonus
+  } else if (humidity >= 75) {
+    score += 8;
+  }
+
+  // UV radiation thermal radiant load
+  if (isHighUv) score += 5;
+
+  // EDA high load bonus
+  if (isHighEda) score += 5;
+
+  const finalScore = Math.min(Math.round(score), 100);
+
+  let level: SweatRiskLevel = 'low';
+  let message = 'Low Risk';
+  let description = 'Optimal Evaporative Conditions. Air moisture allows normal evaporative cooling with minimal autonomic resistance.';
+
+  // 3. Clinical Risk Bracket Categorization
+  if (finalScore >= 85 || dewPoint >= 24 || (humidity >= 90 && temperature >= 28)) {
+    level = 'extreme';
+    message = 'Extreme Evaporative Block';
+  } else if (finalScore >= 65 || dewPoint >= 21.5 || (humidity >= 85 && temperature >= 22)) {
+    level = 'high';
+    message = 'Evaporative Impairment Flare Risk';
+  } else if (finalScore >= 40 || dewPoint >= 18 || humidity >= 75) {
+    level = 'moderate';
+    message = 'Elevated Moisture Load';
+  }
+
+  const roundedRealFeel = Math.round(realFeel);
+  const uvVal = uvIndex != null && !isNaN(uvIndex) ? uvIndex : 0;
+  const uvText = uvVal >= 7 ? ` and intense UV ${uvVal.toFixed(1)}` : '';
+
+  if (level === 'extreme') {
+    description = `Feels like ${roundedRealFeel}°C due to extreme heat and moisture${uvText}. High risk for severe autonomic sweating; stay in air-conditioned areas.`;
+  } else if (level === 'high') {
+    description = `Feels like ${roundedRealFeel}°C due to elevated thermal and moisture loads${uvText} slowing natural sweat evaporation. Keep airflow active and stay hydrated.`;
+  } else if (level === 'moderate') {
+    description = `Feels like ${roundedRealFeel}°C due to moderate moisture or heat levels${uvText}. Elevated risk for sweating; consider carrying cooling wipes.`;
+  } else {
+    description = `Feels like ${roundedRealFeel}°C. Moisture and temperature are within optimal baseline thresholds.`;
+  }
 
   const triggers: string[] = [];
   triggers.push(`🌡️ Temp: ${temperature.toFixed(1)}°C`);
-  if (h > 0) triggers.push(`💧 Humidity: ${humidity.toFixed(0)}%`);
+  triggers.push(`💧 Humidity: ${humidity.toFixed(0)}%`);
+  triggers.push(`🥵 RealFeel: ${realFeel.toFixed(1)}°C`);
+  triggers.push(`💦 Dew Point: ${dewPoint.toFixed(1)}°C`);
   if (uvIndex != null && !isNaN(uvIndex)) {
     const uvLabel = uvIndex > 11 ? '11+' : uvIndex.toFixed(1);
-    if (u > 0) triggers.push(`☀️ UV: ${uvLabel}`);
+    triggers.push(`☀️ UV: ${uvLabel}`);
   }
-  if (s > 0) triggers.push('☀️ Clear/Sunny sky');
-  if (heatIndexBump > 0.2)
-    triggers.push(`🥵 Real feel: ${heatIndex.toFixed(1)}°C`);
+
+  const meta = LEVEL_META[level];
 
   return {
     level,
-    ...LEVEL_META[level],
+    message, // Overriding default meta message with more specific clinical ones
+    description,
+    color: meta.color,
     triggers,
-    score: Math.round(score * 100) / 100,
-    heatIndex: Math.round(heatIndex * 10) / 10,
+    score: finalScore,
+    heatIndex,
+    dewPoint,
+    realFeel,
   };
 }
 
 /**
- * Legacy signature kept for backwards compatibility with older call sites.
- * EDA is accepted but intentionally ignored (see file header).
+ * Legacy signature kept for backwards compatibility.
  */
 export function calculateSweatRisk(
   temperature: number,
   humidity: number,
   uvIndex: number | null | undefined,
-  _edaValue?: number,
+  edaValue?: number,
   isSimulated?: boolean,
   sky: SkyCondition = 'unknown',
 ): SweatRiskResult {
-  return calculateSweatRiskV2({ temperature, humidity, uvIndex, sky, isSimulated });
+  return calculateSweatRiskV2({ temperature, humidity, uvIndex, sky, edaValue, isSimulated });
 }
 
 export function getRiskSeverity(
@@ -243,27 +271,32 @@ export function getRiskSeverity(
 }
 
 /**
- * Determine whether a real-data alert should fire.
- * Only `moderate`, `high`, `extreme` ever alert. Safe/low never alert.
+ * Determine whether a real-data push alert should fire.
+ * Maintains automatic push notifications strictly for High Risk and Extreme Risk (RealFeel >= 30°C).
  */
 export function shouldTriggerAlert(
   temperature: number,
   humidity: number,
   uvIndex: number | null | undefined,
-  thresholds: { temperature: number; humidity: number; uvIndex: number },
+  _thresholds?: { temperature: number; humidity: number; uvIndex: number },
   isSimulated?: boolean,
   sky: SkyCondition = 'unknown',
+  edaValue?: number
 ): { shouldAlert: boolean; triggers: string[]; level: SweatRiskLevel } {
-  if (isSimulated) return { shouldAlert: false, triggers: [], level: 'safe' };
+  if (isSimulated) return { shouldAlert: false, triggers: [], level: 'low' };
 
-  const risk = calculateSweatRiskV2({ temperature, humidity, uvIndex, sky });
+  const risk = calculateSweatRiskV2({ temperature, humidity, uvIndex, sky, edaValue });
 
-  if (risk.level === 'safe' || risk.level === 'low') {
-    return { shouldAlert: false, triggers: [], level: risk.level };
+  if (risk.level === 'high' || risk.level === 'extreme') {
+    return {
+      shouldAlert: true,
+      triggers: risk.triggers,
+      level: risk.level,
+    };
   }
 
   return {
-    shouldAlert: true,
+    shouldAlert: false,
     triggers: risk.triggers,
     level: risk.level,
   };

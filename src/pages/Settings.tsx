@@ -2,15 +2,21 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Bell, Save, Info, CloudSun, Database, TestTube } from 'lucide-react';
+import { Bell, Save, Info, CloudSun, Database, TestTube, RefreshCw, ExternalLink, ShieldAlert, Send, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { notificationManager, isBackgroundNotificationsEnabled, setBackgroundNotificationsEnabled } from '@/services/NotificationManager';
+import { loggingReminderService } from '@/services/LoggingReminderService';
 import { audioAlertPlayer } from '@/utils/audioAlertPlayer';
 import { SettingsPanel } from '@/components/climate/SettingsPanel';
 import { WebPushSettings } from '@/components/climate/WebPushSettings';
+import { webPushService } from '@/services/WebPushService';
+import { useAuth } from '@/contexts/AuthContext';
+
+const ANDROID_SETTINGS_INTENT = 'intent:#Intent;action=android.settings.APPLICATION_DETAILS_SETTINGS;data=package:guru.sweatsmart.twa;end';
 import type { Thresholds } from '@/types';
 
 const Settings = () => {
+  const { user } = useAuth();
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [soundAlerts, setSoundAlerts] = useState(true);
   const [bgNotifications, setBgNotifications] = useState(isBackgroundNotificationsEnabled());
@@ -64,7 +70,7 @@ const Settings = () => {
       </header>
 
       <div className="max-w-2xl mx-auto p-4 space-y-4">
-        {/* Compulsory 6-hour App Alerts */}
+        {/* Compulsory 8-hour App Alerts */}
         <Card className="p-6 bg-zinc-900 border-zinc-800">
           <div className="flex items-start gap-4">
             <div className="p-3 rounded-lg bg-primary/10">
@@ -72,7 +78,7 @@ const Settings = () => {
             </div>
             <div className="flex-1">
               <h2 className="text-lg font-bold text-white">App Alerts (Required)</h2>
-              <p className="text-sm text-zinc-400 leading-relaxed">A check‑in alert will be sent every 6 hours to help you log episodes.</p>
+              <p className="text-sm text-zinc-400 leading-relaxed">A check‑in alert will be sent every 8 hours: "It's time to check-in 🤗".</p>
               <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-green-500/10 text-green-400 px-3 py-1 text-xs font-bold">
                 <span className="h-2 w-2 rounded-full bg-green-400" /> Active
               </div>
@@ -217,27 +223,29 @@ const Settings = () => {
         </Card>
 
         {/* Test Notifications */}
-        <Card className="p-6 border-amber-900/30 bg-amber-900/10">
+        <Card className="p-6 border-zinc-800 bg-zinc-900 shadow-lg">
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-amber-500/10 rounded-lg">
-              <TestTube className="w-6 h-6 text-amber-500" />
+            <div className="p-3 bg-amber-500/10 rounded-lg">
+              <ShieldAlert className="w-6 h-6 text-amber-500" />
             </div>
             <h2 className="text-xl font-black text-white uppercase tracking-wider">Diagnostics</h2>
           </div>
-          <p className="text-sm text-zinc-400 mb-4 leading-relaxed">
+
+          <p className="text-sm text-zinc-400 mb-6">
             Verify alert delivery, sound synchronization, and notification reliability.
           </p>
-          <div className="grid grid-cols-1 gap-3">
+
+          <div className="grid grid-cols-1 gap-4">
             <Button
-              variant="outline"
-              className="w-full border-blue-500/30 hover:bg-blue-500/20 text-blue-400 font-bold"
+              className="w-full bg-[#E9E4FA] hover:bg-[#d8d2f2] text-blue-500 font-bold py-7 rounded-xl"
               onClick={async () => {
-                toast.info("Testing Log Reminder...");
+                toast.info("Testing Log Reminder Voice...");
+                notificationManager.resetCooldowns();
                 await notificationManager.send({
                   channel: 'system',
                   kind: 'reminder',
-                  title: "⏰ Log Reminder Test",
-                  body: "It's time for your six-hour check-in 💧",
+                  title: "⏰ Time for Your Eight-Hour Check-In",
+                  body: "It's time to check-in 🤗",
                   dedupKey: `test-rem-${Date.now()}`
                 });
               }}
@@ -246,16 +254,16 @@ const Settings = () => {
             </Button>
 
             <Button
-              variant="outline"
-              className="w-full border-amber-500/30 hover:bg-amber-500/20 text-amber-500 font-bold"
+              className="w-full bg-[#E9E4FA] hover:bg-[#d8d2f2] text-orange-500 font-bold py-7 rounded-xl"
               onClick={async () => {
-                toast.info("Testing Climate Alert...");
+                toast.info("Testing Climate Alert Voice...");
+                notificationManager.resetCooldowns();
                 await notificationManager.send({
                   channel: 'system',
                   kind: 'high',
-                  title: "🔥 High Risk Alert Test",
-                  body: "Heat and humidity are rising. Hydrate and find shade! 💧",
-                  dedupKey: `test-cli-${Date.now()}`
+                  title: "HidroAlly Climate Alert",
+                  body: "High sweat risk! Temperature is exceeding your threshold.",
+                  dedupKey: `test-climate-${Date.now()}`
                 });
               }}
             >
@@ -263,28 +271,25 @@ const Settings = () => {
             </Button>
 
             <Button
-              variant="outline"
-              className="w-full border-green-500/30 hover:bg-green-500/20 text-green-400 font-bold"
+              className="w-full bg-[#E9E4FA] hover:bg-[#d8d2f2] text-emerald-500 font-bold py-7 rounded-xl"
               onClick={async () => {
-                toast.info("Testing Full Notification...");
-                const delivered = await notificationManager.send({
-                  channel: 'system',
-                  kind: 'extreme',
-                  title: "🚨 Full Notification Test",
-                  body: "Water sound + voice + system notification firing now.",
-                  dedupKey: `test-full-${Date.now()}`
-                });
-                if (!delivered) toast.error("Notification suppressed (cooldown).");
+                const id = toast.loading("Scheduling 1-minute test...");
+                try {
+                  await loggingReminderService.scheduleTestReminder(1 * 60 * 1000);
+                  toast.success("1-minute test reminder scheduled! You can close the app now.", { id });
+                } catch (e) {
+                  toast.error("Failed to schedule test reminder.", { id });
+                }
               }}
             >
-              Test Full Notification
+              1-Minute Test Reminder
             </Button>
           </div>
         </Card>
 
         {/* App Information */}
         <Card className="p-6 bg-zinc-900 border-zinc-800">
-          <h3 className="text-lg font-bold mb-4 text-white uppercase tracking-wider">About SweatSmart</h3>
+          <h3 className="text-lg font-bold mb-4 text-white uppercase tracking-wider">About HidroAlly</h3>
           <div className="space-y-3 text-sm text-zinc-400">
             <p>
               <strong className="text-zinc-200">Version:</strong> 1.0.0

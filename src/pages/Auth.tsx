@@ -93,7 +93,7 @@ export default function Auth() {
         } else {
           toast({
             title: "Login successful",
-            description: "Welcome back to SweatSmart!",
+            description: "Welcome back to HidroAlly!",
           });
           navigate('/home');
         }
@@ -110,7 +110,7 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-sky-200 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#E9E4FA] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo Header */}
         <div className="text-center mb-8">
@@ -118,7 +118,7 @@ export default function Auth() {
             <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
               <Droplets className="text-white w-7 h-7" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900">SweatSmart</h1>
+            <h1 className="text-3xl font-bold text-gray-900">HidroAlly</h1>
           </div>
           <div className="flex justify-center space-x-4 mt-6">
             <button 
@@ -278,7 +278,7 @@ export default function Auth() {
 
         {/* Footer Note */}
         <p className="text-center text-gray-600 mt-6 text-sm">
-          By continuing, you agree to SweatSmart's{' '}
+          By continuing, you agree to HidroAlly's{' '}
           <Link to="/terms" className="text-blue-600 hover:underline">Terms of Service</Link>
           {' '}and{' '}
           <Link to="/privacy" className="text-blue-600 hover:underline">Privacy Policy</Link>

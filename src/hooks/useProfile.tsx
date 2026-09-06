@@ -1,8 +1,9 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Profile } from '@/types';
+
+const PROFILE_UPDATED_EVENT = 'sweatsmart:profile-updated';
 
 export const useProfile = () => {
   const { user } = useAuth();
@@ -16,9 +17,8 @@ export const useProfile = () => {
     }
 
     try {
-      // Add a small delay to prevent rapid successive calls
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -29,7 +29,7 @@ export const useProfile = () => {
         console.error('Error fetching profile:', error);
         setProfile(null);
       } else {
-        setProfile(data);
+        setProfile(data as unknown as Profile);
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -45,7 +45,7 @@ export const useProfile = () => {
     try {
       const { error } = await supabase
         .from('profiles')
-        .update(updates)
+        .update(updates as any)
         .eq('user_id', user.id);
 
       if (error) {
@@ -53,6 +53,8 @@ export const useProfile = () => {
       }
 
       setProfile(prev => prev ? { ...prev, ...updates } : null);
+      // Notify other useProfile instances (e.g. Header) to refresh
+      window.dispatchEvent(new CustomEvent(PROFILE_UPDATED_EVENT));
       return true;
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -62,6 +64,12 @@ export const useProfile = () => {
 
   useEffect(() => {
     fetchProfile();
+  }, [user]);
+
+  useEffect(() => {
+    const handler = () => { fetchProfile(); };
+    window.addEventListener(PROFILE_UPDATED_EVENT, handler);
+    return () => window.removeEventListener(PROFILE_UPDATED_EVENT, handler);
   }, [user]);
 
   return { profile, loading, updateProfile, refetch: fetchProfile };

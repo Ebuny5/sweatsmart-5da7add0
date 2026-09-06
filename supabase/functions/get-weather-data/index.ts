@@ -19,20 +19,71 @@ type WeatherResult = {
   uvIndex: number | null;
   /** 'sunny' | 'partly_cloudy' | 'overcast' — derived from cloud cover & weather code. */
   sky: 'sunny' | 'partly_cloudy' | 'overcast';
+  /** Calculated Rothfusz Heat Index (°C) */
+  heatIndex: number;
+  /** Calculated Magnus Dew Point (°C) */
+  dewPoint: number;
+  /** RealFeel temperature including solar radiation adjustment (°C) */
+  realFeel: number;
   description?: string;
   icon?: string;
   location?: string;
   timestamp: number;
+  isSimulated?: boolean;
 };
 
-// Best-effort in-memory cache to reduce OpenWeather calls.
-// Note: Edge functions are ephemeral; this helps when the instance is warm.
-const WEATHER_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+// In-memory cache to reduce redundant API calls (3 minutes TTL for rapid tracking)
+const WEATHER_CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutes
 const weatherCache = new Map<string, { ts: number; payload: WeatherResult }>();
 
 function cacheKey(lat: number, lon: number) {
-  // Round to ~110m precision to avoid cache fragmentation
   return `${lat.toFixed(3)},${lon.toFixed(3)}`;
+}
+
+function calculateHeatIndex(tempC: number, humidity: number): number {
+  const T = (tempC * 9) / 5 + 32;
+  const R = Math.max(0, Math.min(100, humidity));
+
+  let hiF = 0.5 * (T + 61.0 + (T - 68.0) * 1.2 + R * 0.094);
+  if (hiF >= 80) {
+    hiF =
+      -42.379 +
+      2.04901523 * T +
+      10.14333127 * R -
+      0.22475541 * T * R -
+      0.00683783 * T * T -
+      0.05481717 * R * R +
+      0.00122874 * T * T * R +
+      0.00085282 * T * R * R -
+      0.00000199 * T * T * R * R;
+
+    if (R < 13 && T >= 80 && T <= 112) {
+      hiF -= ((13 - R) / 4) * Math.sqrt((17 - Math.abs(T - 95)) / 17);
+    } else if (R > 85 && T >= 80 && T <= 87) {
+      hiF += ((R - 85) / 10) * ((87 - T) / 5);
+    }
+  }
+
+  const hiC = ((hiF - 32) * 5) / 9;
+  return Math.round(Math.max(tempC, hiC) * 10) / 10;
+}
+
+function calculateDewPoint(tempC: number, humidity: number): number {
+  const a = 17.27;
+  const b = 237.7;
+  const r = Math.max(0.1, Math.min(100, humidity)) / 100;
+  const gamma = (a * tempC) / (b + tempC) + Math.log(r);
+  const dp = (b * gamma) / (a - gamma);
+  return Math.round(dp * 10) / 10;
+}
+
+function calculateRealFeel(tempC: number, humidity: number, uvIndex?: number | null): number {
+  const hi = calculateHeatIndex(tempC, humidity);
+  let solarAdj = 0;
+  if (uvIndex != null && !isNaN(uvIndex) && uvIndex > 6) {
+    solarAdj = 2.5;
+  }
+  return Math.round((hi + solarAdj) * 10) / 10;
 }
 
 serve(async (req: Request) => {
@@ -65,7 +116,7 @@ serve(async (req: Request) => {
       );
     }
 
-    const { latitude, longitude } = await req.json();
+    const { latitude, longitude, bypassCache } = await req.json();
     
     // Input validation
     if (typeof latitude !== 'number' || isNaN(latitude) || latitude < MIN_LATITUDE || latitude > MAX_LATITUDE) {
@@ -86,22 +137,28 @@ serve(async (req: Request) => {
     
     if (!OPENWEATHER_API_KEY) {
       console.log('No OpenWeather API key, using fallback');
+      const temp = 25;
+      const hum = 60;
+      const uv = 5;
+      const hi = calculateHeatIndex(temp, hum);
+      const dp = calculateDewPoint(temp, hum);
+      const rf = calculateRealFeel(temp, hum, uv);
       return new Response(
         JSON.stringify({ 
-          simulated: true,
+          isSimulated: true,
           error: 'Weather API not configured',
-          data: { temperature: 25, humidity: 60, uvIndex: 5 }
+          data: { temperature: temp, humidity: hum, uvIndex: uv, heatIndex: hi, dewPoint: dp, realFeel: rf }
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Fetching weather for: ${latitude}, ${longitude}`);
+    console.log(`Fetching weather for: ${latitude}, ${longitude} (bypassCache: ${!!bypassCache})`);
 
-    // Serve from cache when possible
+    // Serve from cache when possible unless bypassCache is requested
     const key = cacheKey(latitude, longitude);
     const cached = weatherCache.get(key);
-    if (cached && Date.now() - cached.ts < WEATHER_CACHE_TTL_MS) {
+    if (!bypassCache && cached && Date.now() - cached.ts < WEATHER_CACHE_TTL_MS) {
       const payload = { ...cached.payload, cached: true, cacheAgeMs: Date.now() - cached.ts };
       return new Response(
         JSON.stringify(payload),
@@ -128,8 +185,6 @@ serve(async (req: Request) => {
     const weatherData = await weatherResponse.json();
     console.log('Weather data received');
 
-    // Fetch UV index — prefer One Call 3.0 (`uvi`), fall back to legacy /uvi endpoint.
-    // Returns NULL when no real value is available — no silent fake fallback.
     let uvIndex: number | null = null;
     try {
       const oneCallUrl =
@@ -164,12 +219,12 @@ serve(async (req: Request) => {
       }
     }
 
-    // Derive sky condition from cloud cover + weather id (no UV faking).
+    // Derive sky condition
     const clouds = weatherData.clouds?.all ?? 0;
     const weatherId: number = weatherData.weather?.[0]?.id ?? 800;
     let sky: 'sunny' | 'partly_cloudy' | 'overcast';
     if (weatherId >= 200 && weatherId < 800) {
-      sky = 'overcast'; // rain/storm/snow/etc
+      sky = 'overcast';
     } else if (clouds <= 25) {
       sky = 'sunny';
     } else if (clouds <= 70) {
@@ -178,15 +233,56 @@ serve(async (req: Request) => {
       sky = 'overcast';
     }
 
+    const tempC = Math.round(weatherData.main.temp * 10) / 10;
+    const humidity = weatherData.main.humidity;
+
+    // --- UV realism correction -------------------------------------------
+    // OpenWeather returns a largely clear-sky UV value. Under cloud cover the
+    // real surface UV is far lower, and at night it is zero. Correct both so
+    // users never see "UV 7.8" while it is overcast or dark.
+    const nowSec = Math.floor(Date.now() / 1000);
+    const sunrise: number | undefined = weatherData.sys?.sunrise;
+    const sunset: number | undefined = weatherData.sys?.sunset;
+    const isNight =
+      typeof sunrise === 'number' && typeof sunset === 'number'
+        ? nowSec < sunrise || nowSec > sunset
+        : false;
+
+    let correctedUv: number | null = uvIndex;
+    if (correctedUv != null) {
+      if (isNight) {
+        correctedUv = 0;
+      } else {
+        // WMO-style cloud attenuation: UV_eff = UV * (1 - 0.75 * cloudFraction^3.4)
+        const cloudFraction = Math.max(0, Math.min(100, clouds)) / 100;
+        const attenuation = 1 - 0.75 * Math.pow(cloudFraction, 3.4);
+        correctedUv = correctedUv * attenuation;
+        // Precipitation / thunderstorm / heavy cloud codes cut UV further
+        if (weatherId >= 200 && weatherId < 800) {
+          correctedUv = correctedUv * 0.6;
+        }
+      }
+    }
+
+    const formattedUv = correctedUv == null ? null : Math.round(Math.max(0, correctedUv) * 10) / 10;
+    const heatIndex = calculateHeatIndex(tempC, humidity);
+    const dewPoint = calculateDewPoint(tempC, humidity);
+    const realFeel = calculateRealFeel(tempC, humidity, formattedUv);
+
+
     const result: WeatherResult = {
-      temperature: Math.round(weatherData.main.temp * 10) / 10,
-      humidity: weatherData.main.humidity,
-      uvIndex: uvIndex == null ? null : Math.round(uvIndex * 10) / 10,
+      temperature: tempC,
+      humidity,
+      uvIndex: formattedUv,
       sky,
+      heatIndex,
+      dewPoint,
+      realFeel,
       description: weatherData.weather?.[0]?.description || 'Unknown',
       icon: weatherData.weather?.[0]?.icon,
       location: weatherData.name,
       timestamp: Date.now(),
+      isSimulated: false,
     };
 
     // Update cache
@@ -209,11 +305,17 @@ serve(async (req: Request) => {
     console.error('Error in get-weather-data:', error);
     
     // Return simulated data on error
+    const temp = 25;
+    const hum = 60;
+    const uv = 5;
+    const hi = calculateHeatIndex(temp, hum);
+    const dp = calculateDewPoint(temp, hum);
+    const rf = calculateRealFeel(temp, hum, uv);
     return new Response(
       JSON.stringify({ 
         error: 'Weather service temporarily unavailable',
-        simulated: true,
-        data: { temperature: 25, humidity: 60, uvIndex: 5 }
+        isSimulated: true,
+        data: { temperature: temp, humidity: hum, uvIndex: uv, heatIndex: hi, dewPoint: dp, realFeel: rf }
       }),
       { 
         status: 200,

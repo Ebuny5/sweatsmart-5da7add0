@@ -8,7 +8,7 @@ const LoadingState: React.FC = () => {
 
   const loadingMessages = [
     { text: "Calibrating hyperhidrosis detectors...", icon: Activity },
-    { text: "Analyzing palm moisture levels...", icon: Droplets },
+    { text: "Analyzing affected-area moisture levels...", icon: Droplets },
     { text: "Differentiating between dry, moist, and wet skin...", icon: Eye },
     { text: "Distinguishing natural sweat from external moisture...", icon: Droplets },
     { text: "Cross-referencing with dermatological patterns...", icon: Brain },

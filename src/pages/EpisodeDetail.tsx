@@ -3,7 +3,6 @@ import { ArrowLeft } from "lucide-react";
 import AppLayout from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import EpisodeInsights from "@/components/episode/EpisodeInsights";
 import { useEpisodes } from "@/hooks/useEpisodes";
 
 // ── All original logic — untouched ──────────────────────────────────────────
@@ -176,9 +175,6 @@ const EpisodeDetail = () => {
               </p>
             </DetailSection>
           )}
-
-          {/* ── INSIGHTS ───────────────────────────────────────────────── */}
-          <EpisodeInsights episode={episode} />
 
           {/* ── BACK BUTTON ────────────────────────────────────────────── */}
           <button

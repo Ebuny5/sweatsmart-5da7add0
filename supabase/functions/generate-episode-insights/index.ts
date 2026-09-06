@@ -20,7 +20,45 @@ serve(async (req) => {
   }
 
   try {
-    const { severity, bodyAreas, triggers, notes } = await req.json();
+    // Accept both camelCase and snake_case for dry-day flag to be resilient
+    const payload = await req.json();
+    const { severity, bodyAreas, triggers, notes, isDryDay, is_dry_day } = payload;
+    const dryDay = (isDryDay ?? is_dry_day) === true;
+
+    // If this episode is a Dry Day / Treatment day, skip AI generation entirely
+    if (dryDay) {
+      console.log('Skipping insight generation for dry-day episode');
+
+      const themes = [
+        `Great job tracking a dry day! Your consistency helps map how well your current management routine is working. Keep logging to see long-term dry patterns!`,
+        `Log noted! If you applied a treatment or antiperspirant last night, a dry day is a great indicator of compliance. Consistency is key to keeping hyperhidrosis managed.`,
+        `Fantastic check-in. Tracking dry days is just as important as tracking flare-ups. It shows you are actively taking control and managing your hyperhidrosis effectively!`,
+        `No episodes today! By documenting these dry periods alongside your treatment schedule, you're building a powerful dataset to prove what works best for your body.`,
+        `A dry day is a win for comfort! Thank you for maintaining your tracking habit today—every log brings you closer to mastering your triggers.`
+      ];
+
+      const randomTheme = themes[Math.floor(Math.random() * themes.length)];
+
+      const insights = {
+        emotionalOpener: `Hi, this is HidroAlly 👋 — ${randomTheme}`,
+        clinicalAnalysis: "This was logged as a dry day, so there's no episode to clinically analyse — and that's exactly the outcome we want to see more of. Dry days logged alongside your treatment routine are valuable data in their own right, helping build a clear picture of what's working.",
+        immediateRelief: [
+          "No relief steps needed today — nothing to manage. Keep up whatever routine got you here.",
+        ],
+        treatmentOptions: [
+          "If you're using a treatment (antiperspirant, iontophoresis, medication, etc.), a dry day is a strong signal it's working. Keep your current routine consistent rather than changing anything based on one good day.",
+        ],
+        lifestyleModifications: [
+          "Keep logging dry days as well as episodes — the contrast between the two is what reveals which habits, treatments, or conditions are actually helping.",
+        ],
+        medicalAttention: "No concerns today — nothing to flag.",
+        cta: "Keep tracking your daily experience to build a complete picture of your triggers and treatment effectiveness."
+      };
+      return new Response(
+        JSON.stringify({ insights }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Input validation
     if (typeof severity !== 'number' || severity < MIN_SEVERITY || severity > MAX_SEVERITY) {
@@ -104,54 +142,90 @@ serve(async (req) => {
     
     const sanitizedNotes = notes ? String(notes).slice(0, MAX_NOTES_LENGTH) : '';
 
-    const prompt = `You are Hyper AI, a brilliant friend who happens to know everything about hyperhidrosis. You use the expert clinical reasoning of the Dr. Cody method while applying a "Human Filter" to ensure the information is accessible and warm.
+    const EPISODE_INSIGHTS_SYSTEM_PROMPT = `
+You are the HidroAlly Clinical Insight Engine, an expert digital health consultant specializing in Primary and Secondary Hyperhidrosis. Your role is to generate personalized, empathetic, highly accurate clinical episode analyses based on user-logged data.
 
-**THE DR. CODY REASONING LOOP (Apply this to every logged episode):**
-1. **Step 1: Clinical Classification:** Explicitly classify the episode as **Primary Focal Hyperhidrosis (PHH)** or **Secondary Generalized Hyperhidrosis (SHH)**.
-   - PHH Criteria: Focal (hands, feet, underarms), bilateral/symmetric, and occurring during the day (nocturnal sparing).
-   - SHH Red Flags: Generalized sweating (entire body) or drenching night sweats, which require medical escalation to rule out systemic conditions.
-2. **Step 2: Probability Distribution:** Assign a weighted probability to the triggers. (e.g., "This episode appears to be 70% driven by the **Amygdala** (emotional stress) and 30% by the **Hypothalamus** (thermal load)").
-3. **Step 3: Neural Pathway Mapping:** Explain the nervous system's role. Explain that the **Hypothalamus** (body thermostat) is sending a "start sweating" signal down the **Sympathetic Chain** to the glands.
-4. **Step 4: The "Human Filter":** After calculating the expert logic, translate it. (e.g., "T2-T4 sympathetic ganglia activation" becomes "The nerve relay center for your underarms is over-firing").
+### INPUT SCHEMA:
+You will receive a JSON payload with:
+- affected_areas: string[] (e.g., ["Palms", "Soles", "Face", "Axillae", or custom user-defined areas])
+- triggers: string[] (e.g., ["Heat", "Crowded Spaces", "Synthetic Fabrics", "No Identifiable Trigger", or custom user-defined triggers])
+- severity_hdss: number (1 to 4)
+- additional_notes: string (Optional freeform narrative from the user)
+- sensor_data: object (Optional EDA in µS, ambient temperature, UV index)
 
-**CORE "EXPERT" RULES (Do not water down this logic):**
-- **Nervous System:** Must explain that the "software" (nervous system) is overdriving functionally normal "hardware" (sweat glands).
-- **Clinical Depth:** You MUST include technical terms like "acetylcholine signal," "sympathetic chain," and "sympathetic ganglia," but ALWAYS immediately explain them in friendly, plain language.
-- **Vasodilation Link:** If the user logs "tightness" or "swelling," you MUST explain the **Vasodilation-Edema Link**: the same signal that triggers sweat also opens blood vessels, causing temporary fluid buildup.
-- **The 4-7-8 Reset:** Explain *why* it works: it activates the **Vagus Nerve** to shift the body from "fight or flight" to "rest and digest," reducing the chemical signal (**acetylcholine**) to the glands.
+---
 
-**HARD RULES — DO NOT DEVIATE:**
-1. NEVER mention "Dr. Cody", the "Dr. Cody method", or "Dr. Cody reasoning" in the user-facing text. Use the logic silently.
-2. Use clinical depth (acetylcholine, sympathetic chain, etc.) but ALWAYS explain them simply to the user.
-3. NEVER use clinical salutations like "Greetings, Hyperhidrosis Warrior!". Start naturally and warmly.
-4. Keep the user-facing output grounded in plain, friendly language while maintaining medical accuracy.
+### CORE LOGICAL DIRECTIVES:
+
+1. DYNAMIC SYNTHESIS (NO CANNED OPENERS):
+   - Never use static templates like "What you experienced in [areas]..." or "For a hyperhidrosis warrior...".
+   - Vary your opening sentence across reports. Frame the clinical picture naturally based on the combination of severity, anatomical locations, and context.
+   - Weave in the user's "additional_notes" directly into the Clinical Analysis to make the insight truly personal. If sensor data (EDA, temperature) is present, reference how physiological arousal or heat correlated with the episode.
+
+2. TRIGGER HANDLING:
+   - If "No Identifiable Trigger" is selected: Treat this as classic idiopathic sympathetic overactivity. Explicitly explain that primary focal hyperhidrosis routinely fires without external catalysts. DO NOT advise "identifying triggers" or searching for causes. Frame tracking around treatment efficacy instead.
+   - If specific or custom triggers are selected: Analyze the direct physiological connection between those stimuli (e.g., synthetic textiles trapping heat, social adrenergic stimulation) and eccrine response.
+
+3. REGION-SPECIFIC TREATMENT ISOLATION:
+   - Provide distinct, self-contained bullet points for each logged area.
+   - DO NOT repeat contraindications across sections (e.g., do not warn against facial use inside the palmoplantar section if a facial section exists).
+   - Match treatments strictly to anatomy:
+     * Palms/Feet: Aluminum chloride 20% (with occlusion), tap-water iontophoresis, intradermal botulinum toxin.
+     * Face/Scalp: Topical glycopyrronium, hairline botulinum toxin. State clearly that aluminum chloride is contraindicated on the face.
+     * Underarms: Aluminum chloride, topical glycopyrronium/sofpironium, miraDry, botulinum toxin.
+     * Multi-Site: Introduce oral anticholinergics (glycopyrrolate, oxybutynin) as a systemic escalation.
+
+4. FORMAT & OUTPUT PURITY:
+   - Output ONLY clean standard Markdown.
+   - DO NOT output emojis, custom icons, or raw unicode symbols that break PDF canvas rendering.
+   - Keep tone clinical, supportive, and practical.
+
+---
+
+### REPORT STRUCTURE:
+
+**Clinical Analysis**
+- [Dynamic assessment of autonomic response, severity (HDSS), integration of custom notes/sensors, and physiological mechanisms]
+
+**Immediate Relief Strategies**
+- [2 to 3 actionable, rapid physical or thermoregulatory actions tailored to the logged areas]
+
+**Targeted Treatment Pathways**
+- [Anatomically segregated medical options from first-line to clinical escalation]
+
+**Lifestyle & Practical Adjustments**
+- [Footwear/fabric changes, moisture-wicking strategies, and targeted adjustments]
+
+**Tracking & Clinical Next Steps**
+- [If No Trigger: Shift logging to treatment response and duration. If Triggered: Track threshold patterns. Clear criteria for physician/dermatologist escalation]
+`;
+
+    // Dynamic Tracking Logic
+    let tracking_focus = "";
+    if (sanitizedTriggers.includes("No Identifiable Trigger")) {
+      tracking_focus = "Focus on recording treatment response times and baseline HDSS trends. Avoid looking for phantom triggers.";
+    } else {
+      tracking_focus = "Focus on identifying trigger combinations, environmental thresholds (temperature/EDA), and situational patterns.";
+    }
+
+    const prompt = `${EPISODE_INSIGHTS_SYSTEM_PROMPT}
 
 **Episode Data:**
 - Severity: ${severity}/4 HDSS
 - Body areas affected: ${sanitizedAreas}
 - Triggers: ${sanitizedTriggers}
-${sanitizedNotes ? `- Patient notes: ${sanitizedNotes}` : ''}
+- Additional Context (Patient notes): ${sanitizedNotes || "None provided"}
 - Time logged: ${new Date().toISOString()}
-
-**Knowledge Base:**
-- Mechanisms: 4-7-8 breathing (Vagus nerve reset), Cold wrist immersion (resets body temp), Forced cooling (fans work better than natural air when it's humid).
-- Science: Humidity over 70% makes it impossible for sweat to evaporate naturally. Cortisol (stress hormone) peaks in the morning, making morning episodes common.
-- Red Flags: Night sweats, sudden onset, or sweating only on one side require medical escalation to rule out systemic conditions.
-
-**Treatment Mapping (Match to Severity):**
-- HDSS 1-2 (Mild/Moderate): Focus on lifestyle changes, cooling techniques, and OTC clinical-strength antiperspirants (like **Aluminium Chloride 20%**). Mention iontophoresis for hands/feet.
-- HDSS 3-4 (Severe): If severity is 3 or 4, explicitly trigger the "Prescription Threshold Reached" context. Recommend discussing prescription wipes (**Qbrexza**), gels (**Sofdra**), **Botox**, or miraDry. Explain that clinical treatments like Botox or anticholinergics "block the acetylcholine signal" at the gland.
+- Dynamic Tracking Focus: ${tracking_focus}
 
 **Structure your response as a JSON object with these exact keys:**
 {
-  "clinicalAnalysis": "Clinical Analysis: What This Means. Warm explanation following the Dr. Cody reasoning loop (Classification, Probability, Pathways) with a human filter. Ensure technical terms like acetylcholine and sympathetic chain are included and explained.",
-  "immediateRelief": ["3 specific techniques explained in friendly terms, including the 'why' (e.g., Vagus Nerve reset)."],
-  "treatmentOptions": ["2-3 treatment recommendations appropriate for the severity level, explaining the biological mechanism like acetylcholine blocking at the gland."],
-  "lifestyleModifications": ["3 actionable lifestyle changes tied to the triggers, explained simply."],
-  "medicalAttention": "Guidance on when to see a doctor (especially for HDSS 3-4 'Prescription Threshold Reached') and red flags (SHH signs)."
-}
-
-Write like a brilliant friend who truly understands and provides professional-grade insight in a way that is easy to grasp.`;
+  "clinicalAnalysis": "A richly worded, highly structured clinical analysis in paragraph form. Discuss pathology, location, severity, triggers, and the absence of systemic red flags. Vary phrasing to ensure uniqueness.",
+  "immediateRelief": ["3 specific, evidence-based techniques (e.g., blotting papers for face, alcohol-based sanitizer for quick evaporation on hands, cold compresses, or specific breathing techniques). Explain *why* they work biologically."],
+  "treatmentOptions": ["3 targeted treatment recommendations strictly tailored to the specific body areas affected in this episode. Include specific medical names (e.g., Topical Glycopyrrolate, Iontophoresis, Qbrexza, Oxybutynin). Explain their mechanism (e.g., blocking muscarinic receptors)."],
+  "lifestyleModifications": ["3 actionable, clinical lifestyle modifications tailored to the logged triggers."],
+  "medicalAttention": "Clear guidance on when to see a doctor and specific red flags (e.g., sudden generalized sweating)."
+}`;
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`,

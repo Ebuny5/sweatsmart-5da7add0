@@ -1,10 +1,12 @@
 import PalmScannerApp from '@/components/palm-new/PalmScannerApp';
-import AppLayout from '@/components/layout/AppLayout';
+import PageTransition from '@/components/layout/PageTransition';
 
 export default function PalmScanner() {
   return (
-    <AppLayout>
-      <PalmScannerApp />
-    </AppLayout>
+    <PageTransition>
+      <div className="min-h-[100dvh] w-full max-w-[100vw] overflow-x-hidden bg-[#3b0764]">
+        <PalmScannerApp />
+      </div>
+    </PageTransition>
   );
 }

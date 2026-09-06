@@ -422,8 +422,8 @@ const WarriorBadge = ({
 
   const [showShareModal, setShowShareModal] = useState(false);
 
-  const shareText = `I just unlocked the Hyperhidrosis Warrior Badge on SweatSmart! 🛡️ Tracking my journey and turning sweat into strength. Start tracking your resilience with SweatSmart today. #MySweatDoesNotDefineMe #SweatSmartWarrior #HyperhidrosisAwareness`;
-  const shareUrl = "https://sweatsmart.app";
+  const shareText = `I just unlocked the Hyperhidrosis Warrior Badge on HidroAlly! 🛡️ Tracking my journey and turning sweat into strength. Start tracking your resilience with HidroAlly today. #MySweatDoesNotDefineMe #HidroAllyWarrior #HyperhidrosisAwareness`;
+  const shareUrl = "https://www.sweatsmart.guru";
 
   const handleShare = async () => {
     if (!unlocked) { handleLockedTap(); return; }
@@ -437,7 +437,7 @@ const WarriorBadge = ({
           const file = new File([blob], "sweatsmart-warrior-badge.png", { type: "image/png" });
           if (navigator.canShare({ files: [file] })) {
             await navigator.share({
-              title: "SweatSmart Warrior",
+              title: "HidroAlly Warrior",
               text: shareText,
               url: shareUrl,
               files: [file],
@@ -732,7 +732,7 @@ const WarriorBadge = ({
       {/* ── Footer hashtags ──────────────────────────────────────────── */}
       <div className="px-5 pb-4 text-center">
         <p className="text-[10px] text-purple-400 font-medium leading-snug">
-          #HyperhidrosisWarrior · <span className="text-purple-300 font-bold">#StopTheStigma</span> · #SweatSmart
+          #HyperhidrosisWarrior · <span className="text-purple-300 font-bold">#StopTheStigma</span> · #HidroAlly
         </p>
       </div>
 

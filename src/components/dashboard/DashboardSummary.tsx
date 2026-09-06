@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { format, startOfWeek, startOfMonth } from "date-fns";
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Area,
+  Tooltip, ResponsiveContainer, Area, Scatter,
 } from "recharts";
 import { ProcessedEpisode, TrendData } from "@/types";
 import { Sparkles } from "lucide-react";
@@ -11,6 +11,7 @@ interface DashboardSummaryProps {
   weeklyData: TrendData[];
   monthlyData: TrendData[];
   allEpisodes?: ProcessedEpisode[];
+  trackingConsistency?: number;
 }
 
 type Timeframe = "D" | "W" | "M" | "Y";
@@ -21,49 +22,67 @@ const TIMEFRAME_CONFIG: Record<Timeframe, {
   maxPoints: number;
   tooltipLabel: string;
 }> = {
-  D: { label: "Day",   bucketFn: (d) => format(d, "EEE d"),              maxPoints: 14, tooltipLabel: "Day"   },
-  W: { label: "Week",  bucketFn: (d) => format(startOfWeek(d), "MMM d"), maxPoints: 12, tooltipLabel: "Week"  },
-  M: { label: "Month", bucketFn: (d) => format(startOfMonth(d), "MMM yy"), maxPoints: 12, tooltipLabel: "Month" },
-  Y: { label: "Year",  bucketFn: (d) => format(d, "yyyy"),               maxPoints: 6,  tooltipLabel: "Year"  },
+  D: { label: "Day",   bucketFn: (d) => format(d, "MMM d"),                 maxPoints: 14, tooltipLabel: "Day"   },
+  W: { label: "Week",  bucketFn: (d) => format(startOfWeek(d), "MMM d"),    maxPoints: 12, tooltipLabel: "Week"  },
+  M: { label: "Month", bucketFn: (d) => format(startOfMonth(d), "MMM ''yy"), maxPoints: 12, tooltipLabel: "Month" },
+  Y: { label: "Year",  bucketFn: (d) => format(d, "yyyy"),                  maxPoints: 6,  tooltipLabel: "Year"  },
 };
 
 const DualTooltip = ({ active, payload, label, timeframe }: any) => {
   if (!active || !payload?.length) return null;
   const freq = payload.find((p: any) => p.dataKey === "count");
+  const dryCount = payload.find((p: any) => p.dataKey === "dryCount");
   const sev  = payload.find((p: any) => p.dataKey === "severity");
+  const dryValue = Number(dryCount?.value) || 0;
+  const epValue = Number(freq?.value) || 0;
+
   return (
-    <div className="bg-white rounded-2xl shadow-2xl border border-purple-100 px-4 py-3 text-xs min-w-[150px]">
+    <div className="bg-white rounded-2xl shadow-2xl border border-purple-100 px-4 py-3 text-xs min-w-[160px]">
       <p className="font-bold text-gray-500 mb-2">{TIMEFRAME_CONFIG[timeframe as Timeframe]?.tooltipLabel}: {label}</p>
-      {freq && (
+      {epValue > 0 && (
         <div className="flex items-center gap-2 mb-1">
           <div className="w-2.5 h-2.5 rounded-sm bg-violet-400" />
-          <span className="text-gray-700"><strong className="text-violet-700">{freq.value}</strong> episode{freq.value !== 1 ? "s" : ""}</span>
+          <span className="text-gray-700"><strong className="text-violet-700">{epValue}</strong> episode{epValue !== 1 ? "s" : ""}</span>
         </div>
       )}
-      {sev && sev.value > 0 && (
+      {dryValue > 0 && (
+        <div className="flex items-center gap-2 mb-1">
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+          <span className="text-gray-700">
+            <strong className="text-emerald-700">{dryValue}</strong> dry day{dryValue !== 1 ? "s" : ""} — sweat-free 🎉
+          </span>
+        </div>
+      )}
+      {epValue > 0 && sev && Number(sev.value) > 0 && (
         <div className="flex items-center gap-2">
           <div className="w-2.5 h-2.5 rounded-full bg-pink-500" />
           <span className="text-gray-700">
-            HDSS avg <strong className={sev.value >= 3 ? "text-amber-600" : "text-sky-600"}>{Number(sev.value).toFixed(1)}</strong>
+            HDSS avg <strong className={Number(sev.value) >= 3 ? "text-amber-600" : "text-sky-600"}>{Number(sev.value).toFixed(1)}</strong>
           </span>
         </div>
+      )}
+      {epValue === 0 && dryValue === 0 && (
+        <span className="text-gray-400">No entries logged</span>
       )}
     </div>
   );
 };
 
+
 const generateInsight = (
-  allEpisodes: ProcessedEpisode[],
+  allEpisodesRaw: ProcessedEpisode[],
   tf: Timeframe,
-  chartData: any[]
+  chartData: any[],
+  trackingConsistency: number
 ): string => {
+  const allEpisodes = allEpisodesRaw.filter(e => !e.is_dry_day);
   if (!allEpisodes.length)
     return "No episodes logged yet. Start tracking to see your personal patterns.";
 
   const now   = new Date();
   const total = allEpisodes.length;
 
-  // ── DAY view — compare actual today vs actual yesterday ──────────────────
+  // ── DAY view ──────────────────────────────────────────────────────────────
   if (tf === "D") {
     const todayStr     = format(now, "yyyy-MM-dd");
     const yesterdayStr = format(new Date(now.getTime() - 86400000), "yyyy-MM-dd");
@@ -78,7 +97,6 @@ const generateInsight = (
     const todayCount = todayEps.length;
     const yestCount  = yestEps.length;
 
-    // Nothing logged today at all
     if (todayCount === 0 && yestCount === 0)
       return `No episodes logged today or yesterday. Your most recent episode was ${
         format(new Date(allEpisodes[0].datetime), "EEE d MMM")
@@ -92,7 +110,6 @@ const generateInsight = (
       return `${todayCount} episode${todayCount !== 1 ? "s" : ""} logged today (avg HDSS ${avgSevToday.toFixed(1)}). No episodes were logged yesterday. ${total} total tracked.`;
     }
 
-    // Both days have data — now compare accurately
     const avgSevToday = todayEps.reduce((s, e) => s + e.severityLevel, 0) / todayCount;
     const avgSevYest  = yestEps.reduce((s, e) => s + e.severityLevel, 0) / yestCount;
     const freqDiff    = todayCount - yestCount;
@@ -105,7 +122,7 @@ const generateInsight = (
     return `Same number of episodes today and yesterday (${todayCount} each). Severity ${sevDiff < -0.2 ? `improved by ${Math.abs(sevDiff).toFixed(1)} HDSS` : sevDiff > 0.2 ? `rose by ${sevDiff.toFixed(1)} HDSS` : "is stable"} — ${total} total tracked.`;
   }
 
-  // ── WEEK view — current week vs previous week ─────────────────────────────
+  // ── WEEK view ─────────────────────────────────────────────────────────────
   if (tf === "W") {
     const weekStart     = startOfWeek(now);
     const prevWeekStart = new Date(weekStart.getTime() - 7 * 86400000);
@@ -142,7 +159,7 @@ const generateInsight = (
     return `Same episode count this week as last (${thisCount}). Severity ${sevDiff < -0.2 ? `improved ${Math.abs(sevDiff).toFixed(1)} HDSS` : sevDiff > 0.2 ? `rose ${sevDiff.toFixed(1)} HDSS` : "stable"} — ${total} total tracked.`;
   }
 
-  // ── MONTH / YEAR view — use chart buckets but label accurately ────────────
+  // ── MONTH / YEAR view ─────────────────────────────────────────────────────
   if (chartData.length >= 2) {
     const last     = chartData[chartData.length - 1];
     const prev     = chartData[chartData.length - 2];
@@ -156,27 +173,36 @@ const generateInsight = (
       return `📈 ${freqDiff} more episode${freqDiff !== 1 ? "s" : ""} ${period} (${last.count} vs ${prev.count}). ${total} total tracked.`;
   }
 
-  // Fallback — honest summary
   const validSev = allEpisodes.filter(e => e.severityLevel > 0);
   const avgSev   = validSev.length ? validSev.reduce((s, e) => s + e.severityLevel, 0) / validSev.length : 0;
+
+  let consistencyMsg = "";
+  if (trackingConsistency > 0) {
+    consistencyMsg = ` You have maintained a ${trackingConsistency}% tracking consistency this week.`;
+  }
+
   if (avgSev >= 3)
-    return `⚠️ Your average HDSS is ${avgSev.toFixed(1)} — episodes are frequently interfering with daily life. Consider discussing prescription options with your dermatologist. ${total} total tracked.`;
-  return `Pattern is stable in this ${TIMEFRAME_CONFIG[tf].label.toLowerCase()} view. ${total} total episodes tracked — more data will reveal deeper correlations.`;
+    return `⚠️ Your average HDSS is ${avgSev.toFixed(1)} — episodes are frequently interfering with daily life. Consider discussing prescription options with your dermatologist. ${total} total tracked.${consistencyMsg}`;
+  return `Pattern is stable in this ${TIMEFRAME_CONFIG[tf].label.toLowerCase()} view. ${total} total episodes tracked — more data will reveal deeper correlations.${consistencyMsg}`;
 };
 
-const DashboardSummary: React.FC<DashboardSummaryProps> = ({ allEpisodes = [] }) => {
+const DashboardSummary: React.FC<DashboardSummaryProps> = ({ allEpisodes = [], trackingConsistency = 0 }) => {
   const [timeframe, setTimeframe] = useState<Timeframe>("W");
 
   const chartData = useMemo(() => {
     if (!allEpisodes.length) return [];
     const cfg = TIMEFRAME_CONFIG[timeframe];
-    const bucketMap = new Map<string, { count: number; severities: number[] }>();
+    const bucketMap = new Map<string, { count: number; dryCount: number; severities: number[] }>();
     allEpisodes.forEach(ep => {
       try {
         const key = cfg.bucketFn(new Date(ep.datetime));
-        const b = bucketMap.get(key) || { count: 0, severities: [] };
-        b.count++;
-        b.severities.push(ep.severityLevel);
+        const b = bucketMap.get(key) || { count: 0, dryCount: 0, severities: [] };
+        if (ep.is_dry_day) {
+          b.dryCount++;
+        } else {
+          b.count++;
+          b.severities.push(ep.severityLevel);
+        }
         bucketMap.set(key, b);
       } catch {}
     });
@@ -184,17 +210,21 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ allEpisodes = [] })
       .map(([date, d]) => ({
         date,
         count: d.count,
+        // null (not 0) so the green dry-day marker only renders on days that
+        // actually have a dry-day log
+        dryCount: d.dryCount > 0 ? d.dryCount : null,
         severity: d.severities.length
           ? parseFloat((d.severities.reduce((a, b) => a + b, 0) / d.severities.length).toFixed(2))
-          : 0,
+          : null,
       }))
+
       .sort((a, b) => { try { return new Date(a.date).getTime() - new Date(b.date).getTime(); } catch { return 0; } })
       .slice(-cfg.maxPoints);
   }, [allEpisodes, timeframe]);
 
   const aiInsight = useMemo(
-    () => generateInsight(allEpisodes, timeframe, chartData),
-    [allEpisodes, timeframe, chartData]
+    () => generateInsight(allEpisodes, timeframe, chartData, trackingConsistency),
+    [allEpisodes, timeframe, chartData, trackingConsistency]
   );
   const maxCount = Math.max(...chartData.map(d => d.count), 1);
 
@@ -235,16 +265,20 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ allEpisodes = [] })
           <span className="text-[11px] text-gray-500 font-medium">Episode count</span>
         </div>
         <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-full bg-emerald-500" />
+          <span className="text-[11px] text-gray-500 font-medium">Dry days</span>
+        </div>
+        <div className="flex items-center gap-1.5">
           <div className="w-4 h-0.5 bg-pink-500 rounded-full" />
           <span className="text-[11px] text-gray-500 font-medium">HDSS severity (1–4)</span>
         </div>
       </div>
 
       {/* Combo chart */}
-      <div className="h-[230px] w-full">
+      <div className="h-[380px] w-full">
         {chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={{ top: 8, right: 12, left: -22, bottom: 0 }}>
+            <ComposedChart data={chartData} margin={{ top: 16, right: 0, left: -10, bottom: 40 }}>
               <defs>
                 <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.9} />
@@ -257,13 +291,14 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ allEpisodes = [] })
               </defs>
               <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#ede9fe" strokeOpacity={0.7} />
               <XAxis dataKey="date" fontSize={9} tickLine={false} axisLine={false}
-                tick={{ fill: "#9ca3af", fontWeight: 600 }} interval="preserveStartEnd" />
-              <YAxis yAxisId="left" orientation="left" fontSize={9} tickLine={false} axisLine={false}
+                tick={{ fill: "#9ca3af", fontWeight: 600 }} angle={-45} textAnchor="end" height={60} interval="preserveStartEnd" />
+              <YAxis yAxisId="left" orientation="left" fontSize={9} tickLine={false} axisLine={false} width={25}
                 tick={{ fill: "#a78bfa" }} allowDecimals={false} domain={[0, Math.ceil(maxCount * 1.3)]} />
-              <YAxis yAxisId="right" orientation="right" fontSize={9} tickLine={false} axisLine={false}
-                domain={[1, 4]} ticks={[1, 2, 3, 4]} tick={{ fill: "#f472b6" }} />
+              <YAxis yAxisId="right" orientation="right" fontSize={10} tickLine={false} axisLine={false} width={25}
+                domain={[1, 4]} ticks={[1, 2, 3, 4]} tick={{ fill: "#f472b6", fontWeight: 600 }} />
               <Tooltip content={<DualTooltip timeframe={timeframe} />} />
               <Bar yAxisId="left" dataKey="count" fill="url(#barGrad)" radius={[6, 6, 0, 0]} maxBarSize={28} name="Episodes" />
+              <Scatter yAxisId="left" dataKey="dryCount" fill="#10b981" shape="circle" r={8} name="Dry Days" isAnimationActive={false} />
               <Area yAxisId="right" type="monotone" dataKey="severity" stroke="none" fill="url(#areaGrad)" connectNulls />
               <Line yAxisId="right" type="monotone" dataKey="severity" stroke="#ec4899" strokeWidth={2.5}
                 dot={{ fill: "#ec4899", strokeWidth: 2, r: 4, stroke: "#fff" }}

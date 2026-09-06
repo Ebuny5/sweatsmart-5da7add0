@@ -5,11 +5,13 @@ import AppLayout from "@/components/layout/AppLayout";
 import { SeverityLevel } from "@/types";
 import DashboardSummary from "@/components/dashboard/DashboardSummary";
 import TriggerSummary from "@/components/dashboard/TriggerSummary";
+import BodyAreaRadarChart from "@/components/dashboard/BodyAreaRadarChart";
 import { TriggerFrequency, BodyAreaFrequency, BodyArea } from "@/types";
 import { useEpisodes } from "@/hooks/useEpisodes";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
-import { PlusCircle, TrendingUp, Sparkles, BookOpen, ChevronRight } from "lucide-react";
+import { useEngagement } from "@/hooks/useEngagement";
+import { PlusCircle, TrendingUp, Sparkles, BookOpen, ChevronRight, CalendarDays } from "lucide-react";
 
 // ── Onboarding step card ─────────────────────────────────────────────────────
 const OnboardingStep = ({
@@ -46,13 +48,13 @@ const OnboardingStep = ({
 );
 
 // ── Stat pill ────────────────────────────────────────────────────────────────
-const StatPill = ({ emoji, value, label, gradient }: {
-  emoji: string; value: string | number; label: string; gradient: string;
+const StatPill = ({ icon, value, label, gradient }: {
+  icon: React.ReactNode; value: string | number; label: string; gradient: string;
 }) => (
-  <div className={`flex flex-col items-center justify-center px-4 py-3 rounded-2xl ${gradient} min-w-[80px]`}>
-    <span className="text-xl mb-0.5">{emoji}</span>
-    <span className="text-2xl font-black text-[#ffffff] leading-none">{value}</span>
-    <span className="text-xs text-[#ffffff] font-bold text-center leading-tight mt-0.5">{label}</span>
+  <div className={`flex flex-col items-center justify-center px-2 py-2.5 rounded-2xl ${gradient} flex-1`}>
+    <div className="mb-0.5">{icon}</div>
+    <span className="text-sm font-black text-white leading-none">{value}</span>
+    <span className="text-[10px] text-white/80 font-semibold text-center leading-tight mt-0.5">{label}</span>
   </div>
 );
 
@@ -62,8 +64,12 @@ const Dashboard = () => {
   const { user } = useAuth();
   const { profile } = useProfile();
   const { episodes: rawEpisodes, loading: isLoading, error, refetch } = useEpisodes();
+  const { consistencyPercentage: trackingConsistencyPercentage, trackAction } = useEngagement();
 
-  // ── All original useEffect — untouched ────────────────────────────────────
+  useEffect(() => {
+    trackAction("sweat_journey_views");
+  }, [trackAction]);
+
   useEffect(() => {
     if (user) {
       const timer = setTimeout(() => { refetch(); }, 500);
@@ -71,8 +77,8 @@ const Dashboard = () => {
     }
   }, [user?.id, refetch]);
 
-  // ── All original useMemo — untouched ──────────────────────────────────────
   const allEpisodes = useMemo(() => {
+    if (!rawEpisodes) return [];
     return rawEpisodes.map(episode => ({
       ...episode,
       datetime: new Date(episode.datetime),
@@ -83,8 +89,9 @@ const Dashboard = () => {
   }, [rawEpisodes]);
 
   const dashboardData = useMemo(() => {
+    const nonDryEpisodes = allEpisodes.filter(e => !e.is_dry_day);
     const triggerCounts = new Map();
-    allEpisodes.forEach(episode => {
+    nonDryEpisodes.forEach(episode => {
       if (episode.triggers && Array.isArray(episode.triggers)) {
         episode.triggers.forEach(trigger => {
           if (trigger && (trigger.label || trigger.value)) {
@@ -108,12 +115,12 @@ const Dashboard = () => {
         count: data.count,
         trigger: { label, type: data.type || 'environmental', value: label },
         averageSeverity,
-        percentage: allEpisodes.length > 0 ? Math.round((data.count / allEpisodes.length) * 100) : 0
+        percentage: nonDryEpisodes.length > 0 ? Math.round((data.count / nonDryEpisodes.length) * 100) : 0
       };
     }).sort((a, b) => b.count - a.count);
 
     const bodyAreaCounts = new Map();
-    allEpisodes.forEach(episode => {
+    nonDryEpisodes.forEach(episode => {
       if (episode.bodyAreas && Array.isArray(episode.bodyAreas)) {
         episode.bodyAreas.forEach(area => {
           const existing = bodyAreaCounts.get(area) || { count: 0, severities: [] };
@@ -131,30 +138,25 @@ const Dashboard = () => {
       return {
         area: area as BodyArea,
         count: data.count,
-        percentage: allEpisodes.length > 0 ? Math.round((data.count / allEpisodes.length) * 100) : 0,
+        percentage: nonDryEpisodes.length > 0 ? Math.round((data.count / nonDryEpisodes.length) * 100) : 0,
         averageSeverity
       };
     }).sort((a, b) => b.count - a.count);
 
-    return { triggerFrequencies, bodyAreas, allEpisodes };
+    return { triggerFrequencies, bodyAreas, allEpisodes, nonDryEpisodes };
   }, [allEpisodes]);
 
   // ── Derived stats ─────────────────────────────────────────────────────────
   const displayName = profile?.display_name || user?.email?.split("@")[0] || "Warrior";
   const firstName = displayName.split(" ")[0];
-  const totalEpisodes = dashboardData.allEpisodes.length;
+  const totalEpisodes = dashboardData.nonDryEpisodes.length;
 
-  const avgSeverity = totalEpisodes > 0
-    ? (dashboardData.allEpisodes.reduce((sum, e) => sum + e.severityLevel, 0) / totalEpisodes).toFixed(1)
+  const nonDryCount = dashboardData.nonDryEpisodes.length;
+  const avgSeverity = nonDryCount > 0
+    ? (dashboardData.nonDryEpisodes.reduce((sum, e) => sum + e.severityLevel, 0) / nonDryCount).toFixed(1)
     : "—";
 
-  const thisWeek = dashboardData.allEpisodes.filter(e => {
-    const diff = (Date.now() - new Date(e.datetime).getTime()) / (1000 * 60 * 60 * 24);
-    return diff <= 7;
-  }).length;
-
   const topTrigger = dashboardData.triggerFrequencies[0]?.name ?? "None yet";
-  const topArea = dashboardData.bodyAreas[0]?.area ?? "None yet";
 
   const getGreeting = () => {
     const h = new Date().getHours();
@@ -213,12 +215,11 @@ const Dashboard = () => {
     );
   }
 
-  // ── EMPTY STATE — New user onboarding ─────────────────────────────────────
+  // ── EMPTY STATE ───────────────────────────────────────────────────────────
   if (totalEpisodes === 0) {
     return (
       <AppLayout>
         <div className="max-w-lg mx-auto pb-10">
-          {/* Welcome hero */}
           <div className="bg-gradient-to-br from-violet-600 via-purple-500 to-pink-500 px-6 pt-8 pb-12 rounded-b-[2.5rem] shadow-lg shadow-purple-200 text-center mb-6">
             <span className="text-5xl">💧</span>
             <h1 className="text-white text-2xl font-black mt-3 tracking-tight">
@@ -230,7 +231,6 @@ const Dashboard = () => {
           </div>
 
           <div className="px-4 space-y-4">
-            {/* Onboarding steps */}
             <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-5 space-y-3">
               <h2 className="font-black text-gray-800 text-base">Your 3-step journey 🗺️</h2>
               <div className="h-0.5 bg-gradient-to-r from-violet-400 via-pink-400 to-amber-400 rounded-full mb-3" />
@@ -250,11 +250,10 @@ const Dashboard = () => {
                 step={3} emoji="🤖" title="Talk to HidroAlly"
                 description="Your 24/7 AI companion reads your history and gives personalised advice."
                 action="Meet HidroAlly"
-                onClick={() => navigate("/hyper-ai")}
+                onClick={() => navigate("/hidro-ally")}
               />
             </div>
 
-            {/* Did you know card */}
             <div className="bg-gradient-to-br from-violet-50 to-pink-50 rounded-2xl border border-purple-100 p-5">
               <p className="text-xs font-bold text-violet-600 uppercase tracking-wide mb-2">💡 Did you know?</p>
               <p className="text-sm text-gray-700 leading-relaxed">
@@ -262,7 +261,6 @@ const Dashboard = () => {
               </p>
             </div>
 
-            {/* Big CTA */}
             <button
               onClick={() => navigate("/log-episode")}
               className="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-500 to-pink-500 text-white font-black text-base shadow-lg shadow-purple-200 hover:shadow-xl transition-all flex items-center justify-center gap-2"
@@ -276,50 +274,44 @@ const Dashboard = () => {
     );
   }
 
-  // ── MAIN DASHBOARD — Has episodes ─────────────────────────────────────────
+  // ── MAIN DASHBOARD ────────────────────────────────────────────────────────
   return (
     <AppLayout>
       <div className="max-w-lg mx-auto pb-10">
 
         {/* ── HERO ──────────────────────────────────────────────────────── */}
         <div className="bg-gradient-to-br from-violet-600 via-purple-500 to-pink-500 px-6 pt-8 pb-14 rounded-b-[2.5rem] shadow-lg shadow-purple-200">
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <h1 className="text-[#1e3a8a] text-xl font-black tracking-tight leading-tight mt-0.5">
-                {firstName}'s Dashboard 💧
-              </h1>
-            </div>
-            <button
-              onClick={() => navigate("/insights")}
-              className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-2 rounded-full transition-all backdrop-blur-sm"
-            >
-              <TrendingUp className="h-3.5 w-3.5" />
-              Insights
-            </button>
+
+          {/* Title row — centred */}
+          <div className="flex items-center justify-center mb-3">
+            <h1 className="text-white text-lg font-black tracking-tight leading-tight text-center whitespace-nowrap">
+              {firstName}'s Dashboard
+            </h1>
           </div>
 
-          {/* HDSS status */}
+          {/* HDSS status badge */}
           {hdss && (
-            <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${hdss.bg} mb-4`}>
-              <span className="text-sm">📊</span>
-              <span className={`text-xs font-bold ${hdss.color}`}>{hdss.label} average</span>
+            <div className={`flex justify-center mb-4`}>
+              <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${hdss.bg}`}>
+                <span className="text-sm">📊</span>
+                <span className={`text-xs font-bold ${hdss.color}`}>{hdss.label} average</span>
+              </div>
             </div>
           )}
 
-          {/* Stats row */}
-          <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
-            <StatPill emoji="📋" value={totalEpisodes} label="Episodes" gradient="bg-white/20 backdrop-blur-sm" />
-            <StatPill emoji="📅" value={thisWeek} label="This week" gradient="bg-white/20 backdrop-blur-sm" />
-            <StatPill emoji="⚡" value={avgSeverity} label="Avg HDSS" gradient="bg-white/20 backdrop-blur-sm" />
-            <StatPill emoji="🔥" value={topTrigger.length > 10 ? topTrigger.slice(0, 10) + "…" : topTrigger} label="Top trigger" gradient="bg-white/20 backdrop-blur-sm" />
+          {/* Stats row — 4 equal pills, no scroll, no confusing icons */}
+          <div className="grid grid-cols-4 gap-2">
+            <StatPill icon={<span className="text-base">📋</span>} value={totalEpisodes} label="Episodes" gradient="bg-white/20 backdrop-blur-sm" />
+            <StatPill icon={<span className="text-base">🗓️</span>} value={`${trackingConsistencyPercentage}%`} label="Consistency" gradient="bg-white/20 backdrop-blur-sm" />
+            <StatPill icon={<span className="text-base">⚡</span>} value={avgSeverity} label="Avg HDSS" gradient="bg-white/20 backdrop-blur-sm" />
+            <StatPill icon={<span className="text-base">🔥</span>} value={topTrigger.length > 8 ? topTrigger.slice(0, 8) + "…" : topTrigger} label="Top trigger" gradient="bg-white/20 backdrop-blur-sm" />
           </div>
         </div>
-
 
         {/* ── CONTENT ───────────────────────────────────────────────────── */}
         <div className="space-y-4 px-4 -mt-2">
 
-          {/* Charts — DashboardSummary */}
+          {/* Trend Overview */}
           <div className="bg-white rounded-2xl shadow-sm border border-purple-100 overflow-hidden">
             <div className="px-5 pt-4 pb-2 border-b border-gray-50 flex items-center gap-2">
               <span className="text-lg">📈</span>
@@ -332,10 +324,11 @@ const Dashboard = () => {
               weeklyData={[]}
               monthlyData={[]}
               allEpisodes={dashboardData.allEpisodes}
+              trackingConsistency={trackingConsistencyPercentage}
             />
           </div>
 
-          {/* Trigger Summary */}
+          {/* Top Triggers */}
           <div className="bg-white rounded-2xl shadow-sm border border-purple-100 overflow-hidden">
             <div className="px-5 pt-4 pb-2 border-b border-gray-50 flex items-center gap-2">
               <span className="text-lg">🔍</span>
@@ -348,26 +341,28 @@ const Dashboard = () => {
             </div>
             <TriggerSummary
               triggers={dashboardData.triggerFrequencies}
-              allEpisodes={dashboardData.allEpisodes}
+              allEpisodes={dashboardData.nonDryEpisodes}
             />
           </div>
 
-          {/* Hyper AI prompt card */}
-          <button
-            onClick={() => navigate("/hyper-ai")}
-            className="w-full bg-gradient-to-r from-violet-500 to-pink-500 rounded-2xl p-5 flex items-center gap-4 shadow-md shadow-purple-100 hover:shadow-lg transition-all text-left"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
-              <Sparkles className="h-6 w-6 text-white" />
+          {/* Top Affected Areas */}
+          {dashboardData.bodyAreas.length > 0 && (
+            <div className="bg-white rounded-2xl shadow-sm border border-purple-100 overflow-hidden">
+              <div className="px-5 pt-4 pb-2 border-b border-gray-50 flex items-center gap-2">
+                <span className="text-lg">🫶</span>
+                <div>
+                  <h2 className="font-bold text-sm text-gray-800">Top Affected Areas</h2>
+                  <p className="text-xs text-gray-400">
+                    {dashboardData.bodyAreas.length} areas tracked across {totalEpisodes} episodes
+                  </p>
+                </div>
+              </div>
+              <BodyAreaRadarChart
+                bodyAreas={dashboardData.bodyAreas}
+                totalEpisodes={totalEpisodes}
+              />
             </div>
-            <div className="flex-1">
-              <p className="text-white font-black text-sm leading-tight">Ask HidroAlly 🤖</p>
-              <p className="text-purple-100 text-xs mt-0.5 leading-snug">
-                "Why do my hands sweat at work?" — HidroAlly reads your history to answer.
-              </p>
-            </div>
-            <ChevronRight className="h-5 w-5 text-white/70 shrink-0" />
-          </button>
+          )}
 
           {/* Insights nudge */}
           <button
@@ -381,6 +376,23 @@ const Dashboard = () => {
               <p className="text-white font-black text-sm leading-tight">View Full Insights 📊</p>
               <p className="text-amber-100 text-xs mt-0.5 leading-snug">
                 Treatment options, trigger analysis & personalised recommendations.
+              </p>
+            </div>
+            <ChevronRight className="h-5 w-5 text-white/70 shrink-0" />
+          </button>
+
+          {/* HidroAlly */}
+          <button
+            onClick={() => navigate("/hidro-ally?from=dashboard_cta")}
+            className="w-full bg-gradient-to-r from-violet-500 to-pink-500 rounded-2xl p-5 flex items-center gap-4 shadow-md shadow-purple-100 hover:shadow-lg transition-all text-left"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
+              <Sparkles className="h-6 w-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <p className="text-white font-black text-sm leading-tight">Ask HidroAlly 🤖</p>
+              <p className="text-purple-100 text-xs mt-0.5 leading-snug">
+                Do you want more understanding of your analytics, click to ask HidroAlly
               </p>
             </div>
             <ChevronRight className="h-5 w-5 text-white/70 shrink-0" />

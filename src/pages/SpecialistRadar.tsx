@@ -1,15 +1,17 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import AppLayout from '@/components/layout/AppLayout';
+import PageTransition from '@/components/layout/PageTransition';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useEpisodes } from '@/hooks/useEpisodes';
+import { useEngagement } from '@/hooks/useEngagement';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
   MapPin, Navigation, Star, Phone, Globe, ExternalLink,
   Filter, X, Zap, Award, Share2, RefreshCw,
   Loader2, Sparkles, ChevronRight, Heart, Shield,
-  Video, AlertCircle, Wifi
+  Video, AlertCircle, Wifi, ChevronLeft
 } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -19,7 +21,7 @@ interface Doctor {
   clinicName?: string;
   specialty: string;
   address: string;
-  city: string;
+  state: string;
   country: string;
   lat: number;
   lng: number;
@@ -32,7 +34,12 @@ interface Doctor {
   isTelehealth: boolean;
   distance?: string | null;
   distanceMeters?: number | null;
-  tier: 'curated' | 'google' | 'telehealth';
+  tier: 'curated' | 'facility' | 'external' | 'telehealth';
+  // True only when a named specialist has actually been confirmed at this
+  // location. 'facility' tier rows (real hospital, unconfirmed doctor) will
+  // have this false — use it to avoid showing the green "Verified" styling
+  // on a listing nobody has actually verified yet.
+  specialistConfirmed: boolean;
   rating?: number | null;
   reviewCount?: number | null;
   openNow?: boolean | null;
@@ -42,13 +49,17 @@ interface Doctor {
 interface SearchMeta {
   total: number;
   curatedCount: number;
-  googleCount: number;
+  facilityOnlyCount: number;
+  externalCount: number;
   telehealthCount: number;
+  physicalCount?: number;
+  scope?: string;
+  boundary?: string;
   careGap: boolean;
 }
 
 type TreatmentFilter = 'all' | 'iontophoresis' | 'botox' | 'miradry' | 'topical';
-type ScopeFilter = 'city' | 'country' | 'continent';
+type ScopeFilter = 'state' | 'country' | 'continent';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const TREATMENTS = [
@@ -58,17 +69,63 @@ const TREATMENTS = [
   { key: 'topical',       label: 'Topical Rx',      icon: '🧴', color: 'text-green-300 border-green-500/40 bg-green-500/10' },
 ];
 
-const SCOPE_RADII: Record<ScopeFilter, number> = {
-  city:      10000,
-  country:   300000,
-  continent: 5000000,
+// Continent lookup shared with the specialist-radar edge function.
+const CONTINENT_MAP: Record<string, string> = {
+  NG:'Africa',GH:'Africa',ZA:'Africa',KE:'Africa',EG:'Africa',TZ:'Africa',
+  ET:'Africa',CM:'Africa',SN:'Africa',CI:'Africa',RW:'Africa',UG:'Africa',
+  MA:'Africa',TN:'Africa',DZ:'Africa',MZ:'Africa',AO:'Africa',CD:'Africa',
+  SD:'Africa',MG:'Africa',ZM:'Africa',ZW:'Africa',BJ:'Africa',BF:'Africa',
+  ML:'Africa',NE:'Africa',TD:'Africa',SO:'Africa',LY:'Africa',ER:'Africa',
+  TG:'Africa',SL:'Africa',GN:'Africa',MW:'Africa',LS:'Africa',SZ:'Africa',
+  BW:'Africa',NA:'Africa',GM:'Africa',GA:'Africa',GQ:'Africa',CG:'Africa',
+  BI:'Africa',CF:'Africa',CV:'Africa',KM:'Africa',DJ:'Africa',GW:'Africa',
+  LR:'Africa',MR:'Africa',MU:'Africa',SC:'Africa',SS:'Africa',ST:'Africa',
+  GB:'Europe',DE:'Europe',FR:'Europe',IT:'Europe',ES:'Europe',PT:'Europe',
+  NL:'Europe',BE:'Europe',SE:'Europe',NO:'Europe',DK:'Europe',FI:'Europe',
+  CH:'Europe',AT:'Europe',PL:'Europe',CZ:'Europe',SK:'Europe',HU:'Europe',
+  RO:'Europe',BG:'Europe',GR:'Europe',TR:'Europe',UA:'Europe',RU:'Europe',
+  IE:'Europe',HR:'Europe',RS:'Europe',SI:'Europe',LT:'Europe',LV:'Europe',
+  EE:'Europe',LU:'Europe',MT:'Europe',CY:'Europe',IS:'Europe',AL:'Europe',
+  US:'Americas',CA:'Americas',MX:'Americas',BR:'Americas',AR:'Americas',
+  CL:'Americas',CO:'Americas',PE:'Americas',VE:'Americas',EC:'Americas',
+  BO:'Americas',PY:'Americas',UY:'Americas',GY:'Americas',SR:'Americas',
+  GT:'Americas',HN:'Americas',SV:'Americas',NI:'Americas',CR:'Americas',
+  PA:'Americas',CU:'Americas',DO:'Americas',JM:'Americas',TT:'Americas',
+  CN:'Asia',JP:'Asia',IN:'Asia',KR:'Asia',PK:'Asia',BD:'Asia',TH:'Asia',
+  VN:'Asia',ID:'Asia',PH:'Asia',MY:'Asia',SG:'Asia',MM:'Asia',KH:'Asia',
+  LK:'Asia',NP:'Asia',AE:'Asia',SA:'Asia',IL:'Asia',JO:'Asia',LB:'Asia',
+  IQ:'Asia',IR:'Asia',KW:'Asia',QA:'Asia',BH:'Asia',OM:'Asia',YE:'Asia',
+  KZ:'Asia',UZ:'Asia',GE:'Asia',AM:'Asia',AZ:'Asia',TW:'Asia',HK:'Asia',
+  AU:'Oceania',NZ:'Oceania',FJ:'Oceania',PG:'Oceania',
 };
+
+// Not every country divides itself into "states". Nigeria, the US, India and
+// Brazil do; most of Africa, Europe and Asia use regions/provinces/governorates.
+// The first scope button is labelled with the correct local term so the UI
+// never tells a Ghanaian user to search "My State".
+const STATE_COUNTRIES  = new Set(['NG','US','IN','BR','MX','AU','MY','SS','SD','VE','DE','AT','ET','SO','PW','FM','MX']);
+const PROVINCE_COUNTRIES = new Set(['ZA','CD','CA','CN','KE','ZM','ZW','RW','BI','MZ','AO','CN','ES','IT','NL','BE','AR','TR','PK','ID','PH','LA','KH','VN','CU','SA','IR','AF']);
+const GOVERNORATE_COUNTRIES = new Set(['EG','TN','LY','IQ','JO','LB','SY','KW','OM','YE','BH','QA','DZ','MA']);
+
+const regionTerm = (iso: string): string => {
+  const cc = (iso || '').toUpperCase();
+  if (STATE_COUNTRIES.has(cc))       return 'State';
+  if (PROVINCE_COUNTRIES.has(cc))    return 'Province';
+  if (GOVERNORATE_COUNTRIES.has(cc)) return 'Governorate';
+  return 'Region';
+};
+
+const scopeLabel = (s: ScopeFilter, iso: string): string =>
+  s === 'state' ? `My ${regionTerm(iso)}` : s === 'country' ? 'My Country' : 'My Continent';
+
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 const computeHdss = (episodes: any[]): number => {
   if (!episodes?.length) return 0;
-  const recent = episodes.slice(0, 10);
-  return recent.reduce((s, e) => s + Number(e.severityLevel || 0), 0) / recent.length;
+  const filtered = episodes.filter(e => !e.is_dry_day);
+  if (!filtered.length) return 0;
+  const recent = filtered.slice(0, 10);
+  return recent.reduce((s, e) => s + Number(e.severityLevel || e.severity || 0), 0) / recent.length;
 };
 
 // ── Leaflet loader ─────────────────────────────────────────────────────────
@@ -85,36 +142,44 @@ const loadLeaflet = (): Promise<any> => new Promise((resolve, reject) => {
   document.head.appendChild(script);
 });
 
-const glowPin = (active = false, isTele = false, user = false) => `
+const glowPin = (active = false, isTele = false, user = false, unconfirmed = false) => `
   <div style="display:flex;flex-direction:column;align-items:center;width:36px;height:44px;">
     <div style="
       width:${user ? 18 : 28}px;height:${user ? 18 : 28}px;border-radius:50%;
-      background:${user ? '#facc15' : isTele ? 'rgba(139,92,246,0.9)' : active ? 'rgba(0,188,212,1)' : 'rgba(0,188,212,0.75)'};
-      box-shadow:0 0 ${active ? 24 : 12}px ${active ? 10 : 5}px ${user ? 'rgba(250,204,21,0.4)' : isTele ? 'rgba(139,92,246,0.4)' : 'rgba(0,188,212,0.4)'};
+      background:${user ? '#facc15' : isTele ? 'rgba(139,92,246,0.9)' : unconfirmed ? 'rgba(245,158,11,0.85)' : active ? 'rgba(0,188,212,1)' : 'rgba(0,188,212,0.75)'};
+      box-shadow:0 0 ${active ? 24 : 12}px ${active ? 10 : 5}px ${user ? 'rgba(250,204,21,0.4)' : isTele ? 'rgba(139,92,246,0.4)' : unconfirmed ? 'rgba(245,158,11,0.35)' : 'rgba(0,188,212,0.4)'};
       border:2px solid rgba(255,255,255,0.35);
       display:flex;align-items:center;justify-content:center;
     ">
       <div style="width:7px;height:7px;border-radius:50%;background:white;opacity:0.9;"></div>
     </div>
-    ${!user ? `<div style="width:2px;height:12px;background:linear-gradient(to bottom,rgba(0,188,212,0.7),transparent);margin-top:1px;"></div>` : ''}
+    ${!user ? `<div style="width:2px;height:12px;background:linear-gradient(to bottom,${unconfirmed ? 'rgba(245,158,11,0.7)' : 'rgba(0,188,212,0.7)'},transparent);margin-top:1px;"></div>` : ''}
   </div>`;
 
 // ── Tier badge ─────────────────────────────────────────────────────────────
-const TierBadge = ({ tier, isIhs, isNds }: { tier: string; isIhs: boolean; isNds: boolean }) => {
+const TierBadge = ({ tier, isIhs, isNds, specialistConfirmed }: { tier: string; isIhs: boolean; isNds: boolean; specialistConfirmed: boolean }) => {
   if (isIhs) return <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold text-yellow-300 border border-yellow-500/40 bg-yellow-500/10">🏅 IHS Verified</span>;
   if (isNds) return <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold text-teal-300 border border-teal-500/40 bg-teal-500/10">NDS Member</span>;
   if (tier === 'curated') return <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold text-purple-300 border border-purple-500/40 bg-purple-500/10">✓ Verified</span>;
+  // 'facility' tier: a real hospital, but nobody has confirmed a named
+  // dermatologist there yet. Deliberately amber/neutral, not green — this
+  // is what stops an unconfirmed listing from looking as trustworthy as a
+  // verified one.
+  if (tier === 'facility' && !specialistConfirmed) return <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold text-amber-300 border border-amber-500/40 bg-amber-500/10">📋 Unconfirmed</span>;
   if (tier === 'telehealth') return <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold text-violet-300 border border-violet-500/40 bg-violet-500/10">📡 Telehealth</span>;
   return null;
 };
 
 // ── AI Greeting ────────────────────────────────────────────────────────────
-const AIGreeting = ({ profile, hdss, meta, city, onDismiss }: {
-  profile: any; hdss: number; meta: SearchMeta | null; city: string; onDismiss: () => void;
+const AIGreeting = ({ profile, hdss, meta, state, onDismiss }: {
+  profile: any; hdss: number; meta: SearchMeta | null; state: string; onDismiss: () => void;
 }) => {
   const name = profile?.name?.split(' ')[0] || 'Warrior';
   const hdssText = hdss > 0 ? `HDSS ${hdss.toFixed(1)} severity` : 'your hyperhidrosis profile';
-  const physCount = meta ? meta.curatedCount + meta.googleCount : 0;
+  const physCount = meta
+    ? (Number(meta.physicalCount) ||
+       (Number(meta.curatedCount) || 0) + (Number(meta.facilityOnlyCount) || 0) + (Number(meta.externalCount) || 0))
+    : 0;
 
   return (
     <div className="relative rounded-2xl overflow-hidden mb-4 p-4"
@@ -133,7 +198,7 @@ const AIGreeting = ({ profile, hdss, meta, city, onDismiss }: {
             <span className="text-teal-300 font-semibold">{hdssText}</span>,{' '}
             {meta?.careGap
               ? <>no physical specialists were found nearby, but I've located <span className="text-violet-300 font-semibold">{meta.telehealthCount} telehealth expert{meta.telehealthCount !== 1 ? 's' : ''}</span> who can review your Warrior Report today.</>
-              : <>I've located <span className="text-teal-300 font-semibold">{physCount} specialist{physCount !== 1 ? 's' : ''}</span> near <span className="font-semibold text-white">{city || 'you'}</span>. Tap any pin to see their profile.</>
+              : <>I've located <span className="text-teal-300 font-semibold">{physCount} specialist{physCount !== 1 ? 's' : ''}</span> near <span className="font-semibold text-white">{state || 'you'}</span>. Tap any pin to see their profile.</>
             }
           </p>
         </div>
@@ -144,7 +209,7 @@ const AIGreeting = ({ profile, hdss, meta, city, onDismiss }: {
 };
 
 // ── Care Gap card ──────────────────────────────────────────────────────────
-const CareGapCard = ({ onWiden }: { onWiden: () => void }) => (
+const CareGapCard = ({ onWiden, hideWiden }: { onWiden: () => void, hideWiden?: boolean }) => (
   <div className="rounded-2xl p-4 mb-4"
     style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.25)' }}>
     <div className="flex items-center gap-2 mb-2">
@@ -152,13 +217,13 @@ const CareGapCard = ({ onWiden }: { onWiden: () => void }) => (
       <span className="text-xs font-bold text-red-400">Care Gap Detected</span>
     </div>
     <p className="text-xs text-white/55 leading-relaxed mb-3">
-      No certified hyperhidrosis specialists are registered near you yet. This is a known gap across many African cities — SweatSmart is actively working to map specialist availability across the continent.
+      No certified hyperhidrosis specialists are registered near you yet. This is a known gap across many African cities — HidroAlly is actively working to map specialist availability across the continent.
     </p>
     <div className="flex gap-2">
-      <button onClick={onWiden}
+      {!hideWiden && <button onClick={onWiden}
         className="flex-1 py-2.5 rounded-xl text-xs font-bold text-teal-300 border border-teal-500/40 bg-teal-500/10 transition-all active:scale-95">
         Widen to Country / Continent
-      </button>
+      </button>}
       <a href="https://www.sweathelp.org/find-a-provider.html" target="_blank" rel="noreferrer"
         className="flex-1 py-2.5 rounded-xl text-xs font-bold text-violet-300 border border-violet-500/40 bg-violet-500/10 text-center transition-all active:scale-95">
         IHS Global Directory
@@ -168,29 +233,37 @@ const CareGapCard = ({ onWiden }: { onWiden: () => void }) => (
 );
 
 // ── Doctor card ────────────────────────────────────────────────────────────
-const DoctorCard = ({ doctor, isActive, onTap }: { doctor: Doctor; isActive: boolean; onTap: () => void }) => (
+const DoctorCard = ({ doctor, isActive, onTap }: { doctor: Doctor; isActive: boolean; onTap: () => void }) => {
+  const unconfirmed = doctor.tier === 'facility' && !doctor.specialistConfirmed;
+  return (
   <div onClick={onTap} className="rounded-2xl p-4 cursor-pointer transition-all active:scale-[0.98]"
     style={{
-      background: isActive ? 'rgba(0,188,212,0.1)' : doctor.isTelehealth ? 'rgba(139,92,246,0.06)' : 'rgba(255,255,255,0.04)',
-      border: `1px solid ${isActive ? 'rgba(0,188,212,0.38)' : doctor.isTelehealth ? 'rgba(139,92,246,0.25)' : 'rgba(255,255,255,0.08)'}`,
+      background: isActive ? 'rgba(0,188,212,0.1)' : doctor.isTelehealth ? 'rgba(139,92,246,0.06)' : unconfirmed ? 'rgba(245,158,11,0.05)' : 'rgba(255,255,255,0.04)',
+      border: `1px solid ${isActive ? 'rgba(0,188,212,0.38)' : doctor.isTelehealth ? 'rgba(139,92,246,0.25)' : unconfirmed ? 'rgba(245,158,11,0.22)' : 'rgba(255,255,255,0.08)'}`,
       boxShadow: isActive ? '0 0 20px rgba(0,188,212,0.12)' : 'none',
     }}>
     <div className="flex items-start gap-3">
       {/* Avatar */}
       <div className="w-12 h-12 rounded-2xl shrink-0 flex items-center justify-center font-bold text-base"
         style={{
-          background: doctor.isTelehealth ? 'linear-gradient(135deg,rgba(139,92,246,0.3),rgba(109,62,216,0.2))' : 'linear-gradient(135deg,rgba(0,188,212,0.25),rgba(0,150,170,0.15))',
-          border: `1px solid ${doctor.isTelehealth ? 'rgba(139,92,246,0.3)' : 'rgba(0,188,212,0.25)'}`,
+          background: doctor.isTelehealth ? 'linear-gradient(135deg,rgba(139,92,246,0.3),rgba(109,62,216,0.2))' : unconfirmed ? 'linear-gradient(135deg,rgba(245,158,11,0.22),rgba(180,110,10,0.14))' : 'linear-gradient(135deg,rgba(0,188,212,0.25),rgba(0,150,170,0.15))',
+          border: `1px solid ${doctor.isTelehealth ? 'rgba(139,92,246,0.3)' : unconfirmed ? 'rgba(245,158,11,0.3)' : 'rgba(0,188,212,0.25)'}`,
         }}>
         {doctor.isTelehealth ? <Video className="h-5 w-5 text-violet-400" /> : doctor.name.charAt(0)}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-start gap-1.5 flex-wrap">
           <p className="text-sm font-bold text-white leading-tight">{doctor.name}</p>
-          <TierBadge tier={doctor.tier} isIhs={doctor.isIhsVerified} isNds={doctor.isNdsMember} />
+          <TierBadge tier={doctor.tier} isIhs={doctor.isIhsVerified} isNds={doctor.isNdsMember} specialistConfirmed={doctor.specialistConfirmed} />
         </div>
         {doctor.clinicName && <p className="text-[11px] text-teal-400/70 truncate mt-0.5">{doctor.clinicName}</p>}
         <p className="text-[11px] text-white/45 truncate mt-0.5">{doctor.isTelehealth ? 'Virtual — Africa & Global' : doctor.address}</p>
+
+        {unconfirmed && (
+          <p className="text-[11px] text-amber-300/85 mt-1.5 leading-snug">
+            📋 Hospital may offer dermatology — call ahead to confirm
+          </p>
+        )}
 
         <div className="flex items-center gap-3 mt-1.5 flex-wrap">
           {doctor.rating && (
@@ -231,7 +304,8 @@ const DoctorCard = ({ doctor, isActive, onTap }: { doctor: Doctor; isActive: boo
       <ChevronRight className="h-4 w-4 text-white/20 mt-1 shrink-0" />
     </div>
   </div>
-);
+  );
+};
 
 // ── Doctor modal ───────────────────────────────────────────────────────────
 const DoctorModal = ({ doctor, onClose, onShare }: { doctor: Doctor; onClose: () => void; onShare: (d: Doctor) => void }) => {
@@ -260,7 +334,7 @@ const DoctorModal = ({ doctor, onClose, onShare }: { doctor: Doctor; onClose: ()
                 {doctor.clinicName && <p className="text-xs text-teal-400 mt-0.5">{doctor.clinicName}</p>}
                 <p className="text-xs text-white/45 mt-0.5">{doctor.specialty}</p>
                 <div className="flex flex-wrap gap-1 mt-1.5">
-                  <TierBadge tier={doctor.tier} isIhs={doctor.isIhsVerified} isNds={doctor.isNdsMember} />
+                  <TierBadge tier={doctor.tier} isIhs={doctor.isIhsVerified} isNds={doctor.isNdsMember} specialistConfirmed={doctor.specialistConfirmed} />
                   {doctor.isIhsVerified && <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold text-yellow-300 border border-yellow-500/40 bg-yellow-500/10 flex items-center gap-1"><Award className="h-2.5 w-2.5" />IHS Trained</span>}
                 </div>
               </div>
@@ -290,6 +364,17 @@ const DoctorModal = ({ doctor, onClose, onShare }: { doctor: Doctor; onClose: ()
             <p className="text-sm text-white/65">{doctor.isTelehealth ? 'Virtual consultations — available to all African warriors via video call' : doctor.address}</p>
           </div>
 
+          {/* Unconfirmed facility warning */}
+          {doctor.tier === 'facility' && !doctor.specialistConfirmed && (
+            <div className="flex items-start gap-2.5 rounded-xl p-3 mb-4"
+              style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.25)' }}>
+              <AlertCircle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-200/85 leading-relaxed">
+                📋 This is a real hospital that likely offers dermatology care, but HidroAlly hasn't confirmed a named specialist here yet. Call ahead before your visit to confirm a dermatologist is available.
+              </p>
+            </div>
+          )}
+
           {/* Treatments */}
           {doctor.treatments.length > 0 && (
             <div className="mb-4">
@@ -303,7 +388,7 @@ const DoctorModal = ({ doctor, onClose, onShare }: { doctor: Doctor; onClose: ()
             </div>
           )}
 
-          {/* Hyper AI Note */}
+          {/* HidroAlly Note */}
           <div className="rounded-xl p-3.5 mb-5"
             style={{ background: 'rgba(0,188,212,0.06)', border: '1px solid rgba(0,188,212,0.18)' }}>
             <div className="flex items-center gap-2 mb-1.5">
@@ -315,6 +400,8 @@ const DoctorModal = ({ doctor, onClose, onShare }: { doctor: Doctor; onClose: ()
                 ? 'This specialist is verified by the International Hyperhidrosis Society — the global authority on HH treatment. They understand your condition at a clinical level that most general dermatologists don\'t.'
                 : doctor.isTelehealth
                 ? 'A telehealth consultation lets you share your Warrior Report before the call so the doctor arrives prepared. This is especially powerful if no local specialist is available near you.'
+                : doctor.tier === 'facility' && !doctor.specialistConfirmed
+                ? 'Since the specialist here isn\'t confirmed yet, call ahead and ask specifically for dermatology before making the trip — then bring or share your Warrior Report once you\'ve confirmed your appointment.'
                 : 'Share your Warrior Report before your visit so the doctor can review your HDSS history, episode patterns and EDA readings before the first minute of consultation.'}
             </p>
           </div>
@@ -359,24 +446,40 @@ const DoctorModal = ({ doctor, onClose, onShare }: { doctor: Doctor; onClose: ()
 
 // ── Main ───────────────────────────────────────────────────────────────────
 const SpecialistRadar = () => {
+  const navigate = useNavigate();
   const { user }     = useAuth();
   const { profile }  = useProfile();
   const { episodes } = useEpisodes();
+  const { trackAction } = useEngagement();
+
+  useEffect(() => {
+    trackAction("specialist_radar_uses");
+  }, [trackAction]);
+
+  const handleBack = () => {
+    if (window.history.length > 2) {
+      navigate(-1);
+    } else {
+      navigate('/home');
+    }
+  };
 
   const [doctors, setDoctors]         = useState<Doctor[]>([]);
   const [meta, setMeta]               = useState<SearchMeta | null>(null);
   const [isLoading, setIsLoading]     = useState(false);
   const [location, setLocation]       = useState<{ lat: number; lng: number } | null>(null);
+  const [isGeocoding, setIsGeocoding] = useState(false);
   const [city, setCity]               = useState('');
   const [state, setState]             = useState('');
   const [country, setCountry]         = useState('');
   const [countryCode, setCountryCode] = useState('');
-  const [continent, setContinent]     = useState('Africa');
+  const [continent, setContinent]     = useState('');
+
   const [geoReady, setGeoReady]       = useState(false); // true once reverse geocode completes
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [activePin, setActivePin]     = useState<string | null>(null);
   const [treatFilter, setTreatFilter] = useState<TreatmentFilter>('all');
-  const [scope, setScope]             = useState<ScopeFilter>('city');
+  const [scope, setScope]             = useState<ScopeFilter>('state');
   const [showGreeting, setShowGreeting] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [locationError, setLocationError] = useState('');
@@ -420,67 +523,49 @@ const SpecialistRadar = () => {
           if (p.country) setCountry(p.country);
           if (p.countryCode) setCountryCode(p.countryCode);
           if (p.continent) setContinent(p.continent);
+
           setGeoReady(true);
         }
       }
     } catch {}
 
-    if (!navigator.geolocation) { setLocationError('Geolocation not supported'); return; }
+    if (!navigator.geolocation) {
+      setLocationError('Geolocation not supported');
+      setIsGeocoding(false);
+      return;
+    }
 
     const doReverseGeocode = async (lat: number, lng: number) => {
       try {
         const res  = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`);
         const data = await res.json();
         const addr = data.address || {};
-        const dc = addr.city || addr.town || addr.municipality || addr.village || addr.suburb || addr.county || '';
+        const dc = addr.city || addr.town || addr.village || addr.municipality || addr.county || '';
         const ds = addr.state || addr.region || addr.province || '';
         const dco = addr.country || '';
         const iso = (addr.country_code || '').toUpperCase();
-        const CONTINENT_MAP: Record<string, string> = {
-          NG:'Africa',GH:'Africa',ZA:'Africa',KE:'Africa',EG:'Africa',TZ:'Africa',
-          ET:'Africa',CM:'Africa',SN:'Africa',CI:'Africa',RW:'Africa',UG:'Africa',
-          MA:'Africa',TN:'Africa',DZ:'Africa',MZ:'Africa',AO:'Africa',CD:'Africa',
-          SD:'Africa',MG:'Africa',ZM:'Africa',ZW:'Africa',BJ:'Africa',BF:'Africa',
-          ML:'Africa',NE:'Africa',TD:'Africa',SO:'Africa',LY:'Africa',ER:'Africa',
-          TG:'Africa',SL:'Africa',GN:'Africa',MW:'Africa',LS:'Africa',
-          BW:'Africa',NA:'Africa',GM:'Africa',GA:'Africa',GQ:'Africa',CG:'Africa',
-          GB:'Europe',DE:'Europe',FR:'Europe',IT:'Europe',ES:'Europe',PT:'Europe',
-          NL:'Europe',BE:'Europe',SE:'Europe',NO:'Europe',DK:'Europe',FI:'Europe',
-          CH:'Europe',AT:'Europe',PL:'Europe',CZ:'Europe',SK:'Europe',HU:'Europe',
-          RO:'Europe',BG:'Europe',GR:'Europe',TR:'Europe',UA:'Europe',RU:'Europe',
-          IE:'Europe',HR:'Europe',RS:'Europe',SI:'Europe',LT:'Europe',LV:'Europe',
-          EE:'Europe',LU:'Europe',MT:'Europe',CY:'Europe',IS:'Europe',AL:'Europe',
-          US:'Americas',CA:'Americas',MX:'Americas',BR:'Americas',AR:'Americas',
-          CL:'Americas',CO:'Americas',PE:'Americas',VE:'Americas',EC:'Americas',
-          BO:'Americas',PY:'Americas',UY:'Americas',GY:'Americas',SR:'Americas',
-          GT:'Americas',HN:'Americas',SV:'Americas',NI:'Americas',CR:'Americas',
-          PA:'Americas',CU:'Americas',DO:'Americas',JM:'Americas',TT:'Americas',
-          CN:'Asia',JP:'Asia',IN:'Asia',KR:'Asia',PK:'Asia',BD:'Asia',TH:'Asia',
-          VN:'Asia',ID:'Asia',PH:'Asia',MY:'Asia',SG:'Asia',MM:'Asia',KH:'Asia',
-          LK:'Asia',NP:'Asia',AE:'Asia',SA:'Asia',IL:'Asia',JO:'Asia',LB:'Asia',
-          IQ:'Asia',IR:'Asia',KW:'Asia',QA:'Asia',BH:'Asia',OM:'Asia',YE:'Asia',
-          KZ:'Asia',UZ:'Asia',GE:'Asia',AM:'Asia',AZ:'Asia',TW:'Asia',HK:'Asia',
-          AU:'Oceania',NZ:'Oceania',FJ:'Oceania',PG:'Oceania',
-        };
         const cont = CONTINENT_MAP[iso] || 'Global';
         setCity(dc); setState(ds); setCountry(dco); setCountryCode(iso); setContinent(cont);
+
         localStorage.setItem('ss_last_known_location', JSON.stringify({
           lat, lng, city: dc, state: ds, country: dco, countryCode: iso, continent: cont,
         }));
         setGeoReady(true);
       } catch {
-        setCity('your area');
         setGeoReady(true);
+      } finally {
+        setIsGeocoding(false);
       }
     };
 
     let watchId: number | null = null;
     let resolved = false;
+    setIsGeocoding(true);
     watchId = navigator.geolocation.watchPosition(
       pos => {
         const { latitude: lat, longitude: lng } = pos.coords;
-        setLocation({ lat, lng });
         setLocationError('');
+        setLocation({ lat, lng });
         if (!resolved) {
           resolved = true;
           doReverseGeocode(lat, lng);
@@ -488,7 +573,11 @@ const SpecialistRadar = () => {
         }
       },
       err => {
-        if (!resolved) { setLocationError('Location access denied — please enable GPS'); console.error(err); }
+        if (!resolved) {
+          setLocationError('Location access denied — please enable GPS');
+          setIsGeocoding(false);
+          console.error(err);
+        }
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
     );
@@ -509,11 +598,17 @@ const SpecialistRadar = () => {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           lat: location.lat, lng: location.lng,
-          radius: SCOPE_RADII[scope],
           city, state, country, countryCode, continent, scope,
         }),
       });
-      if (!res.ok) throw new Error('Search failed');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        // Boundary data missing (city/state undetected) — tell the user which
+        // scope to use instead of silently showing out-of-boundary results.
+        if (res.status === 400 && errData.message) { toast.error(errData.message); setDoctors([]); setMeta(null); return; }
+        if (res.status === 429) { toast.error(errData.message || 'Daily limit reached for this scope'); return; }
+        throw new Error(errData.error || 'Search failed');
+      }
       const { doctors: results, meta: resMeta } = await res.json();
       setDoctors(results || []);
       setMeta(resMeta || null);
@@ -527,10 +622,10 @@ const SpecialistRadar = () => {
 
   // Auto-fetch: fires once geoReady + user auth available, and on scope changes
   useEffect(() => {
-    if (geoReady && location && user) {
+    if (geoReady && location && user && !isGeocoding) {
       fetchDoctors();
     }
-  }, [geoReady, user, scope]); // scope change = re-fetch; geoReady+user = initial fetch
+  }, [geoReady, user, scope, location?.lat, location?.lng, isGeocoding]); // scope change or location change (after geocoding completes) = re-fetch
 
   // ── Map markers ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -541,19 +636,19 @@ const SpecialistRadar = () => {
 
     if (location) {
       if (userPin.current) userPin.current.remove();
-      const uIcon = L.divIcon({ html: glowPin(false, false, true), iconSize: [36, 44], iconAnchor: [18, 22], className: '' });
-      userPin.current = L.marker([location.lat, location.lng], { icon: uIcon }).addTo(mapInst.current)
-        .bindPopup('<div style="color:#fff;background:#1a1a2e;border:1px solid rgba(250,204,21,0.3);padding:6px 10px;border-radius:10px;font-size:12px;font-weight:bold;">You are here</div>', { className: 'radar-popup' });
-      mapInst.current.setView([location.lat, location.lng], scope === 'city' ? 13 : scope === 'country' ? 7 : 4);
+      mapInst.current.setView([location.lat, location.lng], scope === 'state' ? 9 : scope === 'country' ? 5 : 3);
     }
 
     physical.forEach(doc => {
       const isActive = activePin === doc.id;
-      const icon = L.divIcon({ html: glowPin(isActive, false), iconSize: [36, 44], iconAnchor: [18, 44], className: '' });
+      const unconfirmed = doc.tier === 'facility' && !doc.specialistConfirmed;
+      const icon = L.divIcon({ html: glowPin(isActive, false, false, unconfirmed), iconSize: [36, 44], iconAnchor: [18, 44], className: '' });
+      const accentColor = unconfirmed ? '#f59e0b' : '#00BCD4';
       const m = L.marker([doc.lat, doc.lng], { icon }).addTo(mapInst.current)
-        .bindPopup(`<div style="color:#fff;background:rgba(10,15,30,0.97);border:1px solid rgba(0,188,212,0.3);padding:8px 12px;border-radius:12px;font-size:12px;max-width:200px;">
-          <div style="font-weight:bold;color:#00BCD4;margin-bottom:2px;">${doc.name}</div>
+        .bindPopup(`<div style="color:#fff;background:rgba(10,15,30,0.97);border:1px solid ${unconfirmed ? 'rgba(245,158,11,0.35)' : 'rgba(0,188,212,0.3)'};padding:8px 12px;border-radius:12px;font-size:12px;max-width:200px;">
+          <div style="font-weight:bold;color:${accentColor};margin-bottom:2px;">${doc.name}</div>
           <div style="opacity:0.55;font-size:11px;">${doc.address}</div>
+          ${unconfirmed ? `<div style="color:#fbbf24;margin-top:3px;font-size:10px;">📋 Call ahead to confirm</div>` : ''}
           ${doc.rating ? `<div style="color:#facc15;margin-top:3px;">★ ${doc.rating.toFixed(1)}</div>` : ''}
         </div>`, { className: 'radar-popup' });
       m.on('click', () => { setActivePin(doc.id); setSelectedDoctor(doc); });
@@ -563,9 +658,9 @@ const SpecialistRadar = () => {
 
   // ── Share warrior report ────────────────────────────────────────────────
   const handleShare = (doctor: Doctor) => {
-    const msg = `Hi, I'm a patient managing hyperhidrosis. I use SweatSmart to track my condition and would like to share my data before our consultation.\n\nMy HDSS score: ${hdss.toFixed(1)}/4\nEpisode count (recent): ${episodes?.length || 0}\nPrimary concern: Palmar/Plantar hyperhidrosis\n\nI will bring my full SweatSmart Warrior Report to our ${doctor.isTelehealth ? 'virtual' : 'in-person'} appointment.\n\nKind regards`;
+    const msg = `Hi, I'm a patient managing hyperhidrosis. I use HidroAlly to track my condition and would like to share my data before our consultation.\n\nMy HDSS score: ${hdss.toFixed(1)}/4\nEpisode count (recent): ${episodes?.length || 0}\nPrimary concern: Palmar/Plantar hyperhidrosis\n\nI will bring my full HidroAlly Warrior Report to our ${doctor.isTelehealth ? 'virtual' : 'in-person'} appointment.\n\nKind regards`;
     if (navigator.share) {
-      navigator.share({ title: 'SweatSmart Warrior Report', text: msg }).catch(() => {});
+      navigator.share({ title: 'HidroAlly Warrior Report', text: msg }).catch(() => {});
     } else {
       navigator.clipboard.writeText(msg);
       toast.success('Pre-consultation message copied — send it to your doctor 💙');
@@ -574,7 +669,7 @@ const SpecialistRadar = () => {
 
   // ── Render ──────────────────────────────────────────────────────────────
   return (
-    <AppLayout>
+    <PageTransition>
       <style>{`
         .leaflet-container { background:#07091a !important; }
         .radar-popup .leaflet-popup-content-wrapper,.radar-popup .leaflet-popup-tip-container { display:none; }
@@ -585,16 +680,19 @@ const SpecialistRadar = () => {
         .no-scrollbar::-webkit-scrollbar { display:none; }
       `}</style>
 
-      <div className="flex flex-col" style={{ minHeight: '100vh', background: 'linear-gradient(180deg,#070b1a 0%,#0a0e24 100%)' }}>
+      <div className="flex flex-col w-full max-w-[100vw] overflow-x-hidden" style={{ minHeight: '100dvh', background: 'linear-gradient(180deg,#070b1a 0%,#0a0e24 100%)' }}>
 
         {/* Header */}
         <div className="px-4 pt-4 pb-3 shrink-0" style={{ background: 'rgba(7,11,26,0.92)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-          <div className="flex items-center justify-between mb-3">
-            <div>
+          <div className="flex items-center gap-3 mb-3">
+            <button onClick={handleBack} className="w-10 h-10 rounded-xl flex items-center justify-center transition-all bg-white/5 border border-white/10 shrink-0">
+              <ChevronLeft className="h-5 w-5 text-white/70" />
+            </button>
+            <div className="flex-1">
               <h1 className="text-lg font-bold text-white">Specialist Radar</h1>
               <p className="text-[11px] text-white/35">AI-matched dermatologists · Hyperhidrosis experts</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <button onClick={() => setShowFilters(s => !s)}
                 className="w-10 h-10 rounded-xl flex items-center justify-center transition-all"
                 style={{ background: showFilters ? 'rgba(0,188,212,0.18)' : 'rgba(255,255,255,0.06)', border: `1px solid ${showFilters ? 'rgba(0,188,212,0.38)' : 'rgba(255,255,255,0.1)'}` }}>
@@ -611,7 +709,7 @@ const SpecialistRadar = () => {
           {/* Scope selector */}
           <div className="flex rounded-xl p-0.5 gap-0.5"
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-            {(['city', 'country', 'continent'] as ScopeFilter[]).map(s => (
+            {(['state', 'country', 'continent'] as ScopeFilter[]).map(s => (
               <button key={s} onClick={() => setScope(s)}
                 className="flex-1 py-2 rounded-[10px] text-[11px] font-bold capitalize transition-all"
                 style={{
@@ -619,7 +717,7 @@ const SpecialistRadar = () => {
                   color: scope === s ? '#00BCD4' : 'rgba(255,255,255,0.35)',
                   border: scope === s ? '1px solid rgba(0,188,212,0.38)' : '1px solid transparent',
                 }}>
-                {s === 'city' ? 'My City' : s === 'country' ? 'My Country' : 'My Continent'}
+                {scopeLabel(s, countryCode)}
               </button>
             ))}
           </div>
@@ -683,12 +781,12 @@ const SpecialistRadar = () => {
         <div className="flex-1 overflow-y-auto px-4 pt-4 pb-28">
 
           {showGreeting && !isLoading && meta && (
-            <AIGreeting profile={profile} hdss={hdss} meta={meta} city={city} onDismiss={() => setShowGreeting(false)} />
+            <AIGreeting profile={profile} hdss={hdss} meta={meta} state={meta?.boundary || (scope === 'continent' ? continent : scope === 'country' ? country : state)} onDismiss={() => setShowGreeting(false)} />
           )}
 
           {/* Care gap */}
           {!isLoading && meta?.careGap && physical.length === 0 && (
-            <CareGapCard onWiden={() => setScope(scope === 'city' ? 'country' : 'continent')} />
+            <CareGapCard onWiden={() => setScope(scope === 'state' ? 'country' : 'continent')} hideWiden={scope === 'continent'} />
           )}
 
           {/* Loading */}
@@ -700,7 +798,7 @@ const SpecialistRadar = () => {
                 <Sparkles className="absolute inset-0 m-auto h-5 w-5 text-teal-400" />
               </div>
               <p className="text-sm font-bold text-white/50">Finding specialists near you...</p>
-              <p className="text-xs text-white/25 mt-1">Checking curated database + Google Places</p>
+              <p className="text-xs text-white/25 mt-1">Checking curated database</p>
             </div>
           )}
 
@@ -766,7 +864,7 @@ const SpecialistRadar = () => {
           </a>
 
           <p className="text-[10px] text-white/18 text-center leading-relaxed px-4 mb-4">
-            Data from SweatSmart curated database, Google Places & IHS directory. Always verify credentials before booking. Not medical advice.
+            Data from HidroAlly curated database & IHS directory. Always verify credentials before booking. Not medical advice.
           </p>
         </div>
       </div>
@@ -774,7 +872,7 @@ const SpecialistRadar = () => {
       {selectedDoctor && (
         <DoctorModal doctor={selectedDoctor} onClose={() => { setSelectedDoctor(null); setActivePin(null); }} onShare={handleShare} />
       )}
-    </AppLayout>
+    </PageTransition>
   );
 };
 

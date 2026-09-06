@@ -11,7 +11,7 @@ import AppLayout from "@/components/layout/AppLayout";
 import { useToast } from "@/hooks/use-toast";
 import { useGoogleAuth } from "@/hooks/useGoogleAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Chrome } from "lucide-react";
+import { Chrome, Mail } from "lucide-react";
 import Captcha from "@/components/ui/captcha";
 
 const Login = () => {
@@ -22,6 +22,26 @@ const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { signInWithGoogle, isLoading: googleLoading } = useGoogleAuth();
+
+  const checkProfileDisplayName = async (userId: string): Promise<string | null> => {
+    const profileRequest = supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    const timeout = new Promise<null>((resolve) => {
+      window.setTimeout(() => resolve(null), 3500);
+    });
+
+    try {
+      const result = await Promise.race([profileRequest, timeout]);
+      if (!result || result.error) return null;
+      return result.data?.display_name ?? null;
+    } catch {
+      return null;
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,19 +70,14 @@ const Login = () => {
           variant: "destructive",
         });
       } else {
-        // Check if user has a display name
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("display_name")
-          .eq("user_id", data.user.id)
-          .maybeSingle();
+        const displayName = await checkProfileDisplayName(data.user.id);
 
-        if (!profile?.display_name) {
+        if (!displayName) {
           navigate("/setup-profile");
         } else {
           toast({
             title: "Login successful",
-            description: "Welcome back to SweatSmart!",
+            description: "Welcome back to HidroAlly!",
           });
           navigate("/home");
         }
@@ -78,10 +93,12 @@ const Login = () => {
     }
   };
 
+
+
   return (
     <AppLayout isAuthenticated={false}>
-      <div className="flex justify-center items-center min-h-[80vh] bg-gray-50">
-        <Card className="w-full max-w-md bg-[#F3E5F5]">
+      <div className="flex justify-center items-center min-h-[calc(100vh-100px)] bg-[#E9E4FA] p-4">
+        <Card className="w-full max-w-md bg-white border-0 shadow-lg relative pb-6">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-bold">Login</CardTitle>
             <CardDescription>
@@ -89,22 +106,32 @@ const Login = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={signInWithGoogle}
-              disabled={googleLoading}
-            >
-              <Chrome className="mr-2 h-4 w-4" />
-              {googleLoading ? "Connecting..." : "Continue with Google"}
-            </Button>
             
+              <div className="space-y-3">
+                <Button
+                  className="w-full bg-black text-white hover:bg-black/90 py-5 rounded-lg flex justify-center items-center font-semibold"
+                  onClick={signInWithGoogle}
+                  disabled={googleLoading}
+                >
+                  <Chrome className="mr-2 h-5 w-5" />
+                  {googleLoading ? "Connecting..." : "Continue with Google"}
+                </Button>
+
+                <Button
+                  className="w-full bg-blue-600 text-white hover:bg-blue-700 py-5 rounded-lg flex justify-center items-center font-semibold"
+                  onClick={(e) => { e.preventDefault(); document.getElementById("email")?.focus(); }}
+                >
+                  <Mail className="mr-2 h-5 w-5" />
+                  Continue with email
+                </Button>
+              </div>
+
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <Separator className="w-full" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
+                <span className="bg-white px-2 text-muted-foreground">
                   Or continue with email
                 </span>
               </div>
@@ -145,18 +172,28 @@ const Login = () => {
               
               <Button 
                 type="submit" 
-                className="w-full" 
+                className="w-full bg-[#D6CEFA] text-violet-800 hover:brightness-105 font-bold py-5 rounded-lg text-base"
                 disabled={isLoading || !captchaVerified}
               >
                 {isLoading ? "Logging in..." : "Login"}
               </Button>
             </form>
           </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <div className="text-center text-sm">
+          <CardFooter className="flex flex-col space-y-4 mt-auto">
+            <div className="text-center text-sm w-full">
               Don't have an account?{" "}
-              <Link to="/register" className="text-primary hover:underline">
+              <Link to="/register" className="text-primary hover:underline font-semibold">
                 Sign up
+              </Link>
+            </div>
+            <div className="text-center text-xs text-muted-foreground pt-4 border-t w-full">
+              BY LOGGING IN, YOU AGREE TO OUR{" "}
+              <Link to="/terms" className="underline hover:text-primary transition-colors">
+                TERMS OF SERVICE
+              </Link>{" "}
+              AND{" "}
+              <Link to="/privacy" className="underline hover:text-primary transition-colors">
+                PRIVACY POLICY
               </Link>
             </div>
           </CardFooter>

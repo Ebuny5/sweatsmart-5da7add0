@@ -1,14 +1,18 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { Play, X } from "lucide-react";
 
-const SweatSmartLanding = () => {
+
+const HidroAllyLanding = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [animatedBars, setAnimatedBars] = useState(false);
   const [typewriterText, setTypewriterText] = useState("");
+  const [demoOpen, setDemoOpen] = useState(false);
   const chartRef = useRef(null);
+
   
   // For feature card scroll animations
   const [visibleCards, setVisibleCards] = useState<boolean[]>(new Array(6).fill(false));
@@ -50,7 +54,17 @@ const SweatSmartLanding = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Close demo modal on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && demoOpen) setDemoOpen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [demoOpen]);
+
   // Observe each feature card
+
   useEffect(() => {
     const observers = cardRefs.current.map((ref, idx) => {
       if (!ref) return null;
@@ -221,10 +235,16 @@ const SweatSmartLanding = () => {
     }
     .logo-text {
       font-family: 'Syne', sans-serif;
-      font-weight: 700;
-      font-size: 20px;
-      color: #f5f3ff;
-      letter-spacing: -0.3px;
+      font-weight: 800;
+      font-size: 15px;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #a78bfa 0%, #f0abfc 50%, #7c3aed 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: 0 0 24px rgba(167,139,250,0.35);
+      margin-top: 4px;
+      margin-left: -4px;
     }
 
     .nav-links {
@@ -233,31 +253,33 @@ const SweatSmartLanding = () => {
       gap: 10px;
     }
     .btn-ghost {
-      padding: 10px 22px;
-      border-radius: 8px;
-      font-size: 15px;
-      font-weight: 500;
-      color: #c4b5fd;
-      background: transparent;
-      border: none;
-      cursor: pointer;
-      text-decoration: none;
-      transition: color 0.2s, background 0.2s;
-    }
-    .btn-ghost:hover { background: rgba(167,139,250,0.1); color: #f5f3ff; }
-
-    .btn-primary {
-      padding: 11px 26px;
+      padding: 11px 22px;
       border-radius: 8px;
       font-size: 15px;
       font-weight: 600;
+      color: #e9d5ff;
+      background: rgba(167,139,250,0.08);
+      border: 1.5px solid rgba(167,139,250,0.45);
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .btn-ghost:hover { background: rgba(167,139,250,0.18); color: #f5f3ff; border-color: rgba(167,139,250,0.7); }
+
+    .btn-primary {
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
       color: white;
       background: linear-gradient(135deg, #7c3aed, #a855f7);
-      border: none;
+      border: 1.5px solid transparent;
       cursor: pointer;
       text-decoration: none;
       box-shadow: 0 0 24px rgba(124,58,237,0.5);
       transition: all 0.2s;
+      white-space: nowrap;
     }
     .btn-primary:hover {
       transform: translateY(-1px);
@@ -307,7 +329,7 @@ const SweatSmartLanding = () => {
       min-height: 90vh;
       display: flex;
       align-items: center;
-      padding-top: 100px;
+      padding-top: 70px;
       padding-bottom: 60px;
     }
 
@@ -320,38 +342,73 @@ const SweatSmartLanding = () => {
       margin: 0 auto;
     }
 
+    .hero-grid > div {
+      min-width: 0;
+    }
+
     @media (max-width: 1024px) {
       .hero-grid {
         grid-template-columns: 1fr;
         gap: 50px;
+        text-align: center;
+      }
+      .hero-ctas {
+        justify-content: center;
+      }
+      .hero-social-proof {
+        justify-content: center;
+      }
+      .hero-subtitle {
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .trust-badge {
+        margin-left: auto;
+        margin-right: auto;
       }
     }
 
     .trust-badge {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       background: rgba(167,139,250,0.15);
       border: 1px solid rgba(167,139,250,0.3);
-      padding: 10px 20px;
-      border-radius: 24px;
-      font-size: 13px;
-      font-weight: 500;
-      color: #c4b5fd;
-      margin-bottom: 28px;
-      letter-spacing: 0.3px;
+      padding: 12px 24px;
+      border-radius: 30px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #e9d5ff;
+      margin-top: 40px;
+      margin-bottom: 24px;
+      letter-spacing: 0.5px;
     }
 
     .hero-title {
       font-family: 'Syne', sans-serif;
       font-size: clamp(48px, 7vw, 68px);
       font-weight: 800;
-      line-height: 1.1;
+      line-height: 1.05;
       margin-bottom: 26px;
       color: #f5f3ff;
       overflow-wrap: break-word;
       word-wrap: break-word;
       hyphens: auto;
+    }
+
+
+    .title-line-1 {
+      color: #ffffff;
+      font-weight: 800;
+    }
+    .title-line-2 {
+      background: linear-gradient(135deg, #a78bfa 0%, #d946ef 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      display: inline-block;
+      font-weight: 800;
+      white-space: nowrap;
     }
 
     .gradient-text {
@@ -982,50 +1039,308 @@ const SweatSmartLanding = () => {
       color: var(--violet-light);
     }
 
+    /* DEMO SECTION */
+    .demo-section {
+      background: rgba(124,58,237,0.06);
+      border-top: 1px solid rgba(167,139,250,0.12);
+      border-bottom: 1px solid rgba(167,139,250,0.12);
+      padding: 80px 5%;
+    }
+
+    .demo-inner {
+      max-width: 1000px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .demo-label {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--violet-light);
+      margin-bottom: 16px;
+    }
+
+    .demo-title {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(28px, 4vw, 42px);
+      font-weight: 800;
+      color: #f5f3ff;
+      margin-bottom: 14px;
+      line-height: 1.2;
+    }
+
+    .demo-subtitle {
+      font-size: clamp(15px, 1.8vw, 18px);
+      color: var(--text-muted);
+      max-width: 600px;
+      margin: 0 auto 32px;
+      line-height: 1.65;
+    }
+
+    .demo-thumbnail {
+      position: relative;
+      max-width: 800px;
+      margin: 0 auto;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid rgba(167,139,250,0.25);
+      box-shadow: 0 20px 60px rgba(124,58,237,0.25);
+      cursor: pointer;
+      transition: transform 0.3s, box-shadow 0.3s;
+      aspect-ratio: 16 / 9;
+      background: linear-gradient(135deg, rgba(124,58,237,0.2), rgba(217,70,239,0.15));
+    }
+
+    .demo-thumbnail:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 30px 80px rgba(124,58,237,0.35);
+    }
+
+    .demo-thumb-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      background: rgba(10,6,20,0.35);
+      transition: background 0.3s;
+    }
+
+    .demo-thumbnail:hover .demo-thumb-overlay {
+      background: rgba(10,6,20,0.25);
+    }
+
+    .demo-play {
+      width: 84px;
+      height: 84px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #7c3aed, #d946ef);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 40px rgba(124,58,237,0.6);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .demo-play:hover {
+      transform: scale(1.08);
+      box-shadow: 0 0 60px rgba(124,58,237,0.8);
+    }
+
+    .demo-play svg {
+      width: 34px;
+      height: 34px;
+      color: white;
+      margin-left: 4px;
+    }
+
+    .demo-thumb-text {
+      font-size: 16px;
+      font-weight: 600;
+      color: #f5f3ff;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.5);
+    }
+
+    /* DEMO MODAL */
+    .demo-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(10,6,20,0.92);
+      backdrop-filter: blur(12px);
+      animation: fadeIn 0.25s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .demo-modal-box {
+      position: relative;
+      width: 100%;
+      max-width: 900px;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid rgba(167,139,250,0.25);
+      box-shadow: 0 30px 90px rgba(0,0,0,0.6);
+      background: #0a0614;
+    }
+
+    .demo-modal-close {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      z-index: 10;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(167,139,250,0.15);
+      color: #f5f3ff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    .demo-modal-close:hover {
+      background: rgba(167,139,250,0.3);
+    }
+
+    .demo-video-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+    }
+
+    .demo-video-wrap iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    .btn-watch {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 28px;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #f5f3ff;
+      background: rgba(167,139,250,0.12);
+      border: 1.5px solid rgba(167,139,250,0.5);
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .btn-watch:hover {
+      background: rgba(167,139,250,0.22);
+      border-color: rgba(167,139,250,0.8);
+      transform: translateY(-1px);
+    }
+
+    .btn-watch svg {
+      width: 20px;
+      height: 20px;
+    }
+
     /* RESPONSIVE */
     @media (max-width: 640px) {
+
       nav {
         height: 64px;
-        padding: 0 4%;
+        padding: 0 20px;
+
+        flex-wrap: nowrap;
+      }
+
+      .nav-links {
+        gap: 6px;
+
+      }
+
+      .logo {
+        gap: 6px;
+
       }
       
       .logo-img {
-        width: 38px;
-        height: 38px;
+        width: 26px;
+        height: 26px;
       }
       
       .logo-text {
-        font-size: 18px;
+        font-size: 15px;
+        letter-spacing: -0.3px;
       }
 
       .btn-ghost {
-        padding: 8px 16px;
-        font-size: 14px;
+        padding: 7px 10px;
+        font-size: 12px;
       }
 
       .btn-primary {
-        padding: 9px 20px;
-        font-size: 14px;
+        padding: 8px 14px;
+        font-size: 13px;
       }
 
       section {
-        padding: 40px 4%;
+        padding: 40px 20px;
       }
 
       .section-hero {
-        padding-top: 80px;
+        padding-top: 40px;
+      }
+
+      .trust-badge {
+        font-size: 14px;
+        padding: 10px 20px;
+        margin-bottom: 20px;
       }
 
       .hero-title {
-        font-size: 42px;
+        font-size: clamp(2rem, 7vw, 3rem);
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        line-height: 1.05;
       }
 
+      /* .title-line-1, .title-line-2 {
+        display: block;
+      } removed to prevent double line break with <br /> */
+
+      .title-line-2 {
+        white-space: normal;
+      }
+
+      .hero-ctas {
+        flex-direction: column;
+        gap: 20px;
+        width: 100%;
+        max-width: 320px;
+        margin-left: auto;
+        margin-right: auto;
+      }
       .btn-primary-lg,
-      .btn-outline-lg {
+      .btn-outline-lg,
+      .btn-watch {
         padding: 14px 32px;
         font-size: 15px;
         width: 100%;
+        box-sizing: border-box;
+        text-align: center;
+        justify-content: center;
       }
+
+      .btn-watch svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      .demo-play {
+        width: 64px;
+        height: 64px;
+      }
+
+      .demo-play svg {
+        width: 26px;
+        height: 26px;
+      }
+
 
       .features-grid {
         gap: 20px;
@@ -1039,6 +1354,14 @@ const SweatSmartLanding = () => {
         padding: 44px 28px;
       }
 
+      .hero-subtitle {
+        white-space: normal;
+      }
+
+      .hero-grid > div:first-child {
+        padding: 0 16px;
+      }
+
       .footer-top {
         flex-direction: column;
         text-align: center;
@@ -1047,7 +1370,7 @@ const SweatSmartLanding = () => {
   `;
 
   return (
-    <>
+    <div className="w-full max-w-[100vw] overflow-x-hidden relative">
       <style>{styles}</style>
       <div className="noise-overlay" />
 
@@ -1055,18 +1378,34 @@ const SweatSmartLanding = () => {
       <div className="orb" style={{ top: '-10%', left: '10%', width: 500, height: 500, background: 'rgba(124,58,237,0.15)' }} />
       <div className="orb" style={{ top: '40%', right: '-5%', width: 400, height: 400, background: 'rgba(217,70,239,0.12)' }} />
 
+      {/* DEMO MODAL */}
+      {demoOpen && (
+        <div className="demo-modal" onClick={() => setDemoOpen(false)} role="dialog" aria-modal="true" aria-label="Watch demo video">
+          <div className="demo-modal-box" onClick={(e) => e.stopPropagation()}>
+            <button className="demo-modal-close" onClick={() => setDemoOpen(false)} aria-label="Close demo">
+              <X size={22} />
+            </button>
+            <div className="demo-video-wrap">
+              <iframe
+                src="https://www.youtube.com/embed/JGOnddApZj0?si=3Ajtd1Ml6l3HVPxx&autoplay=1"
+                title="YouTube video player"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* NAV */}
+
       <nav className={scrolled ? 'scrolled' : ''}>
-        <a href="/" className="logo">
-          <img 
-            src="/sweatsmart-logo.png"
-            alt="SweatSmart Logo" 
-            className="logo-img"
-          />
-          <span className="logo-text">SweatSmart</span>
+        <a href="/" className="logo" style={{ textDecoration: 'none' }}>
+          <span style={{ fontSize: '24px', marginRight: '8px' }}>🤖</span>
+          <span className="logo-text">HidroAlly</span>
         </a>
         <div className="nav-links">
-          <a href="/login" className="btn-ghost">Login</a>
           <a href="/register" className="btn-primary">Get Started</a>
         </div>
       </nav>
@@ -1080,17 +1419,21 @@ const SweatSmartLanding = () => {
               TRUSTED BY 12,000+ PEOPLE
             </div>
             <h1 className="hero-title">
-              Take control<br />
-              of your{' '}
-              <span className="gradient-text">hyperhidrosis</span>
+              <span className="title-line-1">Master your</span><br />
+              <span className="title-line-2">hyperhidrosis</span>
             </h1>
             <p className="hero-subtitle">
-              Track episodes, uncover triggers, and get AI-powered insights — all in one clinical-grade app designed for real life.
+              The smart hyperhidrosis tracker. Log episodes, discover sweating triggers, and get AI-powered answers.
             </p>
             <div className="hero-ctas">
               <a href="/register" className="btn-primary-lg">Start for free</a>
               <a href="/login" className="btn-outline-lg">Sign in</a>
+              <button type="button" className="btn-watch" onClick={() => setDemoOpen(true)}>
+                <Play fill="currentColor" />
+                Watch demo
+              </button>
             </div>
+
             <div className="hero-social-proof">
               <div className="avatars">
                 {['#7c3aed','#a855f7','#6d28d9','#9333ea'].map((c, i) => (
@@ -1109,7 +1452,7 @@ const SweatSmartLanding = () => {
           <div className="hero-visual">
             <div className="mock-phone">
               <div className="mock-header">
-                <div className="mock-greeting">SWEATSMART · GOOD EVENING</div>
+                <div className="mock-greeting">HIDROALLY · GOOD EVENING</div>
                 <div className="mock-title">Tyla's Dashboard 💧</div>
                 <div className="mock-stats">
                   <div className="mock-stat">
@@ -1164,7 +1507,27 @@ const SweatSmartLanding = () => {
         </div>
       </section>
 
+      {/* DEMO SECTION */}
+      <section className="demo-section">
+        <div className="demo-inner">
+          <div className="demo-label">SEE IT IN ACTION</div>
+          <h2 className="demo-title">Watch the full demo</h2>
+          <p className="demo-subtitle">
+            See how HidroAlly turns your daily logs into a clinical-grade insight engine — triggers, severity, personalized relief, and specialist care, all in one pocket clinic.
+          </p>
+          <div className="demo-thumbnail" onClick={() => setDemoOpen(true)} role="button" tabIndex={0} aria-label="Play demo video">
+            <div className="demo-thumb-overlay">
+              <div className="demo-play">
+                <Play fill="currentColor" />
+              </div>
+              <div className="demo-thumb-text">Click to watch the demo</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* FEATURES */}
+
       <section className="section-features">
         <div className="section-label">CORE FEATURES</div>
         <p className="section-subtitle">
@@ -1269,7 +1632,7 @@ const SweatSmartLanding = () => {
             with data-driven confidence?
           </div>
           <p className="cta-sub">
-            Join a global community of Warriors using SweatSmart to quantify their experience, optimize their daily environment, and finally achieve the dignity of being understood.
+            Join a global community of Warriors using HidroAlly to quantify their experience, optimize their daily environment, and finally achieve the dignity of being understood.
           </p>
           <div className="cta-buttons">
             <a href="/register" className="btn-primary-lg">Start your journey free</a>
@@ -1282,12 +1645,8 @@ const SweatSmartLanding = () => {
       <footer>
         <div className="footer-top">
           <a href="/" className="logo" style={{ textDecoration: 'none' }}>
-            <img 
-              src="/sweatsmart-logo.png"
-              alt="SweatSmart Logo" 
-              className="footer-logo-img"
-            />
-            <span className="logo-text" style={{ fontSize: 16 }}>SweatSmart</span>
+            <span style={{ fontSize: '24px', marginRight: '8px' }}>🤖</span>
+            <span className="logo-text" style={{ fontSize: 16 }}>HidroAlly</span>
           </a>
           <div className="footer-links">
             <a href="/privacy" className="footer-link">Privacy</a>
@@ -1295,10 +1654,76 @@ const SweatSmartLanding = () => {
             <a href="/contact" className="footer-link">Contact</a>
           </div>
         </div>
-        <p className="footer-copy">© {new Date().getFullYear()} SweatSmart by Giftovate Therapeutics Ltd. All rights reserved.</p>
+        <div className="footer-badges-marquee" style={{ marginBottom: '24px' }}>
+          <div className="marquee-container">
+            <div className="marquee-content">
+              {/* First Set */}
+              <div className="marquee-set">
+                <a href="https://startupbase.io/products/sweatsmart?utm_source=startupbase&utm_medium=badge&utm_campaign=launch-badge-dark" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                  <img src="https://statics.startupbase.io/site/badges/launched-on-sb-dark.svg" alt="Launched on StartupBase" style={{ height: '54px', width: 'auto' }} />
+                </a>
+                <a href="https://www.producthunt.com/products/sweatsmart?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-sweatsmart" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                  <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1194807&theme=dark" alt="HidroAlly - The world’s first AI clinic-in-a-pocket for hyperhidrosis | Product Hunt" style={{ height: '54px', width: 'auto' }} />
+                </a>
+                <a href="https://techbasedirectory.com/product/sweatsmart?utm_source=featured_embed" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                  <img src="https://techbasedirectory.com/api/featured-embed" alt="HidroAlly | Techbasedirectory.com" width="200" height="60" />
+                </a>
+                <a href="https://www.f6s.com/giftovate-therapeutics-ltd" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity" style={{ backgroundColor: 'white', borderRadius: '8px', padding: '4px' }}>
+                  <img src="/f6s-award.png" alt="Recognized as 69th AI company in Nigeria" title="Recognized as 69th AI company in Nigeria" style={{ height: '46px', width: 'auto' }} />
+                </a>
+              </div>
+              {/* Second Set (for seamless looping) */}
+              <div className="marquee-set">
+                <a href="https://startupbase.io/products/sweatsmart?utm_source=startupbase&utm_medium=badge&utm_campaign=launch-badge-dark" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                  <img src="https://statics.startupbase.io/site/badges/launched-on-sb-dark.svg" alt="Launched on StartupBase" style={{ height: '54px', width: 'auto' }} />
+                </a>
+                <a href="https://www.producthunt.com/products/sweatsmart?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-sweatsmart" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                  <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1194807&theme=dark" alt="HidroAlly - The world’s first AI clinic-in-a-pocket for hyperhidrosis | Product Hunt" style={{ height: '54px', width: 'auto' }} />
+                </a>
+                <a href="https://techbasedirectory.com/product/sweatsmart?utm_source=featured_embed" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                  <img src="https://techbasedirectory.com/api/featured-embed" alt="HidroAlly | Techbasedirectory.com" width="200" height="60" />
+                </a>
+                <a href="https://www.f6s.com/giftovate-therapeutics-ltd" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity" style={{ backgroundColor: 'white', borderRadius: '8px', padding: '4px' }}>
+                  <img src="/f6s-award.png" alt="Recognized as 69th AI company in Nigeria" title="Recognized as 69th AI company in Nigeria" style={{ height: '46px', width: 'auto' }} />
+                </a>
+              </div>
+              {/* Third Set (for seamless looping on wide screens) */}
+              <div className="marquee-set">
+                <a href="https://startupbase.io/products/sweatsmart?utm_source=startupbase&utm_medium=badge&utm_campaign=launch-badge-dark" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                  <img src="https://statics.startupbase.io/site/badges/launched-on-sb-dark.svg" alt="Launched on StartupBase" style={{ height: '54px', width: 'auto' }} />
+                </a>
+                <a href="https://www.producthunt.com/products/sweatsmart?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-sweatsmart" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                  <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1194807&theme=dark" alt="HidroAlly - The world’s first AI clinic-in-a-pocket for hyperhidrosis | Product Hunt" style={{ height: '54px', width: 'auto' }} />
+                </a>
+                <a href="https://techbasedirectory.com/product/sweatsmart?utm_source=featured_embed" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                  <img src="https://techbasedirectory.com/api/featured-embed" alt="HidroAlly | Techbasedirectory.com" width="200" height="60" />
+                </a>
+                <a href="https://www.f6s.com/giftovate-therapeutics-ltd" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity" style={{ backgroundColor: 'white', borderRadius: '8px', padding: '4px' }}>
+                  <img src="/f6s-award.png" alt="Recognized as 69th AI company in Nigeria" title="Recognized as 69th AI company in Nigeria" style={{ height: '46px', width: 'auto' }} />
+                </a>
+              </div>
+              {/* Fourth Set (for seamless looping on ultra wide screens) */}
+              <div className="marquee-set">
+                <a href="https://startupbase.io/products/sweatsmart?utm_source=startupbase&utm_medium=badge&utm_campaign=launch-badge-dark" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                  <img src="https://statics.startupbase.io/site/badges/launched-on-sb-dark.svg" alt="Launched on StartupBase" style={{ height: '54px', width: 'auto' }} />
+                </a>
+                <a href="https://www.producthunt.com/products/sweatsmart?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-sweatsmart" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                  <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1194807&theme=dark" alt="HidroAlly - The world’s first AI clinic-in-a-pocket for hyperhidrosis | Product Hunt" style={{ height: '54px', width: 'auto' }} />
+                </a>
+                <a href="https://techbasedirectory.com/product/sweatsmart?utm_source=featured_embed" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                  <img src="https://techbasedirectory.com/api/featured-embed" alt="HidroAlly | Techbasedirectory.com" width="200" height="60" />
+                </a>
+                <a href="https://www.f6s.com/giftovate-therapeutics-ltd" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity" style={{ backgroundColor: 'white', borderRadius: '8px', padding: '4px' }}>
+                  <img src="/f6s-award.png" alt="Recognized as 69th AI company in Nigeria" title="Recognized as 69th AI company in Nigeria" style={{ height: '46px', width: 'auto' }} />
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p className="footer-copy">© {new Date().getFullYear()} HidroAlly by Giftovate Therapeutics Ltd. All rights reserved.</p>
       </footer>
-    </>
+    </div>
   );
 };
 
-export default SweatSmartLanding;
+export default HidroAllyLanding;
