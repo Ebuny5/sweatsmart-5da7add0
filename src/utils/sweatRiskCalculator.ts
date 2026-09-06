@@ -204,13 +204,14 @@ export function calculateSweatRiskV2(input: SweatRiskInput): SweatRiskResult {
 
   const roundedRealFeel = Math.round(realFeel);
   const uvVal = uvIndex != null && !isNaN(uvIndex) ? uvIndex : 0;
+  const uvText = uvVal >= 7 ? ` and intense UV ${uvVal.toFixed(1)}` : '';
 
-  if (uvVal >= 7 && temperature >= 30 && humidity < 70) {
-    description = `Feels like ${roundedRealFeel}°C due to ${temperature.toFixed(1)}°C heat and intense UV ${uvVal.toFixed(1)}. Seek shade, find cool air, and hydrate.`;
-  } else if (temperature >= 30 && humidity >= 70) {
-    description = `Feels like ${roundedRealFeel}°C under combined high heat and ${humidity.toFixed(0)}% humidity. High risk for severe autonomic sweating; stay in air-conditioned areas.`;
-  } else if (humidity >= 75 && temperature < 30) {
-    description = `Feels like ${roundedRealFeel}°C with heavy ${humidity.toFixed(0)}% humidity slowing natural sweat evaporation. Keep airflow active with fans.`;
+  if (level === 'extreme') {
+    description = `Feels like ${roundedRealFeel}°C due to extreme heat and moisture${uvText}. High risk for severe autonomic sweating; stay in air-conditioned areas.`;
+  } else if (level === 'high') {
+    description = `Feels like ${roundedRealFeel}°C due to elevated thermal and moisture loads${uvText} slowing natural sweat evaporation. Keep airflow active and stay hydrated.`;
+  } else if (level === 'moderate') {
+    description = `Feels like ${roundedRealFeel}°C due to moderate moisture or heat levels${uvText}. Elevated risk for sweating; consider carrying cooling wipes.`;
   } else {
     description = `Feels like ${roundedRealFeel}°C. Moisture and temperature are within optimal baseline thresholds.`;
   }
