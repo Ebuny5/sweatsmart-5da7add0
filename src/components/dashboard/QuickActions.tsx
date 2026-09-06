@@ -51,6 +51,30 @@ const COMMUNITY_TIPS = [
   { tag: "🧪 Research", text: "Iontophoresis + CBT shows 40% improvement in 8 weeks — new study" },
 ];
 
+const FIRST_TIMER_ONBOARDING_MESSAGES = [
+  {
+    icon: "🤝",
+    text: "Welcome to HidroAlly, {firstName || 'Warrior'}! This is your safe space to track patterns, uncover hidden triggers, and reclaim control. Tap the pink + button whenever you're ready to log your starting baseline."
+  },
+  {
+    icon: "💡",
+    text: "Did you know? Logging even a dry day builds your baseline. Recording when you don't sweat is just as clinically valuable as tracking an active flare-up."
+  },
+  {
+    icon: "🛡️",
+    text: "Your experiences are real and measurable. Every log you record builds an objective, physician-ready report that proves what treatments your body actually needs."
+  },
+  {
+    icon: "🌱",
+    text: "Take it at your own pace. Logging takes less than 30 seconds. Whenever an episode happens—or when you notice an environmental spike—tap + to let the AI map it."
+  },
+  {
+    icon: "🧭",
+    text: "From ambient humidity to autonomic stress, our engine correlates your surroundings with sweat gland response. Your first log activates that intelligence engine."
+  }
+];
+
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Mini Climate Card — reads from shared hook (same source as ClimateMonitor)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -253,10 +277,16 @@ const WarriorLaunchpad = () => {
   const isMissedCheckIn = rawWarriorInsight.message.includes("missed your 8-hour check-in");
 
   const dynamicInsight = useMemo(() => {
-    if (sweatRisk === "extreme") return "⚠️ Extreme sweat risk today — consider rescheduling outdoor plans";
-    if (sweatRisk === "high") return "🌡️ High humidity today — carry cooling wipes and stay hydrated";
-    return isMissedCheckIn ? "Check out your insights & recommendations today" : rawWarriorInsight.message;
-  }, [sweatRisk, isMissedCheckIn, rawWarriorInsight.message]);
+    const totalEpisodes = episodes.length;
+    if (totalEpisodes === 0) {
+      const index = Math.floor(Date.now() / (4 * 60 * 60 * 1000)) % FIRST_TIMER_ONBOARDING_MESSAGES.length;
+      const msg = FIRST_TIMER_ONBOARDING_MESSAGES[index];
+      return { icon: msg.icon, text: msg.text.replace("{firstName || 'Warrior'}", profile?.first_name || 'Warrior') };
+    }
+    if (sweatRisk === "extreme") return { icon: "⚠️", text: "Extreme sweat risk today — consider rescheduling outdoor plans" };
+    if (sweatRisk === "high") return { icon: "🌡️", text: "High humidity today — carry cooling wipes and stay hydrated" };
+    return { icon: "💡", text: isMissedCheckIn ? "Check out your insights & recommendations today" : rawWarriorInsight.message };
+  }, [sweatRisk, isMissedCheckIn, rawWarriorInsight.message, episodes.length, profile?.first_name]);
 
   const tip = COMMUNITY_TIPS[tipIndex];
 
@@ -357,8 +387,8 @@ const WarriorLaunchpad = () => {
         {/* Warrior Status Banner */}
         <div className="mt-4 bg-white/15 backdrop-blur-sm rounded-2xl px-4 py-3 border border-white/20">
           <div className="flex items-start gap-3">
-            <span className="text-xl mt-0.5 shrink-0">💡</span>
-            <p className="text-white text-sm font-semibold leading-snug">{dynamicInsight}</p>
+            <span className="text-xl mt-0.5 shrink-0">{dynamicInsight.icon}</span>
+            <p className="text-white text-sm font-semibold leading-snug">{dynamicInsight.text}</p>
           </div>
         </div>
       </div>
