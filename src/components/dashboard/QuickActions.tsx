@@ -79,7 +79,7 @@ const FIRST_TIMER_ONBOARDING_MESSAGES = [
 // Mini Climate Card — reads from shared hook (same source as ClimateMonitor)
 // ─────────────────────────────────────────────────────────────────────────────
 const ClimateCard = ({ onNavigate }: { onNavigate: () => void }) => {
-  const { weather, sweatRisk, riskDescription, city, loading, error, lastUpdated, refresh } =
+  const { weather, sweatRisk, riskDescription, city, fallbackReason, loading, error, lastUpdated, refresh } =
     useClimateData();
   const { episodes } = useEpisodes();
   const navigate = useNavigate();
@@ -145,7 +145,29 @@ const ClimateCard = ({ onNavigate }: { onNavigate: () => void }) => {
       {/* Header row */}
       <div className="flex items-center justify-between mb-3">
         <div>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">📍 {city}</p>
+          {fallbackReason === 'offline' ? (
+            <>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">📍 Offline Baseline</p>
+              <p className="text-[10px] text-gray-500 mt-0.5">No internet connection. Showing baseline data until reconnected.</p>
+            </>
+          ) : fallbackReason === 'permission_denied' ? (
+            <>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">📍 Standard Baseline</p>
+              <p className="text-[10px] text-gray-500 mt-0.5">Location access off. Enable GPS in browser settings for local forecast.</p>
+            </>
+          ) : fallbackReason === 'timeout' ? (
+            <>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">📍 Location Unavailable</p>
+              <p className="text-[10px] text-gray-500 mt-0.5">GPS signal timed out. Tap 🔄 to retry.</p>
+            </>
+          ) : weather.isSimulated ? (
+            <>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">📍 Simulated Location</p>
+              <p className="text-[10px] text-gray-500 mt-0.5">Showing baseline data. Connect to network or enable GPS for live weather.</p>
+            </>
+          ) : (
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">📍 {city}</p>
+          )}
           <div className="flex items-center gap-2 mt-0.5">
             <div className={`w-2 h-2 rounded-full ${cfg.dot} animate-pulse`} />
             <span className={`text-xs font-black ${cfg.text}`}>{cfg.label}</span>

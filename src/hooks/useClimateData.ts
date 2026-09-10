@@ -20,6 +20,7 @@ export interface ClimateSnapshot {
   riskMessage: string;
   riskDescription: string;
   city: string;
+  fallbackReason?: 'offline' | 'permission_denied' | 'timeout' | 'unknown' | null;
   loading: boolean;
   error: string | null;
   lastUpdated: number | null;
@@ -45,12 +46,13 @@ export function useClimateData(): ClimateSnapshot {
   const [city, setCity]                 = useState("Your location");
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState<string | null>(null);
+  const [fallbackReason, setFallbackReason] = useState<ClimateSnapshot["fallbackReason"]>(null);
   const [lastUpdated, setLastUpdated]   = useState<number | null>(null);
   const [coords, setCoords]             = useState<GeolocationCoordinates | null>(null);
 
 
   // ── Helper: apply simulated fallback ──────────────────────────────────────
-  const applySimulatedFallback = useCallback((errorMessage?: string) => {
+  const applySimulatedFallback = useCallback((errorMessage?: string, reason?: ClimateSnapshot["fallbackReason"]) => {
     const temp = 25;
     const hum = 60;
     const uv = 5;
@@ -72,6 +74,7 @@ export function useClimateData(): ClimateSnapshot {
     setRiskMessage(risk.message);
     setRiskDescription(risk.description || (RISK_LABEL[risk.level] ?? ""));
     setCity("Simulated Location");
+    if (reason) setFallbackReason(reason);
     if (errorMessage) setError(errorMessage); // Keep error for logging but weather is set
     setLoading(false);
   }, []);
@@ -92,15 +95,19 @@ export function useClimateData(): ClimateSnapshot {
       },
       (err) => {
         let msg = "Location unavailable";
+        let reason: ClimateSnapshot["fallbackReason"] = "unknown";
         if (err.code === err.PERMISSION_DENIED) {
           msg = "Location permission denied — enable it in settings";
+          reason = "permission_denied";
         } else if (err.code === err.TIMEOUT) {
           msg = "Location request timed out — please try again";
-        } else {
+          reason = "timeout";
+        } else if (!navigator.onLine) {
           msg = "Location unavailable — check your connection";
+          reason = "offline";
         }
         // Fallback to simulated data if location fails
-        applySimulatedFallback(msg);
+        applySimulatedFallback(msg, reason);
       },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
     );
@@ -126,6 +133,7 @@ export function useClimateData(): ClimateSnapshot {
 
   // ── Step 3: fetch weather via Supabase Edge Function ─────────────────────
   const fetchWeather = useCallback(async (currentCoords?: GeolocationCoordinates, bypassCache = false) => {
+    setFallbackReason(null);
     const activeCoords = currentCoords || coords;
     if (!activeCoords) return;
 
@@ -189,19 +197,20 @@ export function useClimateData(): ClimateSnapshot {
       setRiskDescription(risk.description || (RISK_LABEL[risk.level] ?? ""));
       setLastUpdated(Date.now());
     } catch (err: any) {
-      applySimulatedFallback(err.message || "Could not fetch weather data");
+      applySimulatedFallback(err.message || "Could not fetch weather data", !navigator.onLine ? "offline" : "unknown");
     } finally {
       setLoading(false);
     }
   }, [coords, applySimulatedFallback]);
 
   const refresh = useCallback(async (options?: { bypassCache?: boolean }) => {
-    if (!coords) {
+    setError(null);
+    if (!coords || fallbackReason) {
       getCoords();
     } else {
       await fetchWeather(coords, options?.bypassCache ?? true);
     }
-  }, [coords, getCoords, fetchWeather]);
+  }, [coords, fallbackReason, getCoords, fetchWeather]);
 
   // ── Auto-refresh every 5 min once coords are ready ──────────────────────
   useEffect(() => {
@@ -217,6 +226,7 @@ export function useClimateData(): ClimateSnapshot {
     riskMessage,
     riskDescription,
     city,
+    fallbackReason,
     loading,
     error,
     lastUpdated,
