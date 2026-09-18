@@ -205,7 +205,7 @@ const WELCOME_EMAIL_HTML = `
 
         <!-- Action Button -->
         <div class="cta-container">
-          <a href="https://www.sweatsmart.guru" class="cta-button" target="_blank">Launch SweatSmart Dashboard</a>
+          <a href="https://www.hidroally.space" class="cta-button" target="_blank">Launch SweatSmart Dashboard</a>
         </div>
       </div>
 
@@ -215,7 +215,7 @@ const WELCOME_EMAIL_HTML = `
         <div>Innovating Digital Health, Wearable Thermoelectrics & Hyperhidrosis Care</div>
         <div class="footer-links" style="margin-top: 10px;">
           <a href="https://giftovate.world" target="_blank">giftovate.world</a> |
-          <a href="https://www.sweatsmart.guru" target="_blank">sweatsmart.guru</a>
+          <a href="https://www.hidroally.space" target="_blank">hidroally.space</a>
         </div>
         <div style="margin-top: 10px; font-size: 11px; color: #94a3b8;">
           &copy; 2026 Giftovate Therapeutics. All rights reserved.
@@ -270,8 +270,8 @@ serve(async (req) => {
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "HidroAlly Team <welcome@sweatsmart.guru>",
-        reply_to: "support@sweatsmart.guru",
+        from: "HidroAlly Team <welcome@hidroally.space>",
+        reply_to: "support@hidroally.space",
         to: email,
         subject: "Welcome to HidroAlly — Your Complete Hyperhidrosis Support Ecosystem",
         html: WELCOME_EMAIL_HTML,

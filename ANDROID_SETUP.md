@@ -25,10 +25,10 @@ When you generate your APK/AAB on [pwabuilder.com](https://www.pwabuilder.com):
 ## Why this is necessary
 Android's Trusted Web Activity (TWA) requires a "Digital Asset Link" to verify that the website and the Android app are owned by the same person. Without this verification, Android will not allow the website to trigger native permission prompts or display notifications on the app's behalf.
 
-Note: Both `https://sweatsmart.guru` and `https://www.sweatsmart.guru` are now configured to serve `assetlinks.json` directly without redirects, ensuring compatibility with Google Play's Android App Links verifier.
+Note: Both `https://hidroally.space` and `https://www.hidroally.space` are now configured to serve `assetlinks.json` directly without redirects, ensuring compatibility with Google Play's Android App Links verifier.
 
 For the current setup, regenerate the Android package with:
-- Launch URL: `https://www.sweatsmart.guru/`
-- Host name / web link: `www.sweatsmart.guru` (or `sweatsmart.guru`)
+- Launch URL: `https://www.hidroally.space/`
+- Host name / web link: `www.hidroally.space` (or `hidroally.space`)
 - Package ID: `guru.sweatsmart.twa`
 - SHA-256 fingerprint matching Play Console → App integrity → App signing key certificate
