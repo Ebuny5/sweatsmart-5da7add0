@@ -139,7 +139,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="https"
-                    android:host="www.sweatsmart.guru"
+                    android:host="www.hidroally.space"
                 />
             </intent-filter>
         </activity>

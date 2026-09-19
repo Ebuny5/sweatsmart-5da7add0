@@ -423,7 +423,7 @@ const WarriorBadge = ({
   const [showShareModal, setShowShareModal] = useState(false);
 
   const shareText = `I just unlocked the Hyperhidrosis Warrior Badge on HidroAlly! 🛡️ Tracking my journey and turning sweat into strength. Start tracking your resilience with HidroAlly today. #MySweatDoesNotDefineMe #HidroAllyWarrior #HyperhidrosisAwareness`;
-  const shareUrl = "https://www.sweatsmart.guru";
+  const shareUrl = "https://www.hidroally.space";
 
   const handleShare = async () => {
     if (!unlocked) { handleLockedTap(); return; }
