@@ -88,12 +88,15 @@ export function calculateHeatIndex(tempC: number, humidity: number): number {
  * Direct sun exposure adds ~2.5°C radiant thermal load when UV > 6.
  */
 export function calculateRealFeel(tempC: number, humidity: number, uvIndex?: number | null): number {
-  const hi = calculateHeatIndex(tempC, humidity);
-  let solarAdj = 0;
-  if (uvIndex != null && !isNaN(uvIndex) && uvIndex > 6) {
-    solarAdj = 2.5;
+  let realFeel = tempC;
+  if (tempC >= 20) {
+    const vaporPressure = (humidity / 100) * 6.105 * Math.exp((17.27 * tempC) / (237.7 + tempC));
+    realFeel = tempC + 0.33 * vaporPressure - 4.0;
   }
-  return Math.round((hi + solarAdj) * 10) / 10;
+  if (uvIndex != null && !isNaN(uvIndex) && uvIndex >= 6) {
+    realFeel += (uvIndex - 5) * 0.6;
+  }
+  return Math.round(realFeel * 10) / 10;
 }
 
 const LEVEL_META: Record<
@@ -187,33 +190,42 @@ export function calculateSweatRiskV2(input: SweatRiskInput): SweatRiskResult {
   const finalScore = Math.min(Math.round(score), 100);
 
   let level: SweatRiskLevel = 'low';
-  let message = 'Low Risk';
-  let description = 'Optimal Evaporative Conditions. Air moisture allows normal evaporative cooling with minimal autonomic resistance.';
-
-  // 3. Clinical Risk Bracket Categorization
-  if (finalScore >= 85 || dewPoint >= 24 || (humidity >= 90 && temperature >= 28)) {
-    level = 'extreme';
-    message = 'Extreme Evaporative Block';
-  } else if (finalScore >= 65 || dewPoint >= 21.5 || (humidity >= 85 && temperature >= 22)) {
-    level = 'high';
-    message = 'Evaporative Impairment Flare Risk';
-  } else if (finalScore >= 40 || dewPoint >= 18 || humidity >= 75) {
-    level = 'moderate';
-    message = 'Elevated Moisture Load';
-  }
+  let message = '';
+  let description = '';
 
   const roundedRealFeel = Math.round(realFeel);
   const uvVal = uvIndex != null && !isNaN(uvIndex) ? uvIndex : 0;
-  const uvText = uvVal >= 7 ? ` and intense UV ${uvVal.toFixed(1)}` : '';
 
-  if (level === 'extreme') {
-    description = `Feels like ${roundedRealFeel}°C due to extreme heat and moisture${uvText}. High risk for severe autonomic sweating; stay in air-conditioned areas.`;
-  } else if (level === 'high') {
-    description = `Feels like ${roundedRealFeel}°C due to elevated thermal and moisture loads${uvText} slowing natural sweat evaporation. Keep airflow active and stay hydrated.`;
-  } else if (level === 'moderate') {
-    description = `Feels like ${roundedRealFeel}°C due to moderate moisture or heat levels${uvText}. Elevated risk for sweating; consider carrying cooling wipes.`;
+  // GATEKEEPER 1: Cool Rainy Weather (Works for Night, Morning, and Afternoon Downpours)
+  // If it's under 23.5°C and there is no strong direct sun (UV < 2.0), rain humidity does NOT trigger sweat flares
+  if (temperature < 23.5 && uvVal < 2.0 && realFeel < 27) {
+    level = 'low';
+    message = 'Cool Weather Baseline';
+    description = `Feels like ${roundedRealFeel}°C. Cool temperatures keep sweat glands dormant despite rain-saturated air (${humidity.toFixed(0)}%).`;
+
+  // EXTREME RISK: Intense sun + high humidity OR RealFeel >= 32°C (Afternoon Steam Trap)
+  } else if (realFeel >= 32 || (uvVal >= 3.0 && humidity >= 85 && temperature >= 28)) {
+    level = 'extreme';
+    message = 'Extreme Thermal & Moisture Stress';
+    description = `Feels like ${roundedRealFeel}°C. Severe compound load from direct sun and heavy humidity. Autonomic cooling is overwhelmed.`;
+
+  // HIGH RISK: Daytime evaporative block (Temp >= 24°C AND Humidity >= 85% AND UV >= 2.0) OR RealFeel >= 30°C
+  } else if (realFeel >= 30 || (temperature >= 24.0 && humidity >= 85 && uvVal >= 2.0)) {
+    level = 'high';
+    message = 'Evaporative Impairment Flare Risk';
+    description = `Feels like ${roundedRealFeel}°C. High ambient humidity (${humidity.toFixed(0)}%) prevents sweat from evaporating naturally during activity.`;
+
+  // MODERATE RISK: Warm muggy weather (Temp >= 24°C + Humidity >= 70%) OR RealFeel >= 28°C
+  } else if (realFeel >= 28 || (temperature >= 24.0 && humidity >= 70)) {
+    level = 'moderate';
+    message = 'Elevated Moisture Load';
+    description = `Feels like ${roundedRealFeel}°C. Ambient moisture slows skin drying. Maintain airflow with fans.`;
+
+  // FALLBACK: Low Risk
   } else {
-    description = `Feels like ${roundedRealFeel}°C. Moisture and temperature are within optimal baseline thresholds.`;
+    level = 'low';
+    message = 'Optimal Baseline Conditions';
+    description = `Feels like ${roundedRealFeel}°C. Ambient conditions are within comfortable baseline limits.`;
   }
 
   const triggers: string[] = [];
