@@ -39,7 +39,7 @@ const VerifyEmail = () => {
         type: 'signup',
         email: email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `https://www.hidroally.space/auth/callback`,
         }
       });
 
