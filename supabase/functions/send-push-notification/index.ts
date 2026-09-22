@@ -326,32 +326,43 @@ function calculateHeatIndex(tempC: number, humidity: number): number {
 }
 
 function calculateRealFeel(tempC: number, humidity: number, uvIndex?: number | null): number {
-  const hi = calculateHeatIndex(tempC, humidity);
-  let solarAdj = 0;
-  if (uvIndex != null && !isNaN(uvIndex) && uvIndex > 6) {
-    solarAdj = 2.5;
+  let realFeel = tempC;
+  if (tempC >= 20) {
+    const vaporPressure = (humidity / 100) * 6.105 * Math.exp((17.27 * tempC) / (237.7 + tempC));
+    realFeel = tempC + 0.33 * vaporPressure - 4.0;
   }
-  return Math.round((hi + solarAdj) * 10) / 10;
+  if (uvIndex != null && !isNaN(uvIndex) && uvIndex >= 6) {
+    realFeel += (uvIndex - 5) * 0.6;
+  }
+  return Math.round(realFeel * 10) / 10;
 }
 
 // ── Upgraded 4-Tier Sweat Risk Evaluator ──
 function calculateSweatRisk(temp: number, humidity: number, uv: number, thresholds: any = {}) {
-  const targetTemp = thresholds?.temperature ?? 27.0;
-  const targetHumidity = thresholds?.humidity ?? 75.0;
-  const targetUV = thresholds?.uv ?? 6.0;
-
-  const heatIndex = calculateHeatIndex(temp, humidity);
-
-  // Radiant Solar Adjustment Formula
-  const effectiveSolarHeatIndex = heatIndex + (uv * 0.5);
-
   const realFeel = calculateRealFeel(temp, humidity, uv);
-  const isHighUv = uv >= targetUV;
+  const uvVal = uv != null && !isNaN(uv) ? uv : 0;
 
-  // Sudden UV Flare / Scorching Sun rule overrides lower tier if UV is very high
-  if (uv >= 10.0 || effectiveSolarHeatIndex >= 35 || (heatIndex >= 32 && isHighUv)) return 'extreme';
-  if (uv >= 7.0 || effectiveSolarHeatIndex >= 30 || temp >= targetTemp + 3) return 'high';
-  if (effectiveSolarHeatIndex >= targetTemp || temp >= targetTemp || humidity >= targetHumidity) return 'moderate';
+  // GATEKEEPER 1: Cool Rainy Weather (Works for Night, Morning, and Afternoon Downpours)
+  if (temp < 23.5 && uvVal < 2.0 && realFeel < 27) {
+    return 'low';
+  }
+
+  // EXTREME RISK: Intense sun + high humidity OR RealFeel >= 32°C (Afternoon Steam Trap)
+  if (realFeel >= 32 || (uvVal >= 3.0 && humidity >= 85 && temp >= 28)) {
+    return 'extreme';
+  }
+
+  // HIGH RISK: Daytime evaporative block (Temp >= 24°C AND Humidity >= 85% AND UV >= 2.0) OR RealFeel >= 30°C
+  if (realFeel >= 30 || (temp >= 24.0 && humidity >= 85 && uvVal >= 2.0)) {
+    return 'high';
+  }
+
+  // MODERATE RISK: Warm muggy weather (Temp >= 24°C + Humidity >= 70%) OR RealFeel >= 28°C
+  if (realFeel >= 28 || (temp >= 24.0 && humidity >= 70)) {
+    return 'moderate';
+  }
+
+  // FALLBACK: Low Risk
   return 'low';
 }
 
