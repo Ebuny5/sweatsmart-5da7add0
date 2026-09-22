@@ -56,7 +56,7 @@ const Register = () => {
           data: {
             display_name: name,
           },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `https://www.hidroally.space/auth/callback`,
         },
       });
 
