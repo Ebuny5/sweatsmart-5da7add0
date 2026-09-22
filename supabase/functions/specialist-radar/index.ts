@@ -98,9 +98,9 @@ serve(async (req) => {
       return json({ error: 'missing_continent', message: 'We could not detect your continent. Try the Country view.' }, 400);
 
     const cacheKey =
-      scope === 'state'   ? `v4:state:${wantedState}:${wantedCountry}` :
-      scope === 'country' ? `v4:country:${wantedCountry || country.toLowerCase()}` :
-                            `v4:continent:${wantedContinent}`;
+      scope === 'state'   ? `v5:state:${wantedState}:${wantedCountry}` :
+      scope === 'country' ? `v5:country:${wantedCountry || country.toLowerCase()}:x-${wantedState}` :
+                            `v5:continent:${wantedContinent}:x-${wantedCountry || country.toLowerCase()}`;
 
     const { data: cached } = await supabase
       .from('radar_cache').select('*').eq('cache_key', cacheKey).eq('scope', scope).maybeSingle();
