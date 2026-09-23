@@ -500,8 +500,8 @@ const SpecialistRadar = () => {
     loadLeaflet().then(L => {
       if (!mapRef.current || mapInst.current) return;
       const map = L.map(mapRef.current, { center: [9.082, 8.675], zoom: 6, zoomControl: false });
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution: '© OpenStreetMap © CARTO', maxZoom: 19, subdomains: 'abcd',
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors', maxZoom: 19, subdomains: 'abc',
       }).addTo(map);
       L.control.zoom({ position: 'bottomright' }).addTo(map);
       mapInst.current = map;
