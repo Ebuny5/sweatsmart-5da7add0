@@ -23,10 +23,10 @@ const Login = () => {
   const { toast } = useToast();
   const { signInWithGoogle, isLoading: googleLoading } = useGoogleAuth();
 
-  const checkProfileDisplayName = async (userId: string): Promise<string | null> => {
+  const checkProfileComplete = async (userId: string): Promise<boolean> => {
     const profileRequest = supabase
       .from("profiles")
-      .select("display_name")
+      .select("is_profile_complete")
       .eq("user_id", userId)
       .maybeSingle();
 
@@ -36,10 +36,10 @@ const Login = () => {
 
     try {
       const result = await Promise.race([profileRequest, timeout]);
-      if (!result || result.error) return null;
-      return result.data?.display_name ?? null;
+      if (!result || result.error) return false;
+      return result.data?.is_profile_complete ?? false;
     } catch {
-      return null;
+      return false;
     }
   };
 
@@ -70,9 +70,9 @@ const Login = () => {
           variant: "destructive",
         });
       } else {
-        const displayName = await checkProfileDisplayName(data.user.id);
+        const isProfileComplete = await checkProfileComplete(data.user.id);
 
-        if (!displayName) {
+        if (!isProfileComplete) {
           navigate("/setup-profile");
         } else {
           toast({
