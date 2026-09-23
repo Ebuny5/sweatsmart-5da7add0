@@ -135,10 +135,21 @@ serve(async (req) => {
       })
       .join(', ');
     
-    const sanitizedAreas = bodyAreas
+    const mappedAreas = bodyAreas
       .slice(0, MAX_BODY_AREAS)
-      .map((a: string) => String(a).slice(0, 100))
-      .join(', ');
+      .map((a: string) => {
+        const areaStr = String(a).toLowerCase().slice(0, 100);
+        if (areaStr.includes('underarm')) return 'Axillary vaults (underarms)';
+        if (areaStr.includes('face') || areaStr.includes('scalp')) return 'Craniofacial region (face & scalp)';
+        if (areaStr.includes('hand') || areaStr.includes('palm')) return 'Palmar surfaces (hands)';
+        if (areaStr.includes('feet') || areaStr.includes('sole')) return 'Plantar surfaces (feet)';
+        return areaStr;
+      });
+
+    let sanitizedAreas = mappedAreas.join(', ');
+    if (mappedAreas.length > 1) {
+      sanitizedAreas = `Multifocal primary focal hyperhidrosis (${sanitizedAreas})`;
+    }
     
     const sanitizedNotes = notes ? String(notes).slice(0, MAX_NOTES_LENGTH) : '';
 
@@ -163,20 +174,27 @@ You will receive a JSON payload with:
    - Weave in the user's "additional_notes" directly into the Clinical Analysis to make the insight truly personal. If sensor data (EDA, temperature) is present, reference how physiological arousal or heat correlated with the episode.
 
 2. TRIGGER HANDLING:
-   - If "No Identifiable Trigger" is selected: Treat this as classic idiopathic sympathetic overactivity. Explicitly explain that primary focal hyperhidrosis routinely fires without external catalysts. DO NOT advise "identifying triggers" or searching for causes. Frame tracking around treatment efficacy instead.
+   - If "No Identifiable Trigger" is selected, or if the triggers list is empty: Treat this as classic idiopathic sympathetic overactivity. Explicitly explain spontaneous autonomic sympathetic discharge and hypothalamic threshold sensitivity. DO NOT state "Your triggers are clearly identified." DO NOT advise "identifying triggers" or searching for causes. Frame tracking around treatment efficacy instead.
    - If specific or custom triggers are selected: Analyze the direct physiological connection between those stimuli (e.g., synthetic textiles trapping heat, social adrenergic stimulation) and eccrine response.
 
 3. REGION-SPECIFIC TREATMENT ISOLATION:
-   - Provide distinct, self-contained bullet points for each logged area.
-   - DO NOT repeat contraindications across sections (e.g., do not warn against facial use inside the palmoplantar section if a facial section exists).
+   - Provide distinct, self-contained recommendations for each logged area.
+   - DO NOT repeat contraindications across sections. (e.g., If craniofacial is logged, state clearly that metallic salts/aluminum chloride are unsuitable for delicate facial barriers and provide alternatives immediately. DO NOT mention this facial warning inside the underarm section if a dedicated craniofacial section follows).
    - Match treatments strictly to anatomy:
      * Palms/Feet: Aluminum chloride 20% (with occlusion), tap-water iontophoresis, intradermal botulinum toxin.
-     * Face/Scalp: Topical glycopyrronium, hairline botulinum toxin. State clearly that aluminum chloride is contraindicated on the face.
-     * Underarms: Aluminum chloride, topical glycopyrronium/sofpironium, miraDry, botulinum toxin.
+     * Face/Scalp: Topical anticholinergics (e.g., glycopyrronium / Qbrexza wipes), dermal/hairline botulinum toxin. State clearly that aluminum chloride is contraindicated on the face.
+     * Underarms: Aluminum chloride, topical glycopyrronium/sofpironium, miraDry, botulinum toxin. Explain nocturnal application to dry skin for aluminum chloride.
      * Multi-Site: Introduce oral anticholinergics (glycopyrrolate, oxybutynin) as a systemic escalation.
 
-4. FORMAT & OUTPUT PURITY:
+4. IMMEDIATE RELIEF BY REGION:
+   - Generate relief steps STRICTLY for the areas recorded:
+     * Craniofacial: Cold damp compress or cooling mist to temporal/forehead thermoreceptors.
+     * Axillary: Localized cold compress, breathable layer swap, and microclimate ventilation.
+     * Palmar/Plantar: Cold-water immersion or evaporative airflow across extremities.
+
+5. FORMAT & OUTPUT PURITY:
    - Output ONLY clean standard Markdown.
+   - Eliminate em-dash clutter (—). Use standard commas, colons, and periods to keep the medical report clean and readable.
    - DO NOT output emojis, custom icons, or raw unicode symbols that break PDF canvas rendering.
    - Keep tone clinical, supportive, and practical.
 
@@ -202,8 +220,8 @@ You will receive a JSON payload with:
 
     // Dynamic Tracking Logic
     let tracking_focus = "";
-    if (sanitizedTriggers.includes("No Identifiable Trigger")) {
-      tracking_focus = "Focus on recording treatment response times and baseline HDSS trends. Avoid looking for phantom triggers.";
+    if (sanitizedTriggers.includes("No Identifiable Trigger") || !sanitizedTriggers) {
+      tracking_focus = "Focus on recording treatment response times and baseline HDSS trends. Explain spontaneous autonomic sympathetic discharge. Avoid looking for phantom triggers.";
     } else {
       tracking_focus = "Focus on identifying trigger combinations, environmental thresholds (temperature/EDA), and situational patterns.";
     }
