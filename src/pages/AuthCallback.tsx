@@ -77,7 +77,7 @@ const AuthCallback = () => {
           // Check if user has a display name set
           const { data: profile } = await supabase
             .from('profiles')
-            .select('display_name, has_received_welcome')
+            .select('display_name, has_received_welcome, is_profile_complete')
             .eq('user_id', user.id)
             .maybeSingle();
 
@@ -106,8 +106,8 @@ const AuthCallback = () => {
             }
           }
           
-          if (!profile?.display_name) {
-            console.log('No display name, redirecting to setup-profile');
+          if (!profile?.is_profile_complete) {
+            console.log('Profile incomplete, redirecting to setup-profile');
             navigate("/setup-profile", { replace: true });
           } else {
             console.log('Redirecting to home');

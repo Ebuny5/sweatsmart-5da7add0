@@ -33,13 +33,17 @@ const SetupProfile = () => {
     try {
       const { error } = await supabase
         .from("profiles")
-        .update({ display_name: trimmed })
-        .eq("user_id", user.id);
+        .upsert({ user_id: user.id, display_name: trimmed }, { onConflict: "user_id" });
+
       if (error) {
-        await supabase
-          .from("profiles")
-          .upsert({ user_id: user.id, display_name: trimmed }, { onConflict: "user_id" });
+        console.error("Profile upsert error:", error);
+        throw error;
       }
+
+      await supabase
+        .from("user_settings")
+        .upsert({ user_id: user.id }, { onConflict: "user_id" });
+
       await supabase.auth.updateUser({ data: { display_name: trimmed } });
       setStep("location");
     } catch (err) {
@@ -81,7 +85,14 @@ const SetupProfile = () => {
     setStep("voice");
   };
 
-  const finish = () => {
+  const finish = async () => {
+    if (user) {
+      await supabase
+        .from("profiles")
+        .update({ is_profile_complete: true })
+        .eq("user_id", user.id);
+    }
+
     audioAlertPlayer.setGender(gender);
     toast({
       title: `Welcome, ${displayName.trim()}! 🎉`,
