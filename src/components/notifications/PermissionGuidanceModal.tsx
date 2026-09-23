@@ -54,6 +54,10 @@ export const PermissionGuidanceModal = () => {
 
   const isNotif = step === 'notification-guidance';
 
+  // Detect if running in Android TWA
+  const isTWA = document.referrer.includes('android-app://guru.sweatsmart.twa') ||
+                (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches && /android/i.test(navigator.userAgent));
+
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4">
       <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in fade-in zoom-in duration-300">
@@ -78,8 +82,8 @@ export const PermissionGuidanceModal = () => {
 
         <p className="text-zinc-400 text-center text-sm mb-6 leading-relaxed">
           {isNotif
-            ? 'To receive health alerts and reminders, go to Settings and enable notifications for HidroAlly.'
-            : 'To receive real-time climate alerts for your area, go to Settings and enable location permissions.'}
+            ? 'To receive health alerts and reminders, tap the lock or "Aa" icon in your browser address bar and allow notifications.'
+            : 'To receive real-time climate alerts for your area, tap the lock or "Aa" icon in your browser address bar and allow location.'}
         </p>
 
         <div className="bg-zinc-800/50 rounded-2xl p-4 mb-6 border border-zinc-700/50">
@@ -87,29 +91,54 @@ export const PermissionGuidanceModal = () => {
             <Settings className="w-3 h-3" /> How to enable:
           </p>
           <div className="space-y-2">
-            <div className="flex items-center gap-3 text-sm text-zinc-300">
-              <div className="w-5 h-5 rounded-full bg-zinc-700 flex items-center justify-center text-[10px] font-bold">1</div>
-              <span>Settings → Apps → HidroAlly</span>
-            </div>
-            <div className="flex items-center gap-3 text-sm text-zinc-300">
-              <div className="w-5 h-5 rounded-full bg-zinc-700 flex items-center justify-center text-[10px] font-bold">2</div>
-              <span>{isNotif ? 'Notifications → Turn ON' : 'Permissions → Location → Allow'}</span>
-            </div>
+            {isTWA ? (
+              <>
+                <div className="flex items-center gap-3 text-sm text-zinc-300">
+                  <div className="w-5 h-5 rounded-full bg-zinc-700 flex items-center justify-center text-[10px] font-bold">1</div>
+                  <span>Settings → Apps → HidroAlly</span>
+                </div>
+                <div className="flex items-center gap-3 text-sm text-zinc-300">
+                  <div className="w-5 h-5 rounded-full bg-zinc-700 flex items-center justify-center text-[10px] font-bold">2</div>
+                  <span>{isNotif ? 'Notifications → Turn ON' : 'Permissions → Location → Allow'}</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-3 text-sm text-zinc-300">
+                  <div className="w-5 h-5 rounded-full bg-zinc-700 flex items-center justify-center text-[10px] font-bold">1</div>
+                  <span>Tap the lock / settings icon in the browser's address bar</span>
+                </div>
+                <div className="flex items-center gap-3 text-sm text-zinc-300">
+                  <div className="w-5 h-5 rounded-full bg-zinc-700 flex items-center justify-center text-[10px] font-bold">2</div>
+                  <span>{isNotif ? 'Site settings → Notifications → Allow' : 'Site settings → Location → Allow'}</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
         <div className="space-y-3">
-          <Button
-            onClick={openSettings}
-            className="w-full py-6 bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-sm rounded-2xl shadow-lg shadow-primary/20"
-          >
-            Open Settings
-          </Button>
+          {isTWA ? (
+            <Button
+              onClick={openSettings}
+              className="w-full py-6 bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-sm rounded-2xl shadow-lg shadow-primary/20"
+            >
+              Open Settings
+            </Button>
+          ) : (
+            <Button
+              onClick={handleDismiss}
+              className="w-full py-6 bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-sm rounded-2xl shadow-lg shadow-primary/20"
+            >
+              I understand
+            </Button>
+          )}
+
           <button
             onClick={handleDismiss}
             className="w-full py-3 text-zinc-500 hover:text-zinc-300 font-bold transition text-sm uppercase tracking-wider"
           >
-            {isNotif ? 'Continue to Location' : 'Maybe Later'}
+            {isTWA ? (isNotif ? 'Continue to Location' : 'Maybe Later') : 'Dismiss'}
           </button>
         </div>
 

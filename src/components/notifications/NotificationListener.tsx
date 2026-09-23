@@ -6,6 +6,7 @@ import { notificationManager } from '@/services/NotificationManager';
 import { climateAlertService } from '@/services/ClimateAlertService';
 import { audioAlertPlayer, type AlertKind } from '@/utils/audioAlertPlayer';
 import { attachNativeTapHandler } from '@/services/NativeNotificationBridge';
+import { useAuth } from '@/contexts/AuthContext';
 
 type InAppNotificationDetail = {
   title: string;
@@ -15,7 +16,11 @@ type InAppNotificationDetail = {
 
 const NotificationListener = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+
   useEffect(() => {
+    if (!user) return; // Only initialize background tasks and ask for permissions if logged in
+
     console.log('🔔 NotificationListener: Initializing global notification services...');
 
     notificationManager;
@@ -50,7 +55,7 @@ const NotificationListener = () => {
         navigator.serviceWorker.removeEventListener('message', handleSWMessage);
       }
     };
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     const handleInAppNotification = (event: Event) => {
