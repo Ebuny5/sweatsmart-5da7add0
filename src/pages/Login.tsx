@@ -24,21 +24,20 @@ const Login = () => {
   const { signInWithGoogle, isLoading: googleLoading } = useGoogleAuth();
 
   const checkProfileComplete = async (userId: string): Promise<boolean> => {
-    const profileRequest = supabase
-      .from("profiles")
-      .select("is_profile_complete")
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    const timeout = new Promise<null>((resolve) => {
-      window.setTimeout(() => resolve(null), 3500);
-    });
-
     try {
-      const result = await Promise.race([profileRequest, timeout]);
-      if (!result || result.error) return false;
-      return result.data?.is_profile_complete ?? false;
-    } catch {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("is_profile_complete")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error fetching profile completion status:", error);
+        return false;
+      }
+      return data?.is_profile_complete ?? false;
+    } catch (err) {
+      console.error("Unexpected error fetching profile:", err);
       return false;
     }
   };

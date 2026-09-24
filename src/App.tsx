@@ -88,8 +88,14 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // Enforce mandatory onboarding
-  if (profile && !profile.is_profile_complete && location.pathname !== '/mandatory-onboarding' && location.pathname !== '/setup-profile') {
+  // If profile is already complete, never show setup pages again — send straight to home
+  const setupPaths = ['/setup-profile', '/mandatory-onboarding', '/onboarding'];
+  if (profile?.is_profile_complete && setupPaths.includes(location.pathname)) {
+    return <Navigate to="/home" replace />;
+  }
+
+  // If profile exists and is NOT complete, enforce onboarding (but allow setup pages themselves)
+  if (profile && !profile.is_profile_complete && !setupPaths.includes(location.pathname)) {
     return <Navigate to="/mandatory-onboarding" replace />;
   }
 
