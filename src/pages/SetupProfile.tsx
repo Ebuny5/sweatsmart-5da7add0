@@ -86,19 +86,8 @@ const SetupProfile = () => {
   };
 
   const finish = async () => {
-    if (user) {
-      await supabase
-        .from("profiles")
-        .update({ is_profile_complete: true })
-        .eq("user_id", user.id);
-    }
-
     audioAlertPlayer.setGender(gender);
-    toast({
-      title: `Welcome, ${displayName.trim()}! 🎉`,
-      description: "Your warrior profile is ready.",
-    });
-    navigate("/home", { replace: true });
+    navigate("/mandatory-onboarding", { replace: true });
   };
 
   return (
