@@ -265,10 +265,10 @@ const TreatmentCard = ({
     >
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-3 py-2.5 px-3.5 text-left"
+        className="w-full flex items-center gap-3 p-4 text-left"
       >
         <div
-          className={`w-9 h-9 rounded-xl bg-gradient-to-br ${t.gradient} flex items-center justify-center text-lg shrink-0 shadow-sm`}
+          className={`w-11 h-11 rounded-xl bg-gradient-to-br ${t.gradient} flex items-center justify-center text-xl shrink-0 shadow-sm`}
         >
           {t.emoji}
         </div>
@@ -1063,9 +1063,9 @@ const TreatmentsSection = ({
         </div>
       </div>
     </div>
-    <div className="px-4 py-4 space-y-2">
+    <div className="px-4 py-4 space-y-3">
       {/* Medical disclaimer */}
-      <div className="flex items-start gap-3 p-3 rounded-xl bg-red-50 border border-red-100 mb-3">
+      <div className="flex items-start gap-3 p-3 rounded-xl bg-red-50 border border-red-100">
         <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
         <div>
           <p className="text-xs font-bold text-red-700">Medical Disclaimer</p>
