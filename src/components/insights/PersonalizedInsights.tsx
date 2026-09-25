@@ -499,8 +499,8 @@ const PersonalizedInsights: React.FC<PersonalizedInsightsProps> = ({
                 {insight.icon}
               </div>
 
-              <div className="flex-1 min-w-0 pr-2">
-                <div className="flex items-center justify-between mb-1 gap-2">
+              <div className="flex-1 min-w-0 ">
+                <div className="flex items-center justify-between mb-1 gap-1">
                   <span className="text-[14px] leading-tight font-semibold text-gray-800 break-words whitespace-normal">
                     {insight.label}
                   </span>
