@@ -265,10 +265,10 @@ const TreatmentCard = ({
     >
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-3 p-4 text-left"
+        className="w-full flex items-center gap-3 px-3.5 py-2.5 text-left"
       >
         <div
-          className={`w-11 h-11 rounded-xl bg-gradient-to-br ${t.gradient} flex items-center justify-center text-xl shrink-0 shadow-sm`}
+          className={`w-9 h-9 rounded-xl bg-gradient-to-br ${t.gradient} flex items-center justify-center text-lg shrink-0 shadow-sm`}
         >
           {t.emoji}
         </div>
@@ -297,7 +297,7 @@ const TreatmentCard = ({
       </button>
 
       {open && (
-        <div className="px-4 pb-4 space-y-3 border-t border-gray-50 pt-3">
+        <div className="px-3.5 pb-3 space-y-2 border-t border-gray-50 pt-2.5">
           <p className="text-sm text-gray-600 leading-relaxed">
             {t.description}
           </p>
@@ -1049,7 +1049,7 @@ const TreatmentsSection = ({
 }: {
   relevantTreatments: string[];
 }) => (
-  <div className="w-full bg-white rounded-3xl p-4 shadow-sm border border-slate-100 overflow-hidden">
+  <div className="w-full bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
     <div className="px-4 pt-4 pb-3 border-b border-gray-50">
       <div className="flex items-center gap-2">
         <span className="text-lg">🏥</span>
@@ -1063,7 +1063,7 @@ const TreatmentsSection = ({
         </div>
       </div>
     </div>
-    <div className="px-4 py-4 space-y-3">
+    <div className="px-4 py-2.5 space-y-2.5">
       {/* Medical disclaimer */}
       <div className="flex items-start gap-3 p-3 rounded-xl bg-red-50 border border-red-100">
         <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />

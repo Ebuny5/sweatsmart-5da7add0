@@ -309,10 +309,10 @@ const Dashboard = () => {
         </div>
 
         {/* ── CONTENT ───────────────────────────────────────────────────── */}
-        <div className="space-y-4 px-4 -mt-2">
+        <div className="space-y-3 px-4 -mt-2">
 
           {/* Trend Overview */}
-          <div className="w-full bg-white rounded-3xl p-4 shadow-sm border border-slate-100 overflow-hidden">
+          <div className="w-full bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
             <div className="px-4 pt-4 pb-2 border-b border-gray-50 flex items-center gap-2">
               <span className="text-lg">📈</span>
               <div>
@@ -329,7 +329,7 @@ const Dashboard = () => {
           </div>
 
           {/* Top Triggers */}
-          <div className="w-full bg-white rounded-3xl p-4 shadow-sm border border-slate-100 overflow-hidden">
+          <div className="w-full bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
             <div className="px-4 pt-4 pb-2 border-b border-gray-50 flex items-center gap-2">
               <span className="text-lg">🔍</span>
               <div>
@@ -347,7 +347,7 @@ const Dashboard = () => {
 
           {/* Top Affected Areas */}
           {dashboardData.bodyAreas.length > 0 && (
-            <div className="w-full bg-white rounded-3xl p-4 shadow-sm border border-slate-100 overflow-hidden">
+            <div className="w-full bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
               <div className="px-4 pt-4 pb-2 border-b border-gray-50 flex items-center gap-2">
                 <span className="text-lg">🫶</span>
                 <div>
