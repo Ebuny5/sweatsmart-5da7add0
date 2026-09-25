@@ -54,7 +54,7 @@ const EpisodeDetail = () => {
   if (loading) {
     return (
       <AppLayout>
-        <div className="w-full max-w-2xl mx-auto px-4 pt-8 space-y-4">
+        <div className="max-w-lg mx-auto px-4 pt-8 space-y-4">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-24 bg-gray-100 rounded-2xl animate-pulse" />
           ))}
@@ -68,7 +68,7 @@ const EpisodeDetail = () => {
   if (!episode) {
     return (
       <AppLayout>
-        <div className="w-full max-w-2xl mx-auto px-4 pt-16 text-center space-y-4">
+        <div className="max-w-lg mx-auto px-4 pt-16 text-center space-y-4">
           <span className="text-5xl">🔍</span>
           <h2 className="text-xl font-bold text-gray-800">Episode not found</h2>
           <p className="text-sm text-gray-500">This episode doesn't exist or has been deleted.</p>
@@ -87,7 +87,7 @@ const EpisodeDetail = () => {
 
   return (
     <AppLayout>
-      <div className="w-full max-w-2xl mx-auto px-4 pb-10">
+      <div className="max-w-lg mx-auto pb-10">
 
         {/* ── GRADIENT HERO ──────────────────────────────────────────────── */}
         <div className={`bg-gradient-to-br ${severityConfig.gradient} px-6 pt-8 pb-10 rounded-b-[2.5rem] shadow-lg mb-6`}>

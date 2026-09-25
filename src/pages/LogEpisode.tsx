@@ -318,7 +318,7 @@ const LogEpisode = () => {
     return (
       <AppLayout>
         <div className="min-h-screen bg-[#EE82EE]">
-          <div className="w-full max-w-2xl mx-auto px-4 py-6 px-4 space-y-4">
+          <div className="max-w-lg mx-auto py-6 px-4 space-y-4">
             {isLoadingInsights ? (
               <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 p-8 flex flex-col items-center gap-4">
                 <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
@@ -383,7 +383,7 @@ const LogEpisode = () => {
   return (
     <AppLayout>
       <div className="min-h-screen bg-[#EE82EE] relative">
-        <div className="w-full max-w-2xl mx-auto px-4 pb-10">
+        <div className="max-w-lg mx-auto pb-10">
 
           {/* ── GRADIENT HERO HEADER ──────────────────────────────────────── */}
         <div className="bg-[#000080] px-6 pt-8 pb-8 rounded-b-[2.5rem] shadow-lg shadow-pink-200 mb-6">

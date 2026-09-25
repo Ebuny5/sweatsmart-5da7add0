@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 const Feedback = () => {
   return (
     <AppLayout>
-      <div className="w-full max-w-2xl mx-auto px-4 space-y-8">
+      <div className="container max-w-4xl mx-auto space-y-8">
         <div className="text-center space-y-4">
           <h1 className="text-4xl font-bold text-foreground">Share Your Feedback</h1>
           <p className="text-xl text-professional-gray max-w-2xl mx-auto">
