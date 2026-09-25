@@ -342,7 +342,7 @@ const Profile = () => {
 
   return (
     <AppLayout>
-      <div className="w-full px-4 sm:px-6 md:px-8 mx-auto pb-10">
+      <div className="w-full max-w-2xl mx-auto px-4 pb-10">
 
         {/* ── HERO GRADIENT HEADER ─────────────────────────────────────── */}
         <div className="relative bg-gradient-to-br from-blue-500 via-blue-400 to-cyan-400 px-6 pt-10 pb-20 rounded-b-[2.5rem] shadow-lg shadow-blue-200">
@@ -469,7 +469,7 @@ const Profile = () => {
 
             <TabsContent value="profile" className="space-y-4 mt-0 focus-visible:outline-none focus-visible:ring-0">
           {/* ── PERSONAL INFORMATION ───────────────────────────────────── */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 overflow-hidden">
             <div className="px-5 pt-5 pb-2">
               <h3 className="text-base font-bold text-gray-800">Personal Information</h3>
               <p className="text-xs text-gray-400 mt-0.5">Your profile details</p>
@@ -661,7 +661,7 @@ const Profile = () => {
           </div>
 
           {/* ── ACCOUNT SETTINGS ─────────────────────────────────────────── */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 overflow-hidden">
             <div className="px-5 pt-5 pb-2">
               <h3 className="text-base font-bold text-gray-800">Account Settings</h3>
               <p className="text-xs text-gray-400 mt-0.5">Preferences & privacy</p>
@@ -714,7 +714,7 @@ const Profile = () => {
             </TabsContent>
 
             <TabsContent value="security" className="space-y-4 mt-0 focus-visible:outline-none focus-visible:ring-0 pb-8">
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 overflow-hidden">
                 <div className="px-5 pt-5 pb-2 border-b border-gray-50">
                   <h3 className="text-base font-bold text-gray-800">Login & Security</h3>
                   <p className="text-xs text-gray-400 mt-0.5">Manage your authentication methods</p>
@@ -760,7 +760,7 @@ const Profile = () => {
                 </div>
               </div>
 
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 overflow-hidden">
                 <div className="px-5 pt-5 pb-2 border-b border-gray-50">
                   <h3 className="text-base font-bold text-gray-800">Devices & Access</h3>
                   <p className="text-xs text-gray-400 mt-0.5">Manage connected devices</p>

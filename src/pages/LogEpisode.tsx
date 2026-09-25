@@ -318,9 +318,9 @@ const LogEpisode = () => {
     return (
       <AppLayout>
         <div className="min-h-screen bg-[#EE82EE]">
-          <div className="w-full px-4 sm:px-6 md:px-8 mx-auto py-6 px-4 space-y-4">
+          <div className="w-full max-w-2xl mx-auto px-4 py-6 px-4 space-y-4">
             {isLoadingInsights ? (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 flex flex-col items-center gap-4">
+              <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 p-8 flex flex-col items-center gap-4">
                 <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
                   <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
                 </div>
@@ -332,7 +332,7 @@ const LogEpisode = () => {
             ) : aiInsights ? (
               <AIGeneratedInsights insights={aiInsights} />
             ) : (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
+              <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 p-6 text-center">
                 <p className="text-gray-500 text-sm">Episode saved. Insights couldn't be generated — check your history for the logged episode.</p>
               </div>
             )}
@@ -383,7 +383,7 @@ const LogEpisode = () => {
   return (
     <AppLayout>
       <div className="min-h-screen bg-[#EE82EE] relative">
-        <div className="w-full px-4 sm:px-6 md:px-8 mx-auto pb-10">
+        <div className="w-full max-w-2xl mx-auto px-4 pb-10">
 
           {/* ── GRADIENT HERO HEADER ──────────────────────────────────────── */}
         <div className="bg-[#000080] px-6 pt-8 pb-8 rounded-b-[2.5rem] shadow-lg shadow-pink-200 mb-6">
@@ -492,7 +492,7 @@ const LogEpisode = () => {
             </Section>
 
             {/* Dry Day Toggle */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4 p-5 flex items-center justify-between">
+            <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 overflow-hidden mb-4 p-5 flex items-center justify-between">
               <div>
                 <Label htmlFor="dry-day-toggle" className="text-base font-bold text-gray-800 flex items-center gap-2">
                   <span className="text-xl">✨</span> Dry Day / Treatment

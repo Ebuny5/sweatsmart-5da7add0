@@ -180,7 +180,7 @@ const Dashboard = () => {
   if (isLoading) {
     return (
       <AppLayout>
-        <div className="w-full px-4 sm:px-6 md:px-8 mx-auto">
+        <div className="w-full max-w-2xl mx-auto px-4">
           <div className="bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 px-6 pt-8 pb-16 rounded-b-[2.5rem] animate-pulse mb-6">
             <div className="h-6 w-32 bg-white/20 rounded-full mb-3" />
             <div className="h-8 w-48 bg-white/20 rounded-full mb-2" />
@@ -200,7 +200,7 @@ const Dashboard = () => {
   if (error) {
     return (
       <AppLayout>
-        <div className="w-full px-4 sm:px-6 md:px-8 mx-auto pt-16 text-center space-y-4">
+        <div className="w-full max-w-2xl mx-auto px-4 pt-16 text-center space-y-4">
           <span className="text-5xl">⚠️</span>
           <h3 className="text-lg font-bold text-gray-800">Unable to load dashboard</h3>
           <p className="text-sm text-gray-500">{error}</p>
@@ -219,7 +219,7 @@ const Dashboard = () => {
   if (totalEpisodes === 0) {
     return (
       <AppLayout>
-        <div className="w-full px-4 sm:px-6 md:px-8 mx-auto pb-10">
+        <div className="w-full max-w-2xl mx-auto px-4 pb-10">
           <div className="bg-gradient-to-br from-violet-600 via-purple-500 to-pink-500 px-6 pt-8 pb-12 rounded-b-[2.5rem] shadow-lg shadow-purple-200 text-center mb-6">
             <span className="text-5xl">💧</span>
             <h1 className="text-white text-2xl font-black mt-3 tracking-tight">
@@ -231,7 +231,7 @@ const Dashboard = () => {
           </div>
 
           <div className="px-4 space-y-4">
-            <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-5 space-y-3">
+            <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 p-5 space-y-3">
               <h2 className="font-black text-gray-800 text-base">Your 3-step journey 🗺️</h2>
               <div className="h-0.5 bg-gradient-to-r from-violet-400 via-pink-400 to-amber-400 rounded-full mb-3" />
               <OnboardingStep
@@ -277,7 +277,7 @@ const Dashboard = () => {
   // ── MAIN DASHBOARD ────────────────────────────────────────────────────────
   return (
     <AppLayout>
-      <div className="w-full px-4 sm:px-6 md:px-8 mx-auto pb-10">
+      <div className="w-full max-w-2xl mx-auto px-4 pb-10">
 
         {/* ── HERO ──────────────────────────────────────────────────────── */}
         <div className="bg-gradient-to-br from-violet-600 via-purple-500 to-pink-500 px-6 pt-8 pb-14 rounded-b-[2.5rem] shadow-lg shadow-purple-200">
@@ -312,7 +312,7 @@ const Dashboard = () => {
         <div className="space-y-4 px-4 -mt-2">
 
           {/* Trend Overview */}
-          <div className="bg-white rounded-2xl shadow-sm border border-purple-100 overflow-hidden">
+          <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 overflow-hidden">
             <div className="px-5 pt-4 pb-2 border-b border-gray-50 flex items-center gap-2">
               <span className="text-lg">📈</span>
               <div>
@@ -329,7 +329,7 @@ const Dashboard = () => {
           </div>
 
           {/* Top Triggers */}
-          <div className="bg-white rounded-2xl shadow-sm border border-purple-100 overflow-hidden">
+          <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 overflow-hidden">
             <div className="px-5 pt-4 pb-2 border-b border-gray-50 flex items-center gap-2">
               <span className="text-lg">🔍</span>
               <div>
@@ -347,7 +347,7 @@ const Dashboard = () => {
 
           {/* Top Affected Areas */}
           {dashboardData.bodyAreas.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-sm border border-purple-100 overflow-hidden">
+            <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 overflow-hidden">
               <div className="px-5 pt-4 pb-2 border-b border-gray-50 flex items-center gap-2">
                 <span className="text-lg">🫶</span>
                 <div>
