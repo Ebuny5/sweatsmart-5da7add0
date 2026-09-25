@@ -8,7 +8,7 @@ const Legal = () => {
 
   return (
     <AppLayout isAuthenticated={!!session}>
-      <div className="container max-w-4xl mx-auto py-8 px-4">
+      <div className="w-full max-w-2xl mx-auto px-4 py-8 px-4">
         <h1 className="text-4xl font-bold mb-6">Legal Information</h1>
         
         <Card>

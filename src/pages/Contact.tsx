@@ -31,7 +31,7 @@ const TwitterXIcon = () => (
 const Contact = () => {
   return (
     <AppLayout>
-      <div className="container max-w-4xl mx-auto space-y-8">
+      <div className="w-full max-w-2xl mx-auto px-4 space-y-8">
 
         <div className="text-center space-y-4">
           <h1 className="text-4xl font-bold text-foreground">Contact Us</h1>

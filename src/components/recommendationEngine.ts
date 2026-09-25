@@ -136,22 +136,22 @@ interface AnatomicalProfile {
 function normalizeAnatomy(bodyAreas: string[]): AnatomicalProfile {
   const rawList = (bodyAreas || []).map(a => String(a).toLowerCase().trim().replace(/_/g, " "));
 
-  const isCraniofacial = rawList.some(a => 
+  const isCraniofacial = rawList.some(a =>
     a.includes("face") || a.includes("scalp") || a.includes("forehead") || a.includes("head") || a.includes("hairline")
   );
-  const isAxillary = rawList.some(a => 
+  const isAxillary = rawList.some(a =>
     a.includes("armpit") || a.includes("underarm") || a.includes("axill")
   );
-  const isPalmar = rawList.some(a => 
+  const isPalmar = rawList.some(a =>
     a.includes("palm") || a.includes("hand") || a.includes("finger")
   );
-  const isPlantar = rawList.some(a => 
+  const isPlantar = rawList.some(a =>
     a.includes("feet") || a.includes("foot") || a.includes("sole") || a.includes("toe")
   );
-  const isTruncal = rawList.some(a => 
+  const isTruncal = rawList.some(a =>
     a.includes("chest") || a.includes("back") || a.includes("groin") || a.includes("trunk") || a.includes("abdomen") || a.includes("thigh")
   );
-  const isSystemic = rawList.some(a => 
+  const isSystemic = rawList.some(a =>
     a.includes("entire body") || a.includes("whole body") || a.includes("generalized")
   );
 
@@ -213,31 +213,31 @@ function evaluateTriggers(triggers: Array<TriggerInput | string>): TriggerProfil
     return `${t.value || ""} ${t.label || ""} ${t.type || ""}`.toLowerCase().trim();
   });
 
-  const isIdiopathic = triggerTokens.length === 0 || triggerTokens.some(t => 
+  const isIdiopathic = triggerTokens.length === 0 || triggerTokens.some(t =>
     t.includes("no identifiable") || t.includes("none") || t.includes("spontaneous") || t.includes("unknown")
   );
 
-  const isEnvironmental = triggerTokens.some(t => 
+  const isEnvironmental = triggerTokens.some(t =>
     t.includes("temp") || t.includes("humid") || t.includes("sun") || t.includes("ventilat") || t.includes("fabric") || t.includes("crowded")
   );
 
-  const isAdrenergic = triggerTokens.some(t => 
+  const isAdrenergic = triggerTokens.some(t =>
     t.includes("stress") || t.includes("anxi") || t.includes("anticipat") || t.includes("embarrass") || t.includes("nervous") || t.includes("public") || t.includes("social") || t.includes("pressure") || t.includes("exam")
   );
 
-  const isGustatory = triggerTokens.some(t => 
+  const isGustatory = triggerTokens.some(t =>
     t.includes("spicy") || t.includes("caffeine") || t.includes("alcohol") || t.includes("hot drink") || t.includes("gustatory") || t.includes("energy drink")
   );
 
-  const isPhysical = triggerTokens.some(t => 
+  const isPhysical = triggerTokens.some(t =>
     t.includes("exercise") || t.includes("poor sleep") || t.includes("clothing")
   );
 
-  const isPharmacological = triggerTokens.some(t => 
+  const isPharmacological = triggerTokens.some(t =>
     t.includes("ssri") || t.includes("antidepress") || t.includes("opioid") || t.includes("nsaid") || t.includes("blood pressure") || t.includes("insulin") || t.includes("medication")
   );
 
-  const hasRedFlags = triggerTokens.some(t => 
+  const hasRedFlags = triggerTokens.some(t =>
     t.includes("night sweat") || t.includes("fever") || t.includes("illness") || t.includes("hypoglycemia") || isPharmacological
   );
 

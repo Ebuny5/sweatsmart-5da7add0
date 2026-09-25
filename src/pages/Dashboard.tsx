@@ -200,7 +200,7 @@ const Dashboard = () => {
   if (error) {
     return (
       <AppLayout>
-        <div className="max-w-lg mx-auto px-4 pt-16 text-center space-y-4">
+        <div className="max-w-lg mx-auto pt-16 text-center space-y-4">
           <span className="text-5xl">⚠️</span>
           <h3 className="text-lg font-bold text-gray-800">Unable to load dashboard</h3>
           <p className="text-sm text-gray-500">{error}</p>
@@ -300,7 +300,7 @@ const Dashboard = () => {
           )}
 
           {/* Stats row — 4 equal pills, no scroll, no confusing icons */}
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             <StatPill icon={<span className="text-base">📋</span>} value={totalEpisodes} label="Episodes" gradient="bg-white/20 backdrop-blur-sm" />
             <StatPill icon={<span className="text-base">🗓️</span>} value={`${trackingConsistencyPercentage}%`} label="Consistency" gradient="bg-white/20 backdrop-blur-sm" />
             <StatPill icon={<span className="text-base">⚡</span>} value={avgSeverity} label="Avg HDSS" gradient="bg-white/20 backdrop-blur-sm" />
