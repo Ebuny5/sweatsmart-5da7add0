@@ -1,4 +1,4 @@
-import { X, ArrowRight,  useState, useEffect, useMemo } from "react";
+import { ArrowRight,  useState, useEffect, useMemo } from "react";
 import AppLayout from "@/components/layout/AppLayout";
 import {
   AlertCircle,
@@ -265,10 +265,10 @@ const TreatmentCard = ({
     >
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-3 p-4 text-left"
+        className="w-full flex items-center gap-3 py-2.5 px-3.5 text-left"
       >
         <div
-          className={`w-11 h-11 rounded-xl bg-gradient-to-br ${t.gradient} flex items-center justify-center text-xl shrink-0 shadow-sm`}
+          className={`w-9 h-9 rounded-xl bg-gradient-to-br ${t.gradient} flex items-center justify-center text-lg shrink-0 shadow-sm`}
         >
           {t.emoji}
         </div>
@@ -335,15 +335,15 @@ const Section = ({
   subtitle?: string;
   children: React.ReactNode;
 }) => (
-  <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 overflow-hidden">
-    <div className="px-5 pt-4 pb-3 border-b border-gray-50 flex items-center gap-2">
+  <div className="w-full bg-white rounded-3xl p-4 shadow-sm border border-slate-100 overflow-hidden">
+    <div className="px-4 pt-4 pb-3 border-b border-gray-50 flex items-center gap-2">
       <span className="text-lg">{emoji}</span>
       <div>
         <h2 className="font-bold text-sm text-gray-800">{title}</h2>
         {subtitle && <p className="text-xs text-gray-400">{subtitle}</p>}
       </div>
     </div>
-    <div className="px-5 py-5">{children}</div>
+    <div className="px-4 py-4">{children}</div>
   </div>
 );
 
@@ -360,7 +360,7 @@ const StatTile = ({
   gradient: string;
 }) => (
   <div
-    className={`flex flex-col items-center justify-center p-3 rounded-2xl ${gradient} min-h-[80px]`}
+    className={`flex flex-col items-center justify-center p-3 rounded-2xl ${gradient} `}
   >
     <span className="text-2xl mb-1">{emoji}</span>
     <span className="text-lg font-black text-gray-800 leading-none">
@@ -564,7 +564,7 @@ const Insights = () => {
   if (isLoading) {
     return (
       <AppLayout>
-        <div className="max-w-lg mx-auto">
+        <div className="w-full max-w-4xl mx-auto">
           <div className="bg-gradient-to-br from-violet-500 to-pink-500 px-6 pt-8 pb-16 rounded-b-[2.5rem] animate-pulse mb-6">
             <div className="h-6 w-32 bg-white/20 rounded-full mb-3" />
             <div className="h-8 w-48 bg-white/20 rounded-full" />
@@ -582,7 +582,7 @@ const Insights = () => {
       {/* ── TRIGGER POPUP ────────────────────────────────────────── */}
       {selectedTrigger && (
         <div className="bg-slate-900/30 backdrop-blur-sm fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-5 shadow-xl border border-slate-100 max-w-sm w-full mx-auto relative animate-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-2xl p-5 shadow-xl border border-slate-100 w-full max-w-md mx-auto relative animate-in zoom-in-95 duration-200">
             <button
               onClick={() => setSelectedTrigger(null)}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
@@ -653,7 +653,7 @@ const Insights = () => {
       {/* ── AREA POPUP ────────────────────────────────────────────── */}
       {selectedArea && (
         <div className="bg-slate-900/30 backdrop-blur-sm fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-5 shadow-xl border border-slate-100 max-w-sm w-full mx-auto relative animate-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-2xl p-5 shadow-xl border border-slate-100 w-full max-w-md mx-auto relative animate-in zoom-in-95 duration-200">
             <button
               onClick={() => setSelectedArea(null)}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
@@ -723,7 +723,7 @@ const Insights = () => {
   if (nonDryEpisodes.length === 0) {
     return (
       <AppLayout>
-        <div className="max-w-lg mx-auto pb-10">
+        <div className="w-full max-w-4xl mx-auto pb-10">
           <div className="bg-gradient-to-br from-violet-600 via-purple-500 to-pink-500 px-6 pt-8 pb-12 rounded-b-[2.5rem] shadow-lg mb-6 text-center">
             <span className="text-4xl">📊</span>
             <h1 className="text-white text-2xl font-black mt-3">
@@ -799,7 +799,7 @@ const Insights = () => {
 
   return (
     <AppLayout>
-      <div className="max-w-lg mx-auto pb-10">
+      <div className="w-full max-w-4xl mx-auto pb-10">
         {/* ── HERO ────────────────────────────────────────────────────── */}
         <div className="bg-gradient-to-br from-violet-600 via-purple-500 to-pink-500 px-6 pt-8 pb-14 rounded-b-[2.5rem] shadow-lg shadow-purple-200">
           <h1 className="text-white text-[20px] sm:text-[22px] font-bold tracking-tight leading-tight truncate font-sans">
@@ -1049,8 +1049,8 @@ const TreatmentsSection = ({
 }: {
   relevantTreatments: string[];
 }) => (
-  <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 overflow-hidden">
-    <div className="px-5 pt-4 pb-3 border-b border-gray-50">
+  <div className="w-full bg-white rounded-3xl p-4 shadow-sm border border-slate-100 overflow-hidden">
+    <div className="px-4 pt-4 pb-3 border-b border-gray-50">
       <div className="flex items-center gap-2">
         <span className="text-lg">🏥</span>
         <div>
@@ -1063,9 +1063,9 @@ const TreatmentsSection = ({
         </div>
       </div>
     </div>
-    <div className="px-5 py-4 space-y-3">
+    <div className="px-4 py-4 space-y-2">
       {/* Medical disclaimer */}
-      <div className="flex items-start gap-3 p-3 rounded-xl bg-red-50 border border-red-100">
+      <div className="flex items-start gap-3 p-3 rounded-xl bg-red-50 border border-red-100 mb-3">
         <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
         <div>
           <p className="text-xs font-bold text-red-700">Medical Disclaimer</p>
