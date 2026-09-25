@@ -180,7 +180,7 @@ const Dashboard = () => {
   if (isLoading) {
     return (
       <AppLayout>
-        <div className="w-full px-4 sm:px-6 md:px-8 mx-auto">
+        <div className="max-w-lg mx-auto">
           <div className="bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 px-6 pt-8 pb-16 rounded-b-[2.5rem] animate-pulse mb-6">
             <div className="h-6 w-32 bg-white/20 rounded-full mb-3" />
             <div className="h-8 w-48 bg-white/20 rounded-full mb-2" />
@@ -200,7 +200,7 @@ const Dashboard = () => {
   if (error) {
     return (
       <AppLayout>
-        <div className="w-full px-4 sm:px-6 md:px-8 mx-auto pt-16 text-center space-y-4">
+        <div className="max-w-lg mx-auto px-4 pt-16 text-center space-y-4">
           <span className="text-5xl">⚠️</span>
           <h3 className="text-lg font-bold text-gray-800">Unable to load dashboard</h3>
           <p className="text-sm text-gray-500">{error}</p>
@@ -219,7 +219,7 @@ const Dashboard = () => {
   if (totalEpisodes === 0) {
     return (
       <AppLayout>
-        <div className="w-full px-4 sm:px-6 md:px-8 mx-auto pb-10">
+        <div className="max-w-lg mx-auto pb-10">
           <div className="bg-gradient-to-br from-violet-600 via-purple-500 to-pink-500 px-6 pt-8 pb-12 rounded-b-[2.5rem] shadow-lg shadow-purple-200 text-center mb-6">
             <span className="text-5xl">💧</span>
             <h1 className="text-white text-2xl font-black mt-3 tracking-tight">
@@ -277,7 +277,7 @@ const Dashboard = () => {
   // ── MAIN DASHBOARD ────────────────────────────────────────────────────────
   return (
     <AppLayout>
-      <div className="w-full px-4 sm:px-6 md:px-8 mx-auto pb-10">
+      <div className="max-w-lg mx-auto pb-10">
 
         {/* ── HERO ──────────────────────────────────────────────────────── */}
         <div className="bg-gradient-to-br from-violet-600 via-purple-500 to-pink-500 px-6 pt-8 pb-14 rounded-b-[2.5rem] shadow-lg shadow-purple-200">
@@ -300,7 +300,7 @@ const Dashboard = () => {
           )}
 
           {/* Stats row — 4 equal pills, no scroll, no confusing icons */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <div className="grid grid-cols-4 gap-2">
             <StatPill icon={<span className="text-base">📋</span>} value={totalEpisodes} label="Episodes" gradient="bg-white/20 backdrop-blur-sm" />
             <StatPill icon={<span className="text-base">🗓️</span>} value={`${trackingConsistencyPercentage}%`} label="Consistency" gradient="bg-white/20 backdrop-blur-sm" />
             <StatPill icon={<span className="text-base">⚡</span>} value={avgSeverity} label="Avg HDSS" gradient="bg-white/20 backdrop-blur-sm" />

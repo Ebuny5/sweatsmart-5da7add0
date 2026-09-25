@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 const Terms = () => {
   return (
     <AppLayout>
-      <div className="w-full px-4 sm:px-6 md:px-8 mx-auto space-y-8">
+      <div className="container max-w-4xl mx-auto space-y-8">
         <div className="text-center space-y-4">
           <h1 className="text-4xl font-bold text-foreground">Terms of Service</h1>
           <p className="text-professional-gray">

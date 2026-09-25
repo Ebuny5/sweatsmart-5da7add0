@@ -342,7 +342,7 @@ const Profile = () => {
 
   return (
     <AppLayout>
-      <div className="w-full px-4 sm:px-6 md:px-8 mx-auto pb-10">
+      <div className="max-w-lg mx-auto pb-10">
 
         {/* ── HERO GRADIENT HEADER ─────────────────────────────────────── */}
         <div className="relative bg-gradient-to-br from-blue-500 via-blue-400 to-cyan-400 px-6 pt-10 pb-20 rounded-b-[2.5rem] shadow-lg shadow-blue-200">
