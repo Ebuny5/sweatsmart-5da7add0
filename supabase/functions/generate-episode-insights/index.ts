@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
-import { generateFallbackInsights } from "./clinicalEngine.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -25,66 +24,82 @@ serve(async (req) => {
       notes = '',
       isDryDay,
       is_dry_day,
-      climate,
       userName,
-      episodesList, // optional: recent episodes, used only if the fallback engine needs dry-day streak data
     } = payload;
     const dryDay = (isDryDay ?? is_dry_day) === true;
 
-    // Convert trigger objects to clean strings for the SQL RPC call
+    // Normalize triggers to plain strings for the SQL RPC function
     const formattedTriggersForSQL = (Array.isArray(triggers) ? triggers : []).map((t: any) => {
-      if (typeof t === 'string') return t;
-      return t.label || t.value || '';
-    });
+      if (typeof t === 'string') return t.trim();
+      return (t.label || t.value || '').trim();
+    }).filter(Boolean);
 
-    // ─── PRIMARY PATH: SQL database (deterministic, zero AI, zero cost) ──────
+    // Primary Path: Execute deterministic SQL stored procedure
     try {
       const { data, error } = await supabase.rpc('get_clinical_episode_insights', {
         p_severity: Number(severity),
         p_body_areas: Array.isArray(bodyAreas) ? bodyAreas : [],
         p_triggers: formattedTriggersForSQL,
-        p_notes: typeof notes === 'string' ? notes : null,
+        p_notes: typeof notes === 'string' && notes.trim().length > 0 ? notes.trim() : null,
         p_is_dry_day: dryDay,
       });
 
       if (error) throw error;
-      if (!data) throw new Error('SQL RPC returned no data');
+      if (!data) throw new Error('SQL RPC returned no records');
 
-      console.log('Insights served from SQL database (primary path)');
       return new Response(JSON.stringify({ insights: data, source: 'sql' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
 
-    } catch (sqlError) {
-      // ─── FALLBACK PATH: local deterministic engine (no AI, no DB dependency) ──
-      console.error('SQL RPC failed, falling back to local clinical engine:', sqlError);
+    } catch (sqlErr) {
+      console.error('SQL RPC execution failed, generating inline clinical fallback:', sqlErr);
 
-      // Triggers need the richer { type, value, label } shape for the fallback engine
-      const formattedTriggersForEngine = (Array.isArray(triggers) ? triggers : []).map((t: any) => {
-        if (typeof t === 'string') return { type: 'unknown', value: t, label: t };
-        return { type: t.type || 'unknown', value: t.value || t.label || '', label: t.label || t.value || '' };
-      });
+      // Embedded safe fallback (no missing file dependency)
+      const greeting = userName ? `Hi ${userName}, this is HidroAlly` : 'Hi, this is HidroAlly';
 
-      const fallbackResult = generateFallbackInsights(
-        Number(severity),
-        Array.isArray(bodyAreas) ? bodyAreas : [],
-        formattedTriggersForEngine,
-        typeof notes === 'string' ? notes : undefined,
-        climate,
-        dryDay,
-        Array.isArray(episodesList) ? episodesList : [],
-      );
+      const fallbackInsights = dryDay ? {
+        clinicalAnalysis: "Asymptomatic dry intervals confirm stabilized basal sympathetic cholinergic tone and temporary eccrine ductal occlusion.",
+        immediateRelief: [
+          "Maintain nocturnal application protocol to avoid premature ductal unblocking.",
+          "Apply ceramide-based barrier moisturizers to preserve skin mantle integrity."
+        ],
+        treatmentOptions: [
+          "Continue current compliance schedule. Consistency is necessary to maintain therapeutic saturation."
+        ],
+        lifestyleModifications: [
+          "Track consecutive dry days to provide objective response metrics for clinical review."
+        ],
+        medicalAttention: "No clinical safety concerns present during asymptomatic intervals.",
+        emotionalOpener: `${greeting}. Great job tracking an asymptomatic day. Here is your clinical maintenance guidance.`,
+        cta: "If you need a more clinical or in-depth evaluation of this episode, our HidroAlly clinical assistant is ready in the chat.",
+        isDryDay: true
+      } : {
+        clinicalAnalysis: `This episode reflects active focal hyperhidrosis recorded at HDSS ${severity}. Postganglionic sympathetic outflow stimulated localized eccrine output beyond basal thermoregulatory needs.`,
+        immediateRelief: [
+          "Extremity Vasculature Cooling: Run cool water over pulse points at your wrists for 3 to 4 minutes to signal core temperature reduction.",
+          "Autonomic Downregulation: Perform 3 to 5 minutes of paced diaphragmatic breathing to moderate sympathetic arousal."
+        ],
+        treatmentOptions: [
+          "Review targeted first-line topical therapy or consult your dermatologist regarding prescription muscarinic receptor antagonists."
+        ],
+        lifestyleModifications: [
+          "Maintain active ventilation across high-demand spaces to support cutaneous evaporative cooling."
+        ],
+        medicalAttention: Number(severity) >= 3
+          ? "At HDSS 3 or higher, functional disruption is significant. Bring your episode logs to a physician to discuss prescription escalation."
+          : "Standard monitoring: no immediate red flags identified.",
+        emotionalOpener: `${greeting}, your personal hyperhidrosis clinical guide. Here is your evidence-based analysis for this logged episode.`,
+        cta: "If you need a more clinical or in-depth evaluation of this episode, our HidroAlly clinical assistant is ready in the chat.",
+        isDryDay: false
+      };
 
-      console.log('Insights served from local fallback engine');
-      return new Response(JSON.stringify({ insights: fallbackResult, source: 'fallback_engine' }), {
+      return new Response(JSON.stringify({ insights: fallbackInsights, source: 'edge_fallback' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
   } catch (err) {
-    // Only reached if something fails before either path can even run
-    // (e.g. malformed request body)
-    console.error('Edge Function Error:', err);
+    console.error('Edge Function Request Error:', err);
     return new Response(JSON.stringify({ error: 'Unable to retrieve clinical protocols' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
