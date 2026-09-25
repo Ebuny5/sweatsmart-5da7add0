@@ -36,7 +36,7 @@ const TRIGGER_CATEGORY_COLORS: Record<string, string> = {
 
 // ── Section wrapper ──────────────────────────────────────────────────────────
 const DetailSection = ({ title, emoji, children }: { title: string; emoji: string; children: React.ReactNode }) => (
-  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+  <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 overflow-hidden">
     <div className="px-5 pt-4 pb-3 border-b border-gray-50 flex items-center gap-2">
       <span className="text-lg">{emoji}</span>
       <h3 className="font-bold text-sm text-gray-800">{title}</h3>

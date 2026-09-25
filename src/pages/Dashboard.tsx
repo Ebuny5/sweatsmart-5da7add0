@@ -231,7 +231,7 @@ const Dashboard = () => {
           </div>
 
           <div className="px-4 space-y-4">
-            <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-5 space-y-3">
+            <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 p-5 space-y-3">
               <h2 className="font-black text-gray-800 text-base">Your 3-step journey 🗺️</h2>
               <div className="h-0.5 bg-gradient-to-r from-violet-400 via-pink-400 to-amber-400 rounded-full mb-3" />
               <OnboardingStep
@@ -312,7 +312,7 @@ const Dashboard = () => {
         <div className="space-y-4 px-4 -mt-2">
 
           {/* Trend Overview */}
-          <div className="bg-white rounded-2xl shadow-sm border border-purple-100 overflow-hidden">
+          <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 overflow-hidden">
             <div className="px-5 pt-4 pb-2 border-b border-gray-50 flex items-center gap-2">
               <span className="text-lg">📈</span>
               <div>
@@ -329,7 +329,7 @@ const Dashboard = () => {
           </div>
 
           {/* Top Triggers */}
-          <div className="bg-white rounded-2xl shadow-sm border border-purple-100 overflow-hidden">
+          <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 overflow-hidden">
             <div className="px-5 pt-4 pb-2 border-b border-gray-50 flex items-center gap-2">
               <span className="text-lg">🔍</span>
               <div>
@@ -347,7 +347,7 @@ const Dashboard = () => {
 
           {/* Top Affected Areas */}
           {dashboardData.bodyAreas.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-sm border border-purple-100 overflow-hidden">
+            <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 overflow-hidden">
               <div className="px-5 pt-4 pb-2 border-b border-gray-50 flex items-center gap-2">
                 <span className="text-lg">🫶</span>
                 <div>

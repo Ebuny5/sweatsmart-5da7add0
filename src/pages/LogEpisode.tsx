@@ -320,7 +320,7 @@ const LogEpisode = () => {
         <div className="min-h-screen bg-[#EE82EE]">
           <div className="max-w-lg mx-auto py-6 px-4 space-y-4">
             {isLoadingInsights ? (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 flex flex-col items-center gap-4">
+              <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 p-8 flex flex-col items-center gap-4">
                 <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
                   <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
                 </div>
@@ -332,7 +332,7 @@ const LogEpisode = () => {
             ) : aiInsights ? (
               <AIGeneratedInsights insights={aiInsights} />
             ) : (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
+              <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 p-6 text-center">
                 <p className="text-gray-500 text-sm">Episode saved. Insights couldn't be generated — check your history for the logged episode.</p>
               </div>
             )}
@@ -423,7 +423,7 @@ const LogEpisode = () => {
 
         {/* ── FORM ─────────────────────────────────────────────────────── */}
         <form ref={formRef} onSubmit={handleSubmit}>
-          <div className="space-y-4 px-4">
+          <div className="flex flex-col gap-4 px-4">
 
             {/* Date & Time */}
             <Section
@@ -492,7 +492,7 @@ const LogEpisode = () => {
             </Section>
 
             {/* Dry Day Toggle */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4 p-5 flex items-center justify-between">
+            <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 overflow-hidden mb-4 p-5 flex items-center justify-between">
               <div>
                 <Label htmlFor="dry-day-toggle" className="text-base font-bold text-gray-800 flex items-center gap-2">
                   <span className="text-xl">✨</span> Dry Day / Treatment
@@ -509,50 +509,49 @@ const LogEpisode = () => {
 
             {!isDryDay && (
               <>
-            {/* Symptom Details */}
-            <Section emoji="🩺" title="Symptom Details" subtitle="How would you describe this episode?">
-              <div className="space-y-6">
-                <div>
-                  <p className="text-sm font-bold text-black mb-3">Episode Severity</p>
-                  <SeveritySelector value={severity} onChange={setSeverity} />
-                </div>
+                {/* Symptom Details */}
+                <Section emoji="🩺" title="Symptom Details" subtitle="How would you describe this episode?">
+                  <div className="space-y-6">
+                    <div>
+                      <p className="text-sm font-bold text-black mb-3">Episode Severity</p>
+                      <SeveritySelector value={severity} onChange={setSeverity} />
+                    </div>
 
-                <div className="border-t border-white/20 pt-5">
-                  <p className="text-sm font-bold text-black mb-3">Affected Body Areas</p>
-                  <BodyAreaSelector
-                    selectedAreas={bodyAreas}
-                    onChange={setBodyAreas}
+                    <div className="border-t border-white/20 pt-5">
+                      <p className="text-sm font-bold text-black mb-3">Affected Body Areas</p>
+                      <BodyAreaSelector
+                        selectedAreas={bodyAreas}
+                        onChange={setBodyAreas}
+                      />
+                    </div>
+                  </div>
+                </Section>
+
+                {/* Triggers */}
+                <Section emoji="🔍" title="Potential Triggers" subtitle="What may have caused or contributed to this episode?">
+                  <TriggerSelector
+                    triggers={triggers}
+                    onTriggersChange={setTriggers}
                   />
-                </div>
+                </Section>
 
-                <div className="border-t border-white/20 pt-5 space-y-1.5">
-                  <Label htmlFor="notes" className="text-sm font-bold text-black">
-                    Additional Notes
-                    <span className="ml-1 text-xs font-normal text-black/60">— Optional</span>
-                  </Label>
-                  <Textarea
-                    id="notes"
-                    placeholder="Any extra context about this episode… what were you doing, how did you feel afterwards?"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    className="rounded-xl border-gray-200 min-h-[90px] text-sm resize-none focus:border-blue-400 focus:ring-blue-100"
-                  />
-                </div>
-              </div>
-            </Section>
-
-            {/* Triggers */}
-            <Section emoji="🔍" title="Potential Triggers" subtitle="What may have caused or contributed to this episode?">
-              <TriggerSelector
-                triggers={triggers}
-                onTriggersChange={setTriggers}
-              />
-            </Section>
+                {/* Additional Notes */}
+                <Section emoji="📝" title="Additional Notes" subtitle="Optional">
+                  <div className="space-y-1.5">
+                    <Textarea
+                      id="notes"
+                      placeholder="Any extra context about this episode… what were you doing, how did you feel afterwards?"
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      className="rounded-xl border-gray-200 min-h-[90px] text-sm resize-none focus:border-blue-400 focus:ring-blue-100"
+                    />
+                  </div>
+                </Section>
               </>
             )}
 
             {/* Action buttons */}
-            <div className="flex flex-col gap-3 pt-2 pb-6 px-4">
+            <div className="flex flex-col gap-3 pt-2 pb-6">
               <div className="flex items-center gap-3">
                 <button
                   type="submit"

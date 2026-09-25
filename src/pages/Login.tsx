@@ -23,23 +23,22 @@ const Login = () => {
   const { toast } = useToast();
   const { signInWithGoogle, isLoading: googleLoading } = useGoogleAuth();
 
-  const checkProfileDisplayName = async (userId: string): Promise<string | null> => {
-    const profileRequest = supabase
-      .from("profiles")
-      .select("display_name")
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    const timeout = new Promise<null>((resolve) => {
-      window.setTimeout(() => resolve(null), 3500);
-    });
-
+  const checkProfileComplete = async (userId: string): Promise<boolean> => {
     try {
-      const result = await Promise.race([profileRequest, timeout]);
-      if (!result || result.error) return null;
-      return result.data?.display_name ?? null;
-    } catch {
-      return null;
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("is_profile_complete")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error fetching profile completion status:", error);
+        return false;
+      }
+      return data?.is_profile_complete ?? false;
+    } catch (err) {
+      console.error("Unexpected error fetching profile:", err);
+      return false;
     }
   };
 
@@ -70,9 +69,9 @@ const Login = () => {
           variant: "destructive",
         });
       } else {
-        const displayName = await checkProfileDisplayName(data.user.id);
+        const isProfileComplete = await checkProfileComplete(data.user.id);
 
-        if (!displayName) {
+        if (!isProfileComplete) {
           navigate("/setup-profile");
         } else {
           toast({

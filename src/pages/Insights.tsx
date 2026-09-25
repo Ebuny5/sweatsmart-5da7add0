@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { X, ArrowRight,  useState, useEffect, useMemo } from "react";
 import AppLayout from "@/components/layout/AppLayout";
 import {
   AlertCircle,
@@ -7,7 +7,7 @@ import {
   Shield,
   ChevronDown,
   ChevronUp,
-  ExternalLink,
+  ExternalLink, X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -124,6 +124,130 @@ const TIER_CONFIG = {
   },
 };
 
+
+const TRIGGER_INSIGHTS: Record<string, { insight: string; action: string }> = {
+  "Hot Temperature": {
+    insight: "High ambient temperature directly stimulates the hypothalamus, prompting systemic eccrine activation to induce evaporative cooling.",
+    action: "Pre-cool wrists 5 min prior to thermal transitions to blunt autonomic response."
+  },
+  "Transitional Temperature": {
+    insight: "Rapid shifts in ambient temperature confuse hypothalamic set-points, triggering an exaggerated burst of cholinergic discharge.",
+    action: "Layer clothing and perform slow, controlled breathing when moving between environments."
+  },
+  "Stress": {
+    insight: "Psychological stress activates the sympathetic nervous system, causing catecholamine release that directly stimulates sweat glands.",
+    action: "Engage in box breathing (4-4-4-4) to manually down-regulate sympathetic tone."
+  },
+  "Anxiety": {
+    insight: "Anxiety spikes cortisol and adrenaline, putting the body in a prolonged 'fight or flight' state with continuous cholinergic outflow.",
+    action: "Grounding techniques (5-4-3-2-1) can interrupt the neural feedback loop driving the response."
+  },
+  "Crowded Spaces": {
+    insight: "Proximity to others can induce mild claustrophobia and social anxiety, acting as a potent psychogenic trigger for eccrine glands.",
+    action: "Maintain a clear line of sight to an exit and focus on slow, diaphragmatic breathing."
+  },
+  "Caffeine": {
+    insight: "Caffeine blocks adenosine and stimulates the central nervous system, lowering the threshold for sweat gland activation.",
+    action: "Switch to decaf or hydrate with cold water immediately following caffeine consumption."
+  },
+  "Spicy Food": {
+    insight: "Capsaicin binds to TRPV1 receptors in the mouth, tricking the brain into perceiving heat and triggering gustatory sweating.",
+    action: "Avoid capsaicin-rich foods or consume them alongside dairy to neutralize the receptor binding."
+  },
+  "Physical Exertion": {
+    insight: "Exercise increases core body temperature, necessitating a robust, physiologically normal eccrine response to prevent hyperthermia.",
+    action: "Wear moisture-wicking fabrics and apply clinical antiperspirant the night before activity."
+  },
+  "Unknown": {
+    insight: "Idiopathic sweating occurs without a clear external stimulus, often driven by underlying autonomic dysregulation.",
+    action: "Maintain consistent baseline treatments and track subtle contextual factors (e.g., sleep, hydration)."
+  }
+};
+
+const AREA_INSIGHTS: Record<string, { name: string; firstLine: string; relief: string }> = {
+  "face_scalp": {
+    name: "Craniofacial Region (Face & Scalp)",
+    firstLine: "Topical anticholinergics (e.g., Qbrexza wipes) or hairline Botox. Aluminum Chloride is often contraindicated due to irritation.",
+    relief: "Apply a cold, damp cloth to temporal arterial beds for 60 seconds."
+  },
+  "face": {
+    name: "Facial Region",
+    firstLine: "Topical anticholinergics (e.g., Qbrexza wipes) or localized Botox injections. Aluminum Chloride is often contraindicated due to irritation.",
+    relief: "Apply a cold, damp cloth to temporal arterial beds for 60 seconds."
+  },
+  "scalp": {
+    name: "Scalp Region",
+    firstLine: "Topical anticholinergics or hairline Botox injections. Oral medications may be considered for severe cases.",
+    relief: "Direct cool air to the back of the neck and scalp."
+  },
+  "underarms": {
+    name: "Axillary Region (Underarms)",
+    firstLine: "Nocturnal application of 20% Aluminum Chloride Hexahydrate on dry skin.",
+    relief: "Apply clinical-strength antiperspirant to completely dry skin before bed."
+  },
+  "palms": {
+    name: "Palmar Region (Hands)",
+    firstLine: "Tap-water iontophoresis and high-strength antiperspirants. Botox is a second-line option.",
+    relief: "Run wrists under cold water to cool the blood supply to the hands."
+  },
+  "hands": {
+    name: "Palmar Region (Hands)",
+    firstLine: "Tap-water iontophoresis and high-strength antiperspirants. Botox is a second-line option.",
+    relief: "Run wrists under cold water to cool the blood supply to the hands."
+  },
+  "soles": {
+    name: "Plantar Region (Feet)",
+    firstLine: "Tap-water iontophoresis and high-strength antiperspirants.",
+    relief: "Change into dry, moisture-wicking socks (e.g., merino wool) and cool the feet."
+  },
+  "feet": {
+    name: "Plantar Region (Feet)",
+    firstLine: "Tap-water iontophoresis and high-strength antiperspirants.",
+    relief: "Change into dry, moisture-wicking socks (e.g., merino wool) and cool the feet."
+  },
+  "feet_soles": {
+    name: "Plantar Region (Feet)",
+    firstLine: "Tap-water iontophoresis and high-strength antiperspirants.",
+    relief: "Change into dry, moisture-wicking socks (e.g., merino wool) and cool the feet."
+  },
+  "fingers": {
+    name: "Digits (Fingers)",
+    firstLine: "Iontophoresis with specialized attachments or topical antiperspirants.",
+    relief: "Run fingers and wrists under cold water."
+  },
+  "toes": {
+    name: "Digits (Toes)",
+    firstLine: "Iontophoresis or topical antiperspirants applied between toes.",
+    relief: "Ensure breathable footwear and cool the feet."
+  },
+  "chest": {
+    name: "Thoracic Region (Chest)",
+    firstLine: "Systemic oral anticholinergics (e.g., glycopyrrolate) or large-area topical treatments.",
+    relief: "Apply a cool compress to the sternum."
+  },
+  "back": {
+    name: "Dorsal Region (Back)",
+    firstLine: "Systemic oral anticholinergics or large-area topical treatments.",
+    relief: "Apply a cool compress to the spine."
+  },
+  "groin": {
+    name: "Inguinal Region (Groin)",
+    firstLine: "Gentle topical antiperspirants or powders. Systemic oral anticholinergics for severe cases.",
+    relief: "Wear loose, breathable cotton or moisture-wicking underwear."
+  },
+  "entire_body": {
+    name: "Generalized Hyperhidrosis",
+    firstLine: "Systemic oral anticholinergics (e.g., glycopyrrolate, oxybutynin) are the primary treatment.",
+    relief: "Seek a cool, air-conditioned environment and hydrate with cold fluids."
+  },
+  "generalised": {
+    name: "Generalized Hyperhidrosis",
+    firstLine: "Systemic oral anticholinergics (e.g., glycopyrrolate, oxybutynin) are the primary treatment.",
+    relief: "Seek a cool, air-conditioned environment and hydrate with cold fluids."
+  }
+};
+
+
 // ── Treatment Card ────────────────────────────────────────────────────────────
 const TreatmentCard = ({
   t,
@@ -211,7 +335,7 @@ const Section = ({
   subtitle?: string;
   children: React.ReactNode;
 }) => (
-  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+  <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 overflow-hidden">
     <div className="px-5 pt-4 pb-3 border-b border-gray-50 flex items-center gap-2">
       <span className="text-lg">{emoji}</span>
       <div>
@@ -256,6 +380,8 @@ const Insights = () => {
   const [episodes, setEpisodes] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { trackAction } = useEngagement();
+  const [selectedTrigger, setSelectedTrigger] = useState<any>(null);
+  const [selectedArea, setSelectedArea] = useState<any>(null);
 
   useEffect(() => {
     trackAction("growth_radar_views");
@@ -452,7 +578,144 @@ const Insights = () => {
             ))}
           </div>
         </div>
-      </AppLayout>
+
+      {/* ── TRIGGER POPUP ────────────────────────────────────────── */}
+      {selectedTrigger && (
+        <div className="bg-slate-900/30 backdrop-blur-sm fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-5 shadow-xl border border-slate-100 max-w-sm w-full mx-auto relative animate-in zoom-in-95 duration-200">
+            <button
+              onClick={() => setSelectedTrigger(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4 pr-6">
+               <div
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black shrink-0 text-white
+                  ${selectedTrigger.rank === 1 ? "bg-amber-400" : selectedTrigger.rank === 2 ? "bg-gray-400" : "bg-orange-300"}`}
+                >
+                  {selectedTrigger.rank}
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 leading-tight">{selectedTrigger.name}</h3>
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mt-1 capitalize ${CATEGORY_COLORS[selectedTrigger.type] ?? "bg-gray-100 text-gray-600"}`}
+                  >
+                    {selectedTrigger.type}
+                  </span>
+                </div>
+            </div>
+
+            <div className="flex gap-2 mb-5">
+              <div className="flex-1 bg-slate-50 rounded-xl p-3 border border-slate-100">
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Frequency</p>
+                <p className="text-sm font-black text-slate-800">{selectedTrigger.count} episodes</p>
+                <p className="text-xs text-slate-500">{selectedTrigger.percentage}% of total</p>
+              </div>
+              <div className="flex-1 bg-slate-50 rounded-xl p-3 border border-slate-100">
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Avg Severity</p>
+                <p className="text-sm font-black text-slate-800">HDSS {selectedTrigger.avgSeverity}</p>
+                <p className="text-xs text-slate-500">out of 4</p>
+              </div>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <div>
+                <h4 className="text-xs font-bold text-slate-900 mb-1 flex items-center gap-1.5">
+                  <span className="text-violet-500">🧠</span> Clinical Insight
+                </h4>
+                <p className="text-sm text-slate-600 leading-relaxed">
+                  {TRIGGER_INSIGHTS[selectedTrigger.name]?.insight || TRIGGER_INSIGHTS["Unknown"].insight}
+                </p>
+              </div>
+
+              <div className="bg-violet-50 border border-violet-100 rounded-xl p-3">
+                <h4 className="text-xs font-bold text-violet-900 mb-1 flex items-center gap-1.5">
+                  <span className="text-violet-500">⚡</span> Immediate Action
+                </h4>
+                <p className="text-sm text-violet-800 leading-relaxed">
+                  {TRIGGER_INSIGHTS[selectedTrigger.name]?.action || TRIGGER_INSIGHTS["Unknown"].action}
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setSelectedTrigger(null)}
+              className="w-full py-3 rounded-xl bg-slate-900 text-white font-bold text-sm shadow-md hover:bg-slate-800 transition-colors"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── AREA POPUP ────────────────────────────────────────────── */}
+      {selectedArea && (
+        <div className="bg-slate-900/30 backdrop-blur-sm fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-5 shadow-xl border border-slate-100 max-w-sm w-full mx-auto relative animate-in zoom-in-95 duration-200">
+            <button
+              onClick={() => setSelectedArea(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4 pr-6">
+               <div
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0
+                  ${selectedArea.rank === 0 ? "bg-amber-100" : selectedArea.rank === 1 ? "bg-violet-100" : "bg-slate-100"}`}
+                >
+                  {selectedArea.name === "palms" ? "🤚" : selectedArea.name === "soles" ? "🦶" : selectedArea.name === "underarms" ? "💪" : selectedArea.name === "face" ? "😰" : selectedArea.name === "scalp" ? "🧢" : selectedArea.name === "chest" ? "🫀" : selectedArea.name === "back" ? "🔙" : "🫧"}
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 leading-tight">
+                    {AREA_INSIGHTS[selectedArea.name]?.name || selectedArea.name}
+                  </h3>
+                </div>
+            </div>
+
+            <div className="flex items-center gap-2 mb-5">
+              <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-slate-100 text-slate-800 text-sm font-bold">
+                {selectedArea.count} occurrences
+              </span>
+              <span className="text-sm text-slate-500 font-medium">
+                ({selectedArea.percentage}% of episodes)
+              </span>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
+                <h4 className="text-xs font-bold text-blue-900 mb-1 flex items-center gap-1.5">
+                  <span className="text-blue-500">🏥</span> First-Line Medical Route
+                </h4>
+                <p className="text-sm text-blue-800 leading-relaxed">
+                  {AREA_INSIGHTS[selectedArea.name]?.firstLine || "Discuss generalized treatment options with your dermatologist."}
+                </p>
+              </div>
+
+              <div>
+                <h4 className="text-xs font-bold text-slate-900 mb-1 flex items-center gap-1.5">
+                  <span className="text-sky-500">❄️</span> Acute Relief Step
+                </h4>
+                <p className="text-sm text-slate-600 leading-relaxed">
+                  {AREA_INSIGHTS[selectedArea.name]?.relief || "Seek a cool, air-conditioned environment."}
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setSelectedArea(null)}
+              className="w-full py-3 rounded-xl bg-slate-900 text-white font-bold text-sm shadow-md hover:bg-slate-800 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+    </AppLayout>
+
     );
   }
 
@@ -664,7 +927,11 @@ const Insights = () => {
             >
               <div className="space-y-3">
                 {analytics.topTriggers.map((t, i) => (
-                  <div key={t.name} className="flex items-center gap-3">
+                  <div
+                    key={t.name}
+                    className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 transition-all active:scale-[0.98] p-1 -mx-1 rounded-lg"
+                    onClick={() => setSelectedTrigger({ ...t, rank: i + 1 })}
+                  >
                     {/* Rank */}
                     <div
                       className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0 text-white
@@ -712,7 +979,8 @@ const Insights = () => {
                 {analytics.topAreas.map(([area, count], i) => (
                   <div
                     key={area}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-full border-2
+                    onClick={() => setSelectedArea({ name: area, count, percentage: Math.round(((count as number) / nonDryEpisodes.length) * 100), rank: i })}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-full border-2 cursor-pointer hover:bg-slate-50 transition-all active:scale-[0.98]
                     ${i === 0 ? "border-amber-300 bg-amber-50" : i === 1 ? "border-violet-200 bg-violet-50" : "border-gray-200 bg-gray-50"}`}
                   >
                     <span className="text-sm">
@@ -781,7 +1049,7 @@ const TreatmentsSection = ({
 }: {
   relevantTreatments: string[];
 }) => (
-  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+  <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 overflow-hidden">
     <div className="px-5 pt-4 pb-3 border-b border-gray-50">
       <div className="flex items-center gap-2">
         <span className="text-lg">🏥</span>

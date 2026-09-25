@@ -469,7 +469,7 @@ const Profile = () => {
 
             <TabsContent value="profile" className="space-y-4 mt-0 focus-visible:outline-none focus-visible:ring-0">
           {/* ── PERSONAL INFORMATION ───────────────────────────────────── */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 overflow-hidden">
             <div className="px-5 pt-5 pb-2">
               <h3 className="text-base font-bold text-gray-800">Personal Information</h3>
               <p className="text-xs text-gray-400 mt-0.5">Your profile details</p>
@@ -661,7 +661,7 @@ const Profile = () => {
           </div>
 
           {/* ── ACCOUNT SETTINGS ─────────────────────────────────────────── */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 overflow-hidden">
             <div className="px-5 pt-5 pb-2">
               <h3 className="text-base font-bold text-gray-800">Account Settings</h3>
               <p className="text-xs text-gray-400 mt-0.5">Preferences & privacy</p>
@@ -714,7 +714,7 @@ const Profile = () => {
             </TabsContent>
 
             <TabsContent value="security" className="space-y-4 mt-0 focus-visible:outline-none focus-visible:ring-0 pb-8">
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 overflow-hidden">
                 <div className="px-5 pt-5 pb-2 border-b border-gray-50">
                   <h3 className="text-base font-bold text-gray-800">Login & Security</h3>
                   <p className="text-xs text-gray-400 mt-0.5">Manage your authentication methods</p>
@@ -760,7 +760,7 @@ const Profile = () => {
                 </div>
               </div>
 
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 overflow-hidden">
                 <div className="px-5 pt-5 pb-2 border-b border-gray-50">
                   <h3 className="text-base font-bold text-gray-800">Devices & Access</h3>
                   <p className="text-xs text-gray-400 mt-0.5">Manage connected devices</p>

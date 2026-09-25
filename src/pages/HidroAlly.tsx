@@ -382,14 +382,14 @@ const HidroAlly = () => {
             setShowSuggestions(true);
           } else if (!data.length) {
             const emoji = getRandomEmoji(GREETING_EMOJIS, 'last_greeting_emoji');
-            welcome = `Hello Warrior ${emoji} I'm your 24/7 personal hyperhidrosis consultant, here to help you turn sweat into strength. What's on your mind today?`;
+            welcome = `Hello ${name} ${emoji} I'm your 24/7 personal hyperhidrosis consultant, here to help you turn sweat into strength. What's on your mind today?`;
           } else {
             const lastUpdated = new Date(data[0].updated_at);
             const isToday = format(lastUpdated, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
             const emoji = getRandomEmoji(GREETING_EMOJIS, 'last_greeting_emoji');
             welcome = isToday
-              ? `Welcome back, Warrior ${emoji} Ready to continue restoring your dignity? What's on your mind today?`
-              : `Welcome back, Warrior ${emoji} What's on your mind today?`;
+              ? `Welcome back, ${name} ${emoji} Ready to continue restoring your dignity? What's on your mind today?`
+              : `Welcome back, ${name} ${emoji} What's on your mind today?`;
           }
           setMessages([{ role: 'assistant', content: welcome }]);
         }
@@ -1098,7 +1098,8 @@ const HidroAlly = () => {
 
   const handleNewChat = () => {
     hasLoadedConvRef.current = false;
-    setMessages([{ role: 'assistant', content: "Welcome back, Warrior 💙 What's on your mind today?" }]);
+    const name = profile?.display_name?.split(' ')[0] || user?.email?.split('@')[0] || 'Warrior';
+    setMessages([{ role: 'assistant', content: `Welcome back, ${name} 💙 What's on your mind today?` }]);
     setCurrentConversationId(null);
     setHistoryOpen(false);
     setShowSuggestions(true);

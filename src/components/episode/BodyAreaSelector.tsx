@@ -1,6 +1,9 @@
 import { BodyArea } from "@/types";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { BODY_AREA_OPTIONS } from "@/constants/episodeData";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Plus, X } from "lucide-react";
 
 interface BodyAreaSelectorProps {
   selectedAreas: BodyArea[];
@@ -26,6 +29,9 @@ const BodyAreaSelector: React.FC<BodyAreaSelectorProps> = ({
   onChange,
   highlightedAreas = [],
 }) => {
+  const [customArea, setCustomArea] = useState("");
+  const [showCustomInput, setShowCustomInput] = useState(false);
+
   const handleAreaToggle = useCallback(
     (area: BodyArea) => {
       if (selectedAreas.includes(area)) {
@@ -37,9 +43,24 @@ const BodyAreaSelector: React.FC<BodyAreaSelectorProps> = ({
     [selectedAreas, onChange]
   );
 
+  const handleAddCustomArea = () => {
+    if (customArea.trim()) {
+      onChange([...selectedAreas, customArea.trim()]);
+      setCustomArea("");
+      setShowCustomInput(false);
+    }
+  };
+
+  const handleRemoveCustomArea = (areaToRemove: string) => {
+    onChange(selectedAreas.filter((a) => a !== areaToRemove));
+  };
+
   const selectedDetails = BODY_AREA_OPTIONS.filter((o) =>
     selectedAreas.includes(o.area)
   );
+
+  const allPredefinedAreas = BODY_AREA_OPTIONS.map(o => o.area);
+  const customAreasSelected = selectedAreas.filter(a => !allPredefinedAreas.includes(a));
 
   return (
     <div className="space-y-5">
@@ -64,7 +85,7 @@ const BodyAreaSelector: React.FC<BodyAreaSelectorProps> = ({
                     key={option.area}
                     type="button"
                     onClick={() => handleAreaToggle(option.area)}
-                    className={`relative flex items-center gap-2 px-4 py-2.5 rounded-full border-2 transition-all duration-200 min-h-[48px]
+                    className={`relative flex items-center gap-2 px-3.5 py-1.5 rounded-full border-2 transition-all duration-200
                       ${
                         isSelected
                           ? "bg-blue-50 border-blue-400 shadow-sm"
@@ -86,9 +107,9 @@ const BodyAreaSelector: React.FC<BodyAreaSelectorProps> = ({
                         </svg>
                       </span>
                     )}
-                    <span className="text-xl leading-none">{option.emoji}</span>
+                    <span className="text-sm leading-none">{option.emoji}</span>
                     <span
-                      className={`text-sm font-bold ${
+                      className={`text-xs font-medium ${
                         isSelected ? "text-black" : "text-black"
                       }`}
                     >
@@ -101,6 +122,74 @@ const BodyAreaSelector: React.FC<BodyAreaSelectorProps> = ({
           </div>
         );
       })}
+
+      {/* Custom Areas */}
+      {customAreasSelected.length > 0 && (
+        <div className="space-y-2">
+          <h4 className="text-sm font-bold text-black">Custom Areas</h4>
+          <div className="flex flex-wrap gap-2">
+            {customAreasSelected.map((area, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border-2 bg-blue-50 border-blue-400 shadow-sm"
+              >
+                <span className="text-sm">✨</span>
+                <span className="text-xs font-medium text-gray-800">{area}</span>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveCustomArea(area)}
+                  className="ml-1 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Add custom area */}
+      <div>
+        {showCustomInput ? (
+          <div className="flex gap-2 items-center mt-2">
+            <Input
+              placeholder="e.g. Behind knees, Nape of neck..."
+              value={customArea}
+              onChange={(e) => setCustomArea(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAddCustomArea()}
+              className="flex-1 rounded-full h-[40px] px-4 text-sm"
+              autoFocus
+            />
+            <Button
+              type="button"
+              onClick={handleAddCustomArea}
+              disabled={!customArea.trim()}
+              className="rounded-full h-[40px] px-5 text-sm"
+            >
+              Add
+            </Button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowCustomInput(false);
+                setCustomArea("");
+              }}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowCustomInput(true)}
+            className="flex items-center gap-2 px-3.5 py-1.5 mt-2 rounded-full border-2 border-dashed border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-all"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="text-xs font-medium">Add your own area</span>
+          </button>
+        )}
+      </div>
 
       {/* Clinical detail panel for selected areas */}
       {selectedDetails.length > 0 && (
