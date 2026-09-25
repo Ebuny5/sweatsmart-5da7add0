@@ -335,7 +335,7 @@ const Section = ({
   subtitle?: string;
   children: React.ReactNode;
 }) => (
-  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+  <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 overflow-hidden">
     <div className="px-5 pt-4 pb-3 border-b border-gray-50 flex items-center gap-2">
       <span className="text-lg">{emoji}</span>
       <div>
@@ -564,7 +564,7 @@ const Insights = () => {
   if (isLoading) {
     return (
       <AppLayout>
-        <div className="w-full px-4 sm:px-6 md:px-8 mx-auto">
+        <div className="w-full max-w-2xl mx-auto px-4">
           <div className="bg-gradient-to-br from-violet-500 to-pink-500 px-6 pt-8 pb-16 rounded-b-[2.5rem] animate-pulse mb-6">
             <div className="h-6 w-32 bg-white/20 rounded-full mb-3" />
             <div className="h-8 w-48 bg-white/20 rounded-full" />
@@ -723,7 +723,7 @@ const Insights = () => {
   if (nonDryEpisodes.length === 0) {
     return (
       <AppLayout>
-        <div className="w-full px-4 sm:px-6 md:px-8 mx-auto pb-10">
+        <div className="w-full max-w-2xl mx-auto px-4 pb-10">
           <div className="bg-gradient-to-br from-violet-600 via-purple-500 to-pink-500 px-6 pt-8 pb-12 rounded-b-[2.5rem] shadow-lg mb-6 text-center">
             <span className="text-4xl">📊</span>
             <h1 className="text-white text-2xl font-black mt-3">
@@ -799,7 +799,7 @@ const Insights = () => {
 
   return (
     <AppLayout>
-      <div className="w-full px-4 sm:px-6 md:px-8 mx-auto pb-10">
+      <div className="w-full max-w-2xl mx-auto px-4 pb-10">
         {/* ── HERO ────────────────────────────────────────────────────── */}
         <div className="bg-gradient-to-br from-violet-600 via-purple-500 to-pink-500 px-6 pt-8 pb-14 rounded-b-[2.5rem] shadow-lg shadow-purple-200">
           <h1 className="text-white text-[20px] sm:text-[22px] font-bold tracking-tight leading-tight truncate font-sans">
@@ -1049,7 +1049,7 @@ const TreatmentsSection = ({
 }: {
   relevantTreatments: string[];
 }) => (
-  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+  <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 overflow-hidden">
     <div className="px-5 pt-4 pb-3 border-b border-gray-50">
       <div className="flex items-center gap-2">
         <span className="text-lg">🏥</span>

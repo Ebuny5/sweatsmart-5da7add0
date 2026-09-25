@@ -36,7 +36,7 @@ const TRIGGER_CATEGORY_COLORS: Record<string, string> = {
 
 // ── Section wrapper ──────────────────────────────────────────────────────────
 const DetailSection = ({ title, emoji, children }: { title: string; emoji: string; children: React.ReactNode }) => (
-  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+  <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 overflow-hidden">
     <div className="px-5 pt-4 pb-3 border-b border-gray-50 flex items-center gap-2">
       <span className="text-lg">{emoji}</span>
       <h3 className="font-bold text-sm text-gray-800">{title}</h3>
@@ -54,7 +54,7 @@ const EpisodeDetail = () => {
   if (loading) {
     return (
       <AppLayout>
-        <div className="w-full px-4 sm:px-6 md:px-8 mx-auto pt-8 space-y-4">
+        <div className="w-full max-w-2xl mx-auto px-4 pt-8 space-y-4">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-24 bg-gray-100 rounded-2xl animate-pulse" />
           ))}
@@ -68,7 +68,7 @@ const EpisodeDetail = () => {
   if (!episode) {
     return (
       <AppLayout>
-        <div className="w-full px-4 sm:px-6 md:px-8 mx-auto pt-16 text-center space-y-4">
+        <div className="w-full max-w-2xl mx-auto px-4 pt-16 text-center space-y-4">
           <span className="text-5xl">🔍</span>
           <h2 className="text-xl font-bold text-gray-800">Episode not found</h2>
           <p className="text-sm text-gray-500">This episode doesn't exist or has been deleted.</p>
@@ -87,7 +87,7 @@ const EpisodeDetail = () => {
 
   return (
     <AppLayout>
-      <div className="w-full px-4 sm:px-6 md:px-8 mx-auto pb-10">
+      <div className="w-full max-w-2xl mx-auto px-4 pb-10">
 
         {/* ── GRADIENT HERO ──────────────────────────────────────────────── */}
         <div className={`bg-gradient-to-br ${severityConfig.gradient} px-6 pt-8 pb-10 rounded-b-[2.5rem] shadow-lg mb-6`}>

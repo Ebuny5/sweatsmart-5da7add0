@@ -63,13 +63,13 @@ const Settings = () => {
     <div className="min-h-screen bg-black pb-24 text-zinc-100">
       {/* Header */}
       <header className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-10 shadow-sm">
-        <div className="w-full px-4 sm:px-6 md:px-8 mx-auto py-4">
+        <div className="w-full max-w-2xl mx-auto px-4 py-4">
           <h1 className="text-2xl font-black tracking-tight text-white">Settings</h1>
           <p className="text-sm text-zinc-400">Manage your clinical preferences</p>
         </div>
       </header>
 
-      <div className="w-full px-4 sm:px-6 md:px-8 mx-auto p-4 space-y-4">
+      <div className="w-full max-w-2xl mx-auto px-4 p-4 space-y-4">
         {/* Compulsory 8-hour App Alerts */}
         <Card className="p-6 bg-zinc-900 border-zinc-800">
           <div className="flex items-start gap-4">
@@ -308,7 +308,7 @@ const Settings = () => {
 
       {/* Save Button - Fixed at bottom */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-zinc-900 border-t border-zinc-800">
-        <div className="w-full px-4 sm:px-6 md:px-8 mx-auto">
+        <div className="w-full max-w-2xl mx-auto px-4">
           <Button
             onClick={handleSaveSettings}
             className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest"

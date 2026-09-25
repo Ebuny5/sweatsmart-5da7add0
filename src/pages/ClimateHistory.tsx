@@ -68,7 +68,7 @@ export default function ClimateHistory() {
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-card border-b sticky top-0 z-10 shadow-sm">
-        <div className="w-full px-4 sm:px-6 md:px-8 mx-auto py-4 flex items-center justify-between">
+        <div className="w-full max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
@@ -95,7 +95,7 @@ export default function ClimateHistory() {
         </div>
       </header>
 
-      <div className="w-full px-4 sm:px-6 md:px-8 mx-auto p-4 space-y-4">
+      <div className="w-full max-w-2xl mx-auto px-4 p-4 space-y-4">
         {logs.length === 0 ? (
           <Card className="p-12 text-center">
             <div className="mb-4">
