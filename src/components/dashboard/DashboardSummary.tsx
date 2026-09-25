@@ -238,7 +238,7 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ allEpisodes = [], t
   }
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-3">
 
       {/* D / W / M / Y picker */}
       <div className="flex items-center bg-gray-100 rounded-2xl p-1 gap-1">
@@ -275,7 +275,7 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ allEpisodes = [], t
       </div>
 
       {/* Combo chart */}
-      <div className="h-[380px] w-full">
+      <div className="h-[240px] w-full mt-2 mb-3">
         {chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData} margin={{ top: 16, right: 0, left: -10, bottom: 40 }}>
