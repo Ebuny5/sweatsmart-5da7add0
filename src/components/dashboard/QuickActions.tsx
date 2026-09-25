@@ -443,7 +443,7 @@ const WarriorLaunchpad = () => {
           {/* Primary — full width */}
           <button
             onClick={() => navigate("/log-episode")}
-            className="w-full mb-3 bg-gradient-to-r from-violet-500 to-purple-600 rounded-2xl p-4 flex items-center gap-4 shadow-lg shadow-violet-200 hover:shadow-xl hover:scale-[1.01] transition-all text-left"
+            className="w-full mb-3 bg-gradient-to-r from-violet-500 to-purple-600 rounded-2xl p-5 flex items-center gap-4 shadow-lg shadow-violet-200 hover:shadow-xl hover:scale-[1.01] transition-all text-left min-h-[76px]"
           >
             <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-3xl shadow-inner shrink-0">
               💧
@@ -461,7 +461,7 @@ const WarriorLaunchpad = () => {
           <div className="grid grid-cols-2 gap-3 mb-3">
             <button
               onClick={() => setQuickLogOpen(true)}
-              className="bg-gradient-to-br from-cyan-400 to-teal-500 rounded-2xl p-3 flex flex-col items-start gap-2 shadow-md shadow-teal-200 hover:shadow-lg hover:scale-[1.02] transition-all text-left"
+              className="bg-gradient-to-br from-cyan-400 to-teal-500 rounded-2xl p-4 flex flex-col items-start gap-2 shadow-md shadow-teal-200 hover:shadow-lg hover:scale-[1.02] transition-all text-left min-h-[100px]"
             >
               <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl shadow-inner">
                 ⚡
@@ -480,7 +480,7 @@ const WarriorLaunchpad = () => {
               <button
                 key={path}
                 onClick={() => navigate(path)}
-                className={`bg-gradient-to-br ${gradient} rounded-2xl p-3 flex flex-col items-start gap-2 shadow-md ${shadow} hover:shadow-lg hover:scale-[1.02] transition-all text-left`}
+                className={`bg-gradient-to-br ${gradient} rounded-2xl p-4 flex flex-col items-start gap-2 shadow-md ${shadow} hover:shadow-lg hover:scale-[1.02] transition-all text-left min-h-[100px]`}
               >
                 <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl shadow-inner">
                   {emoji}
@@ -540,7 +540,7 @@ const WarriorLaunchpad = () => {
 
         {/* ── QUICK LOG MODAL ─────────────────────────────────────────── */}
         <Dialog open={quickLogOpen} onOpenChange={setQuickLogOpen}>
-          <DialogContent className="w-full max-w-lg rounded-3xl p-6 max-h-[85vh] overflow-y-auto flex flex-col">
+          <DialogContent className="max-w-[90vw] sm:max-w-md rounded-3xl p-6 max-h-[85vh] overflow-y-auto flex flex-col">
             <DialogHeader className="shrink-0">
               <DialogTitle className="text-xl font-black text-gray-800">Quick HDSS Log</DialogTitle>
               <DialogDescription className="text-sm text-gray-500">
@@ -583,7 +583,7 @@ const WarriorLaunchpad = () => {
 
         {/* ── WARRIOR BADGE (EVENT TRIGGERED) ────────────────────────── */}
         <Dialog open={showWarriorModal} onOpenChange={setShowWarriorModal}>
-          <DialogContent className="w-full max-w-lg rounded-3xl p-6 flex flex-col gap-4">
+          <DialogContent className="max-w-[90vw] sm:max-w-md rounded-3xl p-6 flex flex-col gap-4">
             <DialogHeader className="text-center">
               <DialogTitle className="text-xl font-black text-gray-800 text-center">
                 Congratulations! You've logged your first episode 🎉
