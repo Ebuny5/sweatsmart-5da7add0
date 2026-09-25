@@ -34,11 +34,10 @@ export interface EpisodeInput {
   bodyAreas: string[];
   triggers: Array<TriggerInput | string>;
   notes?: string;
-  climate?: ClimateInput;
   episodeCount?: number;
   userName?: string;
   isDryDay?: boolean;
-  episodesList?: any[];
+  episodesList?: any[]; // Full history passed from DB or client
 }
 
 export interface EpisodeInsights {
@@ -306,6 +305,25 @@ function pick<T>(arr: T[], seed: number): T {
   return arr[Math.abs(seed) % arr.length];
 }
 
+
+function getLongitudinalTrend(episodesList?: any[]): string {
+  if (!episodesList || episodesList.length < 3) return "";
+
+  const recent = episodesList
+    .filter(e => !e.is_dry_day && typeof e.severity === 'number')
+    .slice(0, 5);
+
+  if (recent.length < 3) return "";
+
+  const avgRecent = recent.reduce((acc, curr) => acc + curr.severity, 0) / recent.length;
+  if (avgRecent >= 3.2) {
+    return " Longitudinal evaluation across your recent history indicates sustained high-output autonomic activation, reinforcing the clinical justification for prescription intervention.";
+  } else if (avgRecent <= 1.8) {
+    return " Longitudinal evaluation confirms your baseline severity is trending toward stability compared to earlier episodes.";
+  }
+  return "";
+}
+
 // ─── CLINICAL ANALYSIS COMPOSITION ────────────────────────────────────────────
 
 function buildClinicalAnalysis(
@@ -314,7 +332,8 @@ function buildClinicalAnalysis(
   severity: SeverityProfile,
   ni: NotesIntelligence,
   climate: ClimateInput | undefined,
-  seed: number
+  seed: number,
+  episodesList?: any[]
 ): string {
   // 1. Diagnostic Nomenclature
   let diagnosisLine = "";
@@ -381,7 +400,8 @@ function buildClinicalAnalysis(
 
   const chatCTA = "\n\nIf you need a more clinical or in-depth evaluation of this episode, our HidroAlly clinical assistant is ready in the chat.";
 
-  return `${diagnosisLine} ${mechanismLine} ${severitySentence}${contextSentence}${closingGuidance}${chatCTA}`;
+  const longitudinalTrend = getLongitudinalTrend(episodesList);
+  return `${diagnosisLine} ${mechanismLine} ${severitySentence}${contextSentence}${closingGuidance}${longitudinalTrend}${chatCTA}`;
 }
 
 // ─── IMMEDIATE RELIEF STRATEGIES (STRICTLY ISOLATED) ──────────────────────────
@@ -644,7 +664,7 @@ export function generateEpisodeInsights(input: EpisodeInput): EpisodeInsights & 
   const ni = parseNotes(notes);
 
   return {
-    clinicalAnalysis: buildClinicalAnalysis(anatomy, triggerProfile, severityProfile, ni, climate, seed),
+    clinicalAnalysis: buildClinicalAnalysis(anatomy, triggerProfile, severityProfile, ni, climate, seed, episodesList),
     immediateRelief: buildImmediateRelief(anatomy, triggerProfile),
     treatmentOptions: buildTreatments(anatomy, severityProfile),
     lifestyleModifications: buildLifestyle(anatomy, triggerProfile),
@@ -659,9 +679,9 @@ export function generateFallbackInsights(
   bodyAreas: string[],
   triggers: Array<TriggerInput | string>,
   notes?: string,
-  climate?: ClimateInput,
+  climate?: any, // Deprecated / Ignored
   isDryDay?: boolean,
-  episodes?: Array<{ is_dry_day?: boolean; datetime?: string }>
+  episodes?: Array<{ is_dry_day?: boolean; datetime?: string; severity?: number }>
 ): EpisodeInsights & { emotionalOpener: string; cta: string } {
   const episodeList = episodes || [];
   const actualCount = episodeList.filter(e => !e?.is_dry_day).length;
@@ -671,7 +691,6 @@ export function generateFallbackInsights(
     bodyAreas,
     triggers,
     notes,
-    climate,
     isDryDay,
     episodeCount: actualCount,
     episodesList: episodeList,
