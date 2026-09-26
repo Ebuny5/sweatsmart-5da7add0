@@ -238,7 +238,7 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ allEpisodes = [], t
   }
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-3">
 
       {/* D / W / M / Y picker */}
       <div className="flex items-center bg-gray-100 rounded-2xl p-1 gap-1">
@@ -275,7 +275,7 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ allEpisodes = [], t
       </div>
 
       {/* Combo chart */}
-      <div className="h-[380px] w-full">
+      <div className="h-[220px] w-full mt-2 mb-3">
         {chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData} margin={{ top: 16, right: 0, left: -10, bottom: 40 }}>
@@ -315,7 +315,7 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ allEpisodes = [], t
       </div>
 
       {/* HDSS reference */}
-      <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
+      <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pt-1 pb-1">
         {[
           { level: 1, label: "Never noticeable", cls: "bg-sky-50 text-sky-700 border-sky-200" },
           { level: 2, label: "Tolerable",         cls: "bg-blue-50 text-blue-700 border-blue-200" },
@@ -330,7 +330,7 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ allEpisodes = [], t
       </div>
 
       {/* Smart Summary card */}
-      <div className="rounded-2xl bg-[#f5f4f7] border border-purple-100 p-4 flex items-start gap-3">
+      <div className="rounded-2xl bg-[#f5f4f7] border border-purple-100 p-3 flex items-start gap-3">
         <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-sky-400 to-blue-500 flex items-center justify-center shrink-0 shadow-sm">
           <Sparkles className="h-4 w-4 text-white" />
         </div>

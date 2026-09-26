@@ -64,10 +64,6 @@ const BodyAreaSelector: React.FC<BodyAreaSelectorProps> = ({
 
   return (
     <div className="space-y-5">
-      <p className="text-sm text-muted-foreground">
-        Tap all areas that were affected during this episode
-      </p>
-
       {priorityGroups.map((group) => {
         const options = BODY_AREA_OPTIONS.filter((o) => o.priority === group.priority);
         return (
@@ -151,42 +147,46 @@ const BodyAreaSelector: React.FC<BodyAreaSelectorProps> = ({
       {/* Add custom area */}
       <div>
         {showCustomInput ? (
-          <div className="flex gap-2 items-center mt-2">
-            <Input
-              placeholder="e.g. Behind knees, Nape of neck..."
+          <div className="flex items-center gap-2 mt-2">
+            <input
+              type="text"
               value={customArea}
               onChange={(e) => setCustomArea(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAddCustomArea()}
-              className="flex-1 rounded-full h-[40px] px-4 text-sm"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAddCustomArea();
+                }
+              }}
+              placeholder="e.g. Lower Back, Neck"
+              className="text-xs px-3 py-1.5 rounded-xl border border-slate-200 focus:outline-none focus:border-purple-500 w-44"
               autoFocus
             />
-            <Button
+            <button
               type="button"
               onClick={handleAddCustomArea}
-              disabled={!customArea.trim()}
-              className="rounded-full h-[40px] px-5 text-sm"
+              className="text-xs px-3 py-1.5 rounded-xl bg-purple-600 text-white font-medium hover:bg-purple-700"
             >
               Add
-            </Button>
+            </button>
             <button
               type="button"
               onClick={() => {
                 setShowCustomInput(false);
                 setCustomArea("");
               }}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-xs text-slate-400 hover:text-slate-600"
             >
-              <X className="h-4 w-4" />
+              Cancel
             </button>
           </div>
         ) : (
           <button
             type="button"
             onClick={() => setShowCustomInput(true)}
-            className="flex items-center gap-2 px-3.5 py-1.5 mt-2 rounded-full border-2 border-dashed border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-all"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 border border-purple-200 transition-colors"
           >
-            <Plus className="h-4 w-4" />
-            <span className="text-xs font-medium">Add your own area</span>
+            <span>+</span> Add your own area
           </button>
         )}
       </div>

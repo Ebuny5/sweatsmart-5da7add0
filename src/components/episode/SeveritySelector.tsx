@@ -70,15 +70,6 @@ const SeveritySelector: React.FC<SeveritySelectorProps> = ({ value, onChange }) 
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-sm text-muted-foreground leading-snug">
-          How much did this episode interfere with your daily activities?
-        </p>
-        <span className="text-xs text-gray-400 font-medium whitespace-nowrap mt-0.5">
-          HDSS Scale
-        </span>
-      </div>
-
       {/* 2x2 card grid */}
       <div className="grid grid-cols-2 gap-3">
         {hdssLevels.map((lvl) => {

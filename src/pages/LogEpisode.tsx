@@ -509,23 +509,42 @@ const LogEpisode = () => {
 
             {!isDryDay && (
               <>
-                {/* Symptom Details */}
-                <Section emoji="🩺" title="Symptom Details" subtitle="How would you describe this episode?">
-                  <div className="space-y-6">
-                    <div>
-                      <p className="text-sm font-bold text-black mb-3">Episode Severity</p>
-                      <SeveritySelector value={severity} onChange={setSeverity} />
+                {/* ========================================================================= */}
+                {/* CARD 1: EPISODE SEVERITY */}
+                {/* ========================================================================= */}
+                <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 mb-4">
+                  <div className="mb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">📊</span>
+                      <h3 className="text-base font-semibold text-slate-800">Episode Severity</h3>
                     </div>
-
-                    <div className="border-t border-white/20 pt-5">
-                      <p className="text-sm font-bold text-black mb-3">Affected Body Areas</p>
-                      <BodyAreaSelector
-                        selectedAreas={bodyAreas}
-                        onChange={setBodyAreas}
-                      />
-                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      How much did this episode interfere with your daily activities?
+                    </p>
                   </div>
-                </Section>
+
+                  <SeveritySelector value={severity} onChange={setSeverity} />
+                </div>
+
+                {/* ========================================================================= */}
+                {/* CARD 2: AFFECTED BODY AREAS */}
+                {/* ========================================================================= */}
+                <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 mb-4">
+                  <div className="mb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">🧍</span>
+                      <h3 className="text-base font-semibold text-slate-800">Affected Body Areas</h3>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Tap all areas that were affected during this episode.
+                    </p>
+                  </div>
+
+                  <BodyAreaSelector
+                    selectedAreas={bodyAreas}
+                    onChange={setBodyAreas}
+                  />
+                </div>
 
                 {/* Triggers */}
                 <Section emoji="🔍" title="Potential Triggers" subtitle="What may have caused or contributed to this episode?">

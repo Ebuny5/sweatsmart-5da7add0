@@ -312,8 +312,8 @@ const Dashboard = () => {
         <div className="space-y-4 px-4 -mt-2">
 
           {/* Trend Overview */}
-          <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 overflow-hidden">
-            <div className="px-5 pt-4 pb-2 border-b border-gray-50 flex items-center gap-2">
+          <div className="w-full bg-white rounded-3xl p-4 shadow-sm border border-slate-100 overflow-hidden">
+            <div className="px-3 pt-2 pb-2 border-b border-gray-50 flex items-center gap-2">
               <span className="text-lg">📈</span>
               <div>
                 <h2 className="font-bold text-sm text-gray-800">Trend Overview</h2>
