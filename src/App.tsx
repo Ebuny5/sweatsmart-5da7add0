@@ -134,100 +134,100 @@ const AppRoutes = () => {
     } />
     <Route path="/auth/callback" element={<AuthCallback />} />
     <Route path="/onboarding" element={
-      <ProtectedRoute>
+
         <Onboarding />
-      </ProtectedRoute>
+
     } />
     <Route path="/setup-profile" element={
-      <ProtectedRoute>
+
         <SetupProfile />
-      </ProtectedRoute>
+
     } />
     <Route path="/mandatory-onboarding" element={
-      <ProtectedRoute>
+
         <MandatoryOnboarding />
-      </ProtectedRoute>
+
     } />
     <Route path="/home" element={
-      <ProtectedRoute>
+
         <Home />
-      </ProtectedRoute>
+
     } />
     <Route path="/dashboard" element={
-      <ProtectedRoute>
+
         <Dashboard />
-      </ProtectedRoute>
+
     } />
     <Route path="/log-episode" element={
-      <ProtectedRoute>
+
         <LogEpisode />
-      </ProtectedRoute>
+
     } />
     <Route path="/history" element={
-      <ProtectedRoute>
+
         <History />
-      </ProtectedRoute>
+
     } />
     <Route path="/episode/:id" element={
-      <ProtectedRoute>
+
         <EpisodeDetail />
-      </ProtectedRoute>
+
     } />
     <Route path="/profile" element={
-      <ProtectedRoute>
+
         <Profile />
-      </ProtectedRoute>
+
     } />
     <Route path="/insights" element={
-      <ProtectedRoute>
+
         <Insights />
-      </ProtectedRoute>
+
     } />
     <Route path="/community" element={
-      <ProtectedRoute>
+
         <Community />
-      </ProtectedRoute>
+
     } />
     <Route path="/settings" element={
-      <ProtectedRoute>
+
         <Settings />
-      </ProtectedRoute>
+
     } />
     <Route path="/achievements" element={
-      <ProtectedRoute>
+
         <Achievements />
-      </ProtectedRoute>
+
     } />
     <Route path="/palm-scanner" element={
-      <ProtectedRoute>
+
         <PalmScanner />
-      </ProtectedRoute>
+
     } />
     <Route path="/climate" element={
-      <ProtectedRoute>
+
         <ClimateMonitor />
-      </ProtectedRoute>
+
     } />
     <Route path="/climate/history" element={
-      <ProtectedRoute>
+
         <ClimateHistory />
-      </ProtectedRoute>
+
     } />
     <Route path="/climate/settings" element={<Navigate to="/settings" replace />} />
     <Route path="/hidro-ally" element={
-      <ProtectedRoute>
+
         <HidroAlly />
-      </ProtectedRoute>
+
     } />
     <Route path="/knowledge-admin" element={
-      <ProtectedRoute>
+
         <KnowledgeBaseAdmin />
-      </ProtectedRoute>
+
     } />
     <Route path="/specialist-radar" element={
-      <ProtectedRoute>
+
         <SpecialistRadar />
-      </ProtectedRoute>
+
     } />
     <Route path="/contact" element={<Contact />} />
     <Route path="/feedback" element={<Feedback />} />

@@ -7,7 +7,7 @@ import {
   Shield,
   ChevronDown,
   ChevronUp,
-  ExternalLink, X,
+  ExternalLink,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -265,13 +265,14 @@ const TreatmentCard = ({
     >
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-3 py-2.5 px-3.5 text-left"
+        className="w-full flex items-center justify-between py-2.5 px-3.5 text-left"
       >
-        <div
-          className={`w-9 h-9 rounded-xl bg-gradient-to-br ${t.gradient} flex items-center justify-center text-lg shrink-0 shadow-sm`}
-        >
-          {t.emoji}
-        </div>
+        <div className="flex items-center gap-3">
+          <div
+            className={`w-9 h-9 rounded-xl bg-gradient-to-br ${t.gradient} flex items-center justify-center text-lg shrink-0 shadow-sm`}
+          >
+            {t.emoji}
+          </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="font-bold text-sm text-gray-800 leading-tight">
@@ -288,6 +289,7 @@ const TreatmentCard = ({
           >
             {tier.label}
           </span>
+        </div>
         </div>
         {open ? (
           <ChevronUp className="h-4 w-4 text-gray-400 shrink-0" />
@@ -1063,7 +1065,7 @@ const TreatmentsSection = ({
         </div>
       </div>
     </div>
-    <div className="px-4 py-4 space-y-2">
+    <div className="px-5 py-4 space-y-2">
       {/* Medical disclaimer */}
       <div className="flex items-start gap-3 p-3 rounded-xl bg-red-50 border border-red-100 mb-3">
         <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
