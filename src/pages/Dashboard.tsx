@@ -21,7 +21,7 @@ const OnboardingStep = ({
   description: string; action: string;
   onClick: () => void; done?: boolean;
 }) => (
-  <div className={`flex items-start gap-4 p-4 rounded-2xl border-2 transition-all
+  <div className={`flex items-start gap-4 rounded-2xl border-2 transition-all
     ${done ? "bg-green-50 border-green-200" : "bg-white border-purple-100 hover:border-purple-300"}`}
   >
     <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-lg font-black shadow-sm
@@ -180,7 +180,7 @@ const Dashboard = () => {
   if (isLoading) {
     return (
       <AppLayout>
-        <div className="max-w-lg mx-auto">
+        <div className="w-full max-w-4xl mx-auto">
           <div className="bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 px-6 pt-8 pb-16 rounded-b-[2.5rem] animate-pulse mb-6">
             <div className="h-6 w-32 bg-white/20 rounded-full mb-3" />
             <div className="h-8 w-48 bg-white/20 rounded-full mb-2" />
@@ -200,7 +200,7 @@ const Dashboard = () => {
   if (error) {
     return (
       <AppLayout>
-        <div className="max-w-lg mx-auto px-4 pt-16 text-center space-y-4">
+        <div className="w-full max-w-4xl mx-auto px-4 pt-16 text-center space-y-4">
           <span className="text-5xl">⚠️</span>
           <h3 className="text-lg font-bold text-gray-800">Unable to load dashboard</h3>
           <p className="text-sm text-gray-500">{error}</p>
@@ -219,7 +219,7 @@ const Dashboard = () => {
   if (totalEpisodes === 0) {
     return (
       <AppLayout>
-        <div className="max-w-lg mx-auto pb-10">
+        <div className="w-full max-w-4xl mx-auto pb-10">
           <div className="bg-gradient-to-br from-violet-600 via-purple-500 to-pink-500 px-6 pt-8 pb-12 rounded-b-[2.5rem] shadow-lg shadow-purple-200 text-center mb-6">
             <span className="text-5xl">💧</span>
             <h1 className="text-white text-2xl font-black mt-3 tracking-tight">
@@ -231,7 +231,7 @@ const Dashboard = () => {
           </div>
 
           <div className="px-4 space-y-4">
-            <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 p-5 space-y-3">
+            <div className="w-full bg-white rounded-3xl p-4 shadow-sm border border-slate-100 p-4 space-y-3">
               <h2 className="font-black text-gray-800 text-base">Your 3-step journey 🗺️</h2>
               <div className="h-0.5 bg-gradient-to-r from-violet-400 via-pink-400 to-amber-400 rounded-full mb-3" />
               <OnboardingStep
@@ -254,7 +254,7 @@ const Dashboard = () => {
               />
             </div>
 
-            <div className="bg-gradient-to-br from-violet-50 to-pink-50 rounded-2xl border border-purple-100 p-5">
+            <div className="bg-gradient-to-br from-violet-50 to-pink-50 rounded-2xl border border-purple-100 p-4">
               <p className="text-xs font-bold text-violet-600 uppercase tracking-wide mb-2">💡 Did you know?</p>
               <p className="text-sm text-gray-700 leading-relaxed">
                 Hyperhidrosis affects <strong>4.8% of the world's population</strong>, yet 50% go undiagnosed due to stigma. You tracking your episodes today contributes to better science for millions.
@@ -277,7 +277,7 @@ const Dashboard = () => {
   // ── MAIN DASHBOARD ────────────────────────────────────────────────────────
   return (
     <AppLayout>
-      <div className="max-w-lg mx-auto pb-10">
+      <div className="w-full max-w-4xl mx-auto pb-10">
 
         {/* ── HERO ──────────────────────────────────────────────────────── */}
         <div className="bg-gradient-to-br from-violet-600 via-purple-500 to-pink-500 px-6 pt-8 pb-14 rounded-b-[2.5rem] shadow-lg shadow-purple-200">
@@ -329,8 +329,8 @@ const Dashboard = () => {
           </div>
 
           {/* Top Triggers */}
-          <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 overflow-hidden">
-            <div className="px-5 pt-4 pb-2 border-b border-gray-50 flex items-center gap-2">
+          <div className="w-full bg-white rounded-3xl p-4 shadow-sm border border-slate-100 overflow-hidden">
+            <div className="px-4 pt-4 pb-2 border-b border-gray-50 flex items-center gap-2">
               <span className="text-lg">🔍</span>
               <div>
                 <h2 className="font-bold text-sm text-gray-800">Your Top Triggers</h2>
@@ -347,8 +347,8 @@ const Dashboard = () => {
 
           {/* Top Affected Areas */}
           {dashboardData.bodyAreas.length > 0 && (
-            <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 overflow-hidden">
-              <div className="px-5 pt-4 pb-2 border-b border-gray-50 flex items-center gap-2">
+            <div className="w-full bg-white rounded-3xl p-4 shadow-sm border border-slate-100 overflow-hidden">
+              <div className="px-4 pt-4 pb-2 border-b border-gray-50 flex items-center gap-2">
                 <span className="text-lg">🫶</span>
                 <div>
                   <h2 className="font-bold text-sm text-gray-800">Top Affected Areas</h2>
@@ -367,7 +367,7 @@ const Dashboard = () => {
           {/* Insights nudge */}
           <button
             onClick={() => navigate("/insights")}
-            className="w-full bg-gradient-to-r from-amber-400 to-orange-400 rounded-2xl p-5 flex items-center gap-4 shadow-md shadow-amber-100 hover:shadow-lg transition-all text-left"
+            className="w-full bg-gradient-to-r from-amber-400 to-orange-400 rounded-2xl p-4 flex items-center gap-4 shadow-md shadow-amber-100 hover:shadow-lg transition-all text-left"
           >
             <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
               <BookOpen className="h-6 w-6 text-white" />
@@ -384,7 +384,7 @@ const Dashboard = () => {
           {/* HidroAlly */}
           <button
             onClick={() => navigate("/hidro-ally?from=dashboard_cta")}
-            className="w-full bg-gradient-to-r from-violet-500 to-pink-500 rounded-2xl p-5 flex items-center gap-4 shadow-md shadow-purple-100 hover:shadow-lg transition-all text-left"
+            className="w-full bg-gradient-to-r from-violet-500 to-pink-500 rounded-2xl p-4 flex items-center gap-4 shadow-md shadow-purple-100 hover:shadow-lg transition-all text-left"
           >
             <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
               <Sparkles className="h-6 w-6 text-white" />
