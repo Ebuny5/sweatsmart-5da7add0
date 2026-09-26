@@ -2,19 +2,6 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { BodyArea, Trigger } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 
-/**
- * useVoiceLogging — Professional Audio + AssemblyAI Smart Loop
- *
- * Flow:
- *   1. User taps mic → play "I'm listening" → start recording
- *   2. Silence detected (~3s) → stop recording → play "Got it, anything else?"
- *   3. Listen 4s for yes/no:
- *        "no/wait/more/..."  → play "Go ahead" → resume recording, APPEND
- *        "yes/that's all"    → play "Saving your episode" → transcribe + extract tags
- *   4. Final transcript → AssemblyAI (whole session) → Gemini extract tags →
- *      onAnalysisComplete(bodyAreas, triggers, notes)
- */
-
 export const isVoiceSupported = (): boolean => {
   if (typeof window === 'undefined') return false;
   const hasMedia = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
@@ -25,7 +12,7 @@ export const isVoiceSupported = (): boolean => {
 export type VoiceStatus = 'LISTENING' | 'CONFIRMING' | 'REASONING' | 'SAVING' | null;
 
 interface UseVoiceLoggingProps {
-  onAnalysisComplete: (bodyAreas: BodyArea[], triggers: Trigger[], notes: string) => void;
+  onAnalysisComplete: (bodyAreas: BodyArea[], triggers: Trigger[], notes: string, severity?: number) => void;
 }
 
 const SOUND = {
@@ -35,28 +22,33 @@ const SOUND = {
   savingEpisode: '/sounds/voice-saving-episode.mp3',
 };
 
-const SILENCE_RMS = 0.008;        // RMS below this = "silence" (lowered from 0.012)
-const SILENCE_HOLD_MS = 3000;     // hold silence this long to stop
-const MIN_SPEECH_MS = 1200;       // require some speech before silence-stop fires
-const MAX_SEGMENT_MS = 60000;     // hard cap per segment
-const CONFIRM_LISTEN_MS = 5000;   // window to detect yes/no
+const SILENCE_RMS = 0.02;
+const SILENCE_HOLD_MS = 3000;
+const MIN_SPEECH_MS = 1000;
+const MAX_SEGMENT_MS = 60000;
+const CONFIRM_LISTEN_MS = 5000;
 
-const NEGATIVE_KEYWORDS = [
-  'no', 'nope', 'nah', 'not yet', 'not done', 'not finished', "didn't finish",
-  'hold on', 'wait', 'one moment', 'one sec', 'one second', 'hang on',
-  'actually', 'one more', 'one more thing', 'let me', 'keep going',
-  "i'm not done", 'im not done', 'not all', "that's not all", 'thats not all',
-  'continue', 'more', 'add'
+const CONTINUE_KEYWORDS = [
+  'yes', 'yeah', 'yep', 'yup', 'sure', 'ok', 'okay', 'more', 'add',
+  'continue', 'actually', 'one more', 'wait', 'hold on', 'not yet',
+  'not done', 'not finished', "didn't finish", "i'm not done", 'im not done',
+  'not all', "that's not all", 'thats not all'
+];
+
+const FINISH_KEYWORDS = [
+  'no', 'nope', 'nah', 'no more', "that's it", "thats it", "that's all",
+  "thats all", 'done', 'finish', 'finished', 'save', 'stop', 'all good',
+  'nothing else', 'no thanks'
 ];
 
 function playSound(src: string): Promise<void> {
   return new Promise((resolve) => {
     try {
       const a = new Audio(src);
+      a.crossOrigin = "anonymous";
       a.onended = () => resolve();
       a.onerror = () => resolve();
       a.play().catch(() => resolve());
-      // safety timeout
       setTimeout(() => resolve(), 6000);
     } catch {
       resolve();
@@ -73,7 +65,6 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
-// ── Keyword fallback (used if Gemini extract fails) ────────────────────────
 function fallbackExtract(text: string): { bodyAreas: BodyArea[]; triggers: string[] } {
   const lower = text.toLowerCase();
   const detectedAreas: BodyArea[] = [];
@@ -88,8 +79,7 @@ function fallbackExtract(text: string): { bodyAreas: BodyArea[]; triggers: strin
   if (lower.match(/\b(chest)\b/)) detectedAreas.push('chest');
   if (lower.match(/\b(back)\b/)) detectedAreas.push('back');
   if (lower.match(/\b(groin)\b/)) detectedAreas.push('groin');
-  if (lower.match(/whole body|entire body|everywhere/)) detectedAreas.push('entire_body');
-  if (detectedAreas.length === 0) detectedAreas.push('palms');
+  if (/whole body|entire body|everywhere/.test(lower)) detectedAreas.push('entire_body');
 
   const triggers: string[] = [];
   if (/\b(hot|heat|warm)\b/.test(lower)) triggers.push('hot_temperature');
@@ -106,40 +96,116 @@ function fallbackExtract(text: string): { bodyAreas: BodyArea[]; triggers: strin
   return { bodyAreas: Array.from(new Set(detectedAreas)), triggers: Array.from(new Set(triggers)) };
 }
 
+const TRIGGER_CATEGORY_BY_VALUE: Record<string, Trigger['type']> = {
+  hot_temperature: 'environmental', high_humidity: 'environmental',
+  crowded_spaces: 'environmental', bright_lights: 'environmental',
+  loud_noises: 'environmental', transitional_temperature: 'environmental',
+  synthetic_fabrics: 'environmental', outdoor_sun_exposure: 'environmental',
+  stress: 'emotional', anxiety: 'emotional', anticipatory_sweating: 'emotional',
+  embarrassment: 'emotional', excitement: 'emotional', anger: 'emotional',
+  nervousness: 'emotional', public_speaking: 'situational',
+  social_interaction: 'situational', work_pressure: 'situational',
+  exam_test_situation: 'situational', spicy_food: 'dietary', caffeine: 'dietary',
+  alcohol: 'dietary', hot_drinks: 'dietary', heavy_meals: 'dietary',
+  gustatory_sweating: 'dietary', energy_drinks: 'dietary',
+  physical_exercise: 'physical', night_sweats: 'physical', poor_sleep: 'physical',
+  hormonal_changes: 'physical', illness_fever: 'physical', hypoglycemia: 'physical',
+  certain_clothing: 'environmental', ssris_antidepressants: 'medical',
+  opioids_pain_medication: 'medical', nsaids: 'medical',
+  blood_pressure_medication: 'medical', insulin_diabetes_medication: 'medical',
+  supplements_herbal: 'medical', new_medication: 'medical',
+};
+
 function valuesToTriggers(values: string[]): Trigger[] {
   return values.map((t) => ({
     id: `${Date.now()}-${t}`,
     name: t.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
     label: t.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
     value: t,
-    type: 'environmental',
-    category: 'environmental',
+    type: TRIGGER_CATEGORY_BY_VALUE[t] || 'environmental',
+    category: TRIGGER_CATEGORY_BY_VALUE[t] || 'environmental',
     icon: 'zap',
   }));
 }
+
+const getSpeechRecognitionCtor = (): any => {
+  if (typeof window === 'undefined') return null;
+  return (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition || null;
+};
 
 export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) => {
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>(null);
   const [voiceNotSupported, setVoiceNotSupported] = useState(!isVoiceSupported());
   const [transcript, setTranscript] = useState('');
+  const [volume, setVolume] = useState(0);
 
-  // refs
   const streamRef = useRef<MediaStream | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);          // entire session (appended)
-  const segmentChunksRef = useRef<Blob[]>([]);   // current segment
+  const fullTranscriptRef = useRef<string>('');
+  const segmentChunksRef = useRef<Blob[]>([]);
+  const allChunksRef = useRef<Blob[]>([]);
   const silenceStartRef = useRef<number | null>(null);
   const segmentStartRef = useRef<number>(0);
-  const rafRef = useRef<number | null>(null);
+  const rafRef = useRef<number | any>(null);
   const cancelledRef = useRef(false);
-  const transcriptRef = useRef('');
+  const finishedRef = useRef(false);
   const mimeTypeRef = useRef<string>('audio/webm');
 
+  const recognitionRef = useRef<any>(null);
+  const liveSegmentTextRef = useRef<string>('');
+
+  const stopRecognition = () => {
+    const rec = recognitionRef.current;
+    if (!rec) return;
+    try { rec.onresult = null; rec.onerror = null; rec.onend = null; } catch {}
+    try { rec.stop(); } catch {}
+    try { rec.abort(); } catch {}
+    recognitionRef.current = null;
+  };
+
+  const startRecognitionForSegment = () => {
+    const Ctor = getSpeechRecognitionCtor();
+    if (!Ctor) return;
+    stopRecognition();
+    liveSegmentTextRef.current = '';
+    try {
+      const rec = new Ctor();
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.lang = 'en-US';
+      rec.onresult = (event: any) => {
+        let finalText = '';
+        let interim = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const r = event.results[i];
+          if (r.isFinal) finalText += r[0].transcript + ' ';
+          else interim += r[0].transcript + ' ';
+        }
+        if (finalText) {
+          liveSegmentTextRef.current = (liveSegmentTextRef.current + ' ' + finalText).trim();
+        }
+        const preview = (fullTranscriptRef.current + ' ' + liveSegmentTextRef.current + ' ' + interim).trim();
+        setTranscript(preview);
+      };
+      rec.onerror = (e: any) => console.warn('[voice] SR error', e?.error || e);
+      rec.onend = () => {};
+      rec.start();
+      recognitionRef.current = rec;
+    } catch (e) {
+      console.warn('[voice] SR start failed', e);
+    }
+  };
+
   const cleanupAudio = () => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    stopRecognition();
+    if (rafRef.current) {
+      if (typeof rafRef.current === 'number') cancelAnimationFrame(rafRef.current);
+      else clearTimeout(rafRef.current);
+    }
     rafRef.current = null;
+    setVolume(0);
     if (recorderRef.current && recorderRef.current.state !== 'inactive') {
       try { recorderRef.current.stop(); } catch {}
     }
@@ -158,13 +224,16 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
     cancelledRef.current = true;
     cleanupAudio();
     setVoiceStatus(null);
-    chunksRef.current = [];
+    fullTranscriptRef.current = '';
     segmentChunksRef.current = [];
-    transcriptRef.current = '';
     setTranscript('');
+    setVolume(0);
   }, []);
 
-  // ── Open mic + recorder + analyser ────────────────────────────────────────
+  const finishSession = useCallback(() => {
+    finishedRef.current = true;
+  }, []);
+
   const openMic = async (): Promise<boolean> => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -172,13 +241,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       });
       streamRef.current = stream;
 
-      // Pick a supported mime type
-      const candidates = [
-        'audio/webm;codecs=opus',
-        'audio/webm',
-        'audio/ogg;codecs=opus',
-        'audio/mp4',
-      ];
+      const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
       const mimeType = candidates.find((m) => (window as any).MediaRecorder?.isTypeSupported?.(m)) || '';
       mimeTypeRef.current = mimeType || 'audio/webm';
 
@@ -188,18 +251,13 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       recorder.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) {
           segmentChunksRef.current.push(e.data);
-          chunksRef.current.push(e.data);
+          allChunksRef.current.push(e.data);
         }
       };
 
       const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
       const ctx: AudioContext = new Ctx();
-
-      // Critical: Ensure context is resumed after user interaction (fixes iOS/Android audio blockage)
-      if (ctx.state === 'suspended') {
-        await ctx.resume();
-      }
-
+      if (ctx.state === 'suspended') await ctx.resume();
       audioCtxRef.current = ctx;
       const src = ctx.createMediaStreamSource(stream);
       const analyser = ctx.createAnalyser();
@@ -215,7 +273,6 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
     }
   };
 
-  // ── Record one segment until silence (or max) ─────────────────────────────
   const recordSegmentUntilSilence = (): Promise<void> =>
     new Promise((resolve) => {
       const recorder = recorderRef.current;
@@ -229,92 +286,110 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
       const buf = new Float32Array(analyser.fftSize);
 
       const stopAndResolve = () => {
+        stopRecognition();
         if (recorder.state !== 'inactive') {
           recorder.onstop = () => resolve();
           try { recorder.stop(); } catch { resolve(); }
         } else {
           resolve();
         }
-        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        if (rafRef.current) {
+          if (typeof rafRef.current === 'number') cancelAnimationFrame(rafRef.current);
+          else clearTimeout(rafRef.current);
+        }
         rafRef.current = null;
       };
 
       const tick = () => {
-        if (cancelledRef.current) return;
+        if (cancelledRef.current || finishedRef.current) return stopAndResolve();
+
         analyser.getFloatTimeDomainData(buf);
         let sum = 0;
         for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
         const rms = Math.sqrt(sum / buf.length);
+        setVolume(rms);
+
         const elapsed = Date.now() - segmentStartRef.current;
 
         if (rms < SILENCE_RMS) {
           if (silenceStartRef.current === null) silenceStartRef.current = Date.now();
           const silentFor = Date.now() - silenceStartRef.current;
-          if (silentFor >= SILENCE_HOLD_MS && elapsed >= MIN_SPEECH_MS) {
-            return stopAndResolve();
-          }
+          if (silentFor >= SILENCE_HOLD_MS && elapsed >= MIN_SPEECH_MS) return stopAndResolve();
         } else {
           silenceStartRef.current = null;
         }
 
         if (elapsed >= MAX_SEGMENT_MS) return stopAndResolve();
-        rafRef.current = requestAnimationFrame(tick);
+        rafRef.current = setTimeout(tick, 100);
       };
 
       try {
-        recorder.start(250); // 250ms chunks
+        recorder.start(250);
+        startRecognitionForSegment();
       } catch (e) {
         console.warn('recorder.start failed', e);
         return resolve();
       }
-      rafRef.current = requestAnimationFrame(tick);
+      rafRef.current = setTimeout(tick, 100);
     });
 
-  // ── Transcribe a blob via edge function ───────────────────────────────────
+  // ── Try AssemblyAI, fall back gracefully ──────────────────────────────────
   const transcribeBlob = async (blob: Blob): Promise<string> => {
-    if (!blob || blob.size < 1000) return '';
-    const dataUrl = await blobToBase64(blob);
-    const base64 = dataUrl.split(',')[1] || '';
-    const { data, error } = await supabase.functions.invoke('voice-transcribe', {
-      body: { audio_base64: base64, mode: 'transcribe' },
-    });
-    if (error) {
-      console.error('transcribe error', error);
+    // Lower threshold — mobile audio chunks can be small
+    if (!blob || blob.size < 200) return '';
+    try {
+      const dataUrl = await blobToBase64(blob);
+      const base64 = dataUrl.split(',')[1] || '';
+      const { data, error } = await supabase.functions.invoke('voice-transcribe', {
+        body: { audio_base64: base64, mode: 'transcribe' },
+      });
+      if (error) {
+        console.warn('[voice] transcribe edge function error:', error);
+        return '';
+      }
+      return (data?.transcript || '').trim();
+    } catch (e) {
+      console.warn('[voice] transcribeBlob failed:', e);
       return '';
     }
-    return (data?.transcript || '').trim();
   };
 
   // ── Main flow ─────────────────────────────────────────────────────────────
   const runFlow = useCallback(async () => {
     cancelledRef.current = false;
-    chunksRef.current = [];
-    transcriptRef.current = '';
+    finishedRef.current = false;
+    fullTranscriptRef.current = '';
+    allChunksRef.current = [];
     setTranscript('');
 
     const ok = await openMic();
-    if (!ok) {
-      setVoiceStatus(null);
-      return;
-    }
+    if (!ok) { setVoiceStatus(null); return; }
 
-    // Step A: announce "I'm listening"
     setVoiceStatus('LISTENING');
     await playSound(SOUND.imListening);
     if (cancelledRef.current) return cleanupAudio();
 
-    // Loop: record → confirm → maybe go again
-    while (!cancelledRef.current) {
+    while (!cancelledRef.current && !finishedRef.current) {
       setVoiceStatus('LISTENING');
       await recordSegmentUntilSilence();
-      if (cancelledRef.current) return cleanupAudio();
+      if (cancelledRef.current || finishedRef.current) break;
 
-      // Ask "Got it, anything else?"
+      // Try AssemblyAI first, fall back to Web Speech
+      const segmentBlob = new Blob(segmentChunksRef.current, { type: mimeTypeRef.current });
+      let segmentText = await transcribeBlob(segmentBlob);
+      if (!segmentText && liveSegmentTextRef.current.trim()) {
+        segmentText = liveSegmentTextRef.current.trim();
+        console.log('[voice] Using Web Speech fallback:', segmentText);
+      }
+      if (segmentText) {
+        fullTranscriptRef.current = (fullTranscriptRef.current + ' ' + segmentText).trim();
+        setTranscript(fullTranscriptRef.current);
+      }
+
       setVoiceStatus('CONFIRMING');
       await playSound(SOUND.gotItAnythingElse);
-      if (cancelledRef.current) return cleanupAudio();
+      if (cancelledRef.current || finishedRef.current) break;
 
-      // Record short confirmation segment (yes/no)
       const confirmRecorder = recorderRef.current;
       if (!confirmRecorder) break;
       const confirmChunks: Blob[] = [];
@@ -323,41 +398,48 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
         if (e.data && e.data.size > 0) confirmChunks.push(e.data);
       };
       try { confirmRecorder.start(250); } catch {}
-      await new Promise((r) => setTimeout(r, CONFIRM_LISTEN_MS));
+      startRecognitionForSegment();
+
+      const waitStart = Date.now();
+      while (Date.now() - waitStart < CONFIRM_LISTEN_MS && !finishedRef.current && !cancelledRef.current) {
+        await new Promise(r => setTimeout(r, 200));
+      }
+
+      stopRecognition();
       await new Promise<void>((r) => {
         if (confirmRecorder.state === 'inactive') return r();
         confirmRecorder.onstop = () => r();
         try { confirmRecorder.stop(); } catch { r(); }
       });
-      // restore handler for any next segment
       confirmRecorder.ondataavailable = origHandler as any;
 
+      if (cancelledRef.current || finishedRef.current) break;
+
       const confirmBlob = new Blob(confirmChunks, { type: mimeTypeRef.current });
-      const confirmText = await transcribeBlob(confirmBlob);
+      let confirmText = await transcribeBlob(confirmBlob);
+      if (!confirmText && liveSegmentTextRef.current.trim()) {
+        confirmText = liveSegmentTextRef.current.trim();
+      }
       const lower = (confirmText || '').toLowerCase().trim();
       console.log('[voice] confirm transcript:', lower);
 
-      const isNegative = NEGATIVE_KEYWORDS.some((k) => lower.includes(k));
-      if (isNegative) {
-        // User has more — append this confirm audio to session too (in case they
-        // said something useful) and resume recording
-        for (const c of confirmChunks) chunksRef.current.push(c);
+      const isContinue = CONTINUE_KEYWORDS.some((k) => lower.includes(k));
+      const isFinish = FINISH_KEYWORDS.some((k) => lower.includes(k));
+
+      if (isContinue || (lower.length > 0 && !isFinish)) {
         await playSound(SOUND.goAhead);
         if (cancelledRef.current) return cleanupAudio();
-        continue; // loop → record another segment
+        continue;
       }
 
-      // Treat as "yes / done" (also default if confirm was empty)
       break;
     }
 
     if (cancelledRef.current) return cleanupAudio();
 
-    // Step D: saving
     setVoiceStatus('SAVING');
     await playSound(SOUND.savingEpisode);
 
-    // Stop mic before transcription to save battery
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
@@ -365,64 +447,83 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
 
     setVoiceStatus('REASONING');
 
-    // Combine entire session and transcribe in one shot for best accuracy
-    const finalBlob = new Blob(chunksRef.current, { type: mimeTypeRef.current });
-    let fullText = '';
-    try {
-      fullText = await transcribeBlob(finalBlob);
-    } catch (e) {
-      console.error('final transcribe failed', e);
-    }
-    transcriptRef.current = fullText;
-    setTranscript(fullText);
+    let fullText = fullTranscriptRef.current.trim();
+    console.log('[voice] final transcript from segments:', fullText);
 
-    if (!fullText) {
-      cleanupAudio();
-      setVoiceStatus(null);
-      onAnalysisComplete([], [], '');
-      return;
+    // Last resort: transcribe entire session as one blob
+    if (!fullText && allChunksRef.current.length > 0) {
+      try {
+        const fullBlob = new Blob(allChunksRef.current, { type: mimeTypeRef.current });
+        console.log('[voice] trying full-session transcribe, size:', fullBlob.size);
+        fullText = (await transcribeBlob(fullBlob)).trim();
+      } catch (e) {
+        console.warn('[voice] full-session fallback failed', e);
+      }
     }
 
-    // LLM extract tags (with keyword fallback)
+    // ── ALWAYS SAVE — even if transcript is empty ─────────────────────────
+    // Never drop a voice episode. Users with palmar hyperhidrosis cannot
+    // type — losing their log silently is unacceptable.
+    console.log('[voice] proceeding to save. transcript:', fullText || '(empty — saving with defaults)');
+
     let bodyAreas: BodyArea[] = [];
     let triggerValues: string[] = [];
-    try {
-      const { data } = await supabase.functions.invoke('voice-transcribe', {
-        body: { mode: 'extract', text: fullText },
-      });
-      const tags = data?.tags;
-      if (tags?.body_areas?.length) bodyAreas = tags.body_areas as BodyArea[];
-      if (tags?.triggers?.length) triggerValues = tags.triggers;
-    } catch (e) {
-      console.warn('extract failed, falling back', e);
+    let extractedSeverity: number | undefined = undefined;
+
+    if (fullText) {
+      try {
+        const { data, error } = await supabase.functions.invoke('voice-transcribe', {
+          body: { mode: 'extract', text: fullText },
+        });
+        if (error) throw error;
+        const tags = data?.tags;
+        console.log('[voice] tags:', tags);
+        if (tags?.body_areas?.length) bodyAreas = tags.body_areas as BodyArea[];
+        if (tags?.triggers?.length) triggerValues = tags.triggers;
+        if (tags?.severity) extractedSeverity = tags.severity;
+      } catch (e) {
+        console.warn('[voice] edge extraction failed, using fallback', e);
+        const fb = fallbackExtract(fullText);
+        bodyAreas = fb.bodyAreas;
+        triggerValues = fb.triggers;
+      }
+    } else {
+      // No transcript at all — run fallback on empty string just to get defaults
+      const fb = fallbackExtract('');
+      bodyAreas = fb.bodyAreas;
+      triggerValues = fb.triggers;
     }
-    if (bodyAreas.length === 0 || triggerValues.length === 0) {
-      const fb = fallbackExtract(fullText);
-      if (bodyAreas.length === 0) bodyAreas = fb.bodyAreas;
-      if (triggerValues.length === 0) triggerValues = fb.triggers;
+
+    // Always ensure body areas are populated
+    if (bodyAreas.length === 0) {
+      bodyAreas = ['palms', 'face', 'feet'];
     }
 
     cleanupAudio();
     setVoiceStatus(null);
+
+    // This ALWAYS fires now — episode always saves
     onAnalysisComplete(
       Array.from(new Set(bodyAreas)),
       valuesToTriggers(triggerValues),
-      fullText.trim(),
+      fullText || '(voice episode logged — no transcript captured)',
+      extractedSeverity
     );
   }, [onAnalysisComplete]);
 
   const startListening = useCallback(() => {
-    if (voiceNotSupported) {
-      console.warn('Voice not supported on this device');
-      return;
-    }
+    if (voiceNotSupported) { console.warn('Voice not supported'); return; }
     if (voiceStatus !== null) return;
     runFlow();
   }, [runFlow, voiceNotSupported, voiceStatus]);
 
   const stopListening = useCallback(() => {
-    fullStop();
-  }, [fullStop]);
+    if (voiceStatus === 'LISTENING' || voiceStatus === 'CONFIRMING') {
+      finishSession();
+    } else {
+      fullStop();
+    }
+  }, [voiceStatus, finishSession, fullStop]);
 
   useEffect(() => {
     return () => {
@@ -436,6 +537,7 @@ export const useVoiceLogging = ({ onAnalysisComplete }: UseVoiceLoggingProps) =>
     startListening,
     stopListening,
     transcript,
+    volume,
     isListening: voiceStatus !== null,
     voiceNotSupported,
   };

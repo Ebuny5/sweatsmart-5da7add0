@@ -7,14 +7,14 @@ import { supabase } from '@/integrations/supabase/client';
 
 // Type helper: pushManager exists on ServiceWorkerRegistration at runtime
 // but may not be in TS DOM lib depending on version
-function getPushManager(reg: ServiceWorkerRegistration): any {
-  return (reg as any).pushManager;
+function getPushManager(reg: ServiceWorkerRegistration): PushManager {
+  return (reg as ServiceWorkerRegistration & { pushManager: PushManager }).pushManager;
 }
 
 // VAPID public key is safe to expose in client code.
 // We keep a fallback value, but prefer fetching the *current* public key from the
 // edge function so it always matches the server-side VAPID private key.
-const FALLBACK_VAPID_PUBLIC_KEY = 'BLg3PxY0fWoqQ2kVlxXfTnXFV9JXHDTMqNvVXzQLJqhz7mGnPsH8eY_kZVJQJxFdKhEfQTbNqPmRvXYqVqxQfQE';
+const FALLBACK_VAPID_PUBLIC_KEY = 'BBEfnIOqmJdK5XmJp1ch7b2j1H_oVg7EE4jtIVY0dGeuEKWeXW1wivGt4-Iwy8A26cRuglF3clYdjtHJXJyX-pg';
 
 const LS_VAPID_PUBLIC_KEY = 'sweatsmart:webpush:vapid_public_key';
 
@@ -35,7 +35,7 @@ class WebPushService {
     return WebPushService.instance;
   }
 
-/**
+  /**
    * Check if push notifications are supported
    */
   isSupported(): boolean {
@@ -101,7 +101,7 @@ class WebPushService {
    * Get current permission status
    */
   getPermissionStatus(): NotificationPermission {
-    if (!('Notification' in window)) {
+    if (typeof Notification === 'undefined') {
       return 'denied';
     }
     return Notification.permission;
@@ -111,7 +111,7 @@ class WebPushService {
    * Request notification permission
    */
   async requestPermission(): Promise<NotificationPermission> {
-    if (!('Notification' in window)) {
+    if (typeof Notification === 'undefined') {
       console.error('Notifications not supported');
       return 'denied';
     }
@@ -174,7 +174,7 @@ class WebPushService {
 
     try {
       // Request permission if needed
-      if (Notification.permission === 'default') {
+      if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
         const permission = await this.requestPermission();
         if (permission !== 'granted') {
           console.log('Push permission denied');
@@ -182,8 +182,8 @@ class WebPushService {
         }
       }
 
-      if (Notification.permission !== 'granted') {
-        console.log('Push permission not granted');
+      if (typeof Notification === 'undefined' || Notification.permission !== 'granted') {
+        console.log('Push permission not granted or unsupported');
         return null;
       }
 
@@ -207,18 +207,39 @@ class WebPushService {
         throw new Error('Failed to get subscription keys');
       }
 
+      // Fall back to the signed-in user when no id was passed in
+      let resolvedUserId = userId || null;
+      if (!resolvedUserId) {
+        try {
+          const { data } = await supabase.auth.getUser();
+          resolvedUserId = data?.user?.id || null;
+        } catch {
+          resolvedUserId = null;
+        }
+      }
+
+      // Fall back to the device location when no coordinates were passed in
+      let lat = latitude ?? null;
+      let lon = longitude ?? null;
+      if (lat == null || lon == null) {
+        const coords = await this.getCurrentCoords();
+        lat = coords?.latitude ?? null;
+        lon = coords?.longitude ?? null;
+      }
+
       // Store subscription in database
+      console.log('📱 Storing subscription in DB for user:', resolvedUserId);
       const { error } = await supabase
         .from('push_subscriptions')
         .upsert({
-          user_id: userId || null,
+          user_id: resolvedUserId,
           endpoint: this.subscription.endpoint,
           p256dh: keys.p256dh,
           auth: keys.auth,
-          latitude: latitude || null,
-          longitude: longitude || null,
-          temperature_threshold: thresholds?.temperature || 24,
-          humidity_threshold: thresholds?.humidity || 70,
+          latitude: lat,
+          longitude: lon,
+          temperature_threshold: thresholds?.temperature || 27,
+          humidity_threshold: thresholds?.humidity || 75,
           uv_threshold: thresholds?.uv || 6,
           is_active: true,
         }, {
@@ -230,7 +251,7 @@ class WebPushService {
         throw error;
       }
 
-      console.log('📱 Push subscription stored in database');
+      console.log('📱 Push subscription stored in database successfully');
       this.setStoredVapidPublicKey(vapidPublicKey);
       return this.subscription;
     } catch (error) {
@@ -340,14 +361,33 @@ class WebPushService {
     }
   ): Promise<{ refreshed: boolean; subscription: PushSubscription | null }> {
     const subscribed = await this.isSubscribed();
-    if (!subscribed || Notification.permission !== 'granted') {
+    if (!subscribed || typeof Notification === 'undefined' || Notification.permission !== 'granted') {
       return { refreshed: false, subscription: this.subscription };
     }
 
     const currentKey = await this.getVapidPublicKey();
     const storedKey = this.getStoredVapidPublicKey();
 
-    if (storedKey && storedKey === currentKey) {
+    // Authoritative check: compare the key the browser actually subscribed with.
+    let liveKey: string | null = null;
+    try {
+      const raw = this.subscription?.options?.applicationServerKey as ArrayBuffer | null | undefined;
+      if (raw) {
+        const bytes = new Uint8Array(raw);
+        let bin = '';
+        bytes.forEach((b) => { bin += String.fromCharCode(b); });
+        liveKey = btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+      }
+    } catch {
+      liveKey = null;
+    }
+
+    if (liveKey && liveKey === currentKey) {
+      this.setStoredVapidPublicKey(currentKey);
+      return { refreshed: false, subscription: this.subscription };
+    }
+
+    if (!liveKey && storedKey && storedKey === currentKey) {
       return { refreshed: false, subscription: this.subscription };
     }
 
@@ -359,6 +399,7 @@ class WebPushService {
    * Update subscription settings
    */
   async updateSettings(settings: {
+    user_id?: string | null;
     latitude?: number;
     longitude?: number;
     temperature_threshold?: number;
@@ -366,6 +407,10 @@ class WebPushService {
     uv_threshold?: number;
     is_active?: boolean;
   }): Promise<boolean> {
+    if (!this.subscription) {
+      await this.getSubscription();
+    }
+
     if (!this.subscription) {
       console.warn('No active subscription to update');
       return false;
@@ -437,11 +482,12 @@ class WebPushService {
           action: 'send_to_endpoint',
           endpoint: this.subscription.endpoint,
           notification: {
-            title: '✅ Test Notification',
-            body: "Web Push is working! You'll receive climate alerts even when the app is closed.",
-            tag: 'test-push',
-            type: 'info',
-            url: '/climate',
+            title: '⏰ Time for Your Eight-Hour Check-In',
+            body: "It's time to check-in 🤗",
+            tag: 'logging-reminder-test',
+            type: 'reminder',
+            kind: 'reminder',
+            url: '/log-episode',
           },
         },
       });
@@ -461,6 +507,64 @@ class WebPushService {
       console.error('Failed to send test notification:', err);
       return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
     }
+  }
+
+  /**
+   * Get current location coordinates
+   */
+  private async getCurrentCoords(): Promise<{ latitude: number; longitude: number } | null> {
+    if (typeof window === 'undefined' || !('geolocation' in navigator)) {
+      return null;
+    }
+
+    try {
+      // First check if permission is granted before trying to get location
+      const perm = await navigator.permissions.query({ name: 'geolocation' });
+      if (perm.state === 'denied' || perm.state === 'prompt') {
+        return null;
+      }
+
+      return await new Promise((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+          () => resolve(null),
+          { enableHighAccuracy: false, timeout: 5000 }
+        );
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Sync the current user context (user_id and location) to the active subscription.
+   */
+  async syncSubscriptionContext(): Promise<boolean> {
+    const subscribed = await this.isSubscribed();
+    if (!subscribed) return false;
+
+    let userId: string | null = null;
+    try {
+      const { data } = await supabase.auth.getUser();
+      userId = data?.user?.id || null;
+    } catch {
+      // ignore
+    }
+
+    const coords = await this.getCurrentCoords();
+
+    const updates: any = {};
+    if (userId) updates.user_id = userId;
+    if (coords) {
+      updates.latitude = coords.latitude;
+      updates.longitude = coords.longitude;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      return this.updateSettings(updates);
+    }
+
+    return true;
   }
 
   /**

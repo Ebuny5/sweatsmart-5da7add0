@@ -1,0 +1,18 @@
+--- src/components/recommendationEngine.ts
++++ src/components/recommendationEngine.ts
+@@ -1169,7 +1169,13 @@
+       header
+     }
+   };
+-} {
++}
++
++// ─── Empty response ───────────────────────────────────────────────────────────
++function buildEmptyResponse(
++  ni: NotesIntelligence,
++  userName: string | undefined,
++  seed: number,
++): EpisodeInsights & { cta: string; emotionalOpener: string } {
+   const greeting = userName ? `Hi ${userName}, this is HidroAlly 👋` : `Hi, this is HidroAlly 👋`;
+   return {
+     emotionalOpener: `${greeting} — I noticed this episode was logged without body areas selected, so I cannot give you a fully personalised analysis yet. Selecting the affected areas next time unlocks everything. 💙`,

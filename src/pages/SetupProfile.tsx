@@ -33,13 +33,17 @@ const SetupProfile = () => {
     try {
       const { error } = await supabase
         .from("profiles")
-        .update({ display_name: trimmed })
-        .eq("user_id", user.id);
+        .upsert({ user_id: user.id, display_name: trimmed }, { onConflict: "user_id" });
+
       if (error) {
-        await supabase
-          .from("profiles")
-          .upsert({ user_id: user.id, display_name: trimmed }, { onConflict: "user_id" });
+        console.error("Profile upsert error:", error);
+        throw error;
       }
+
+      await supabase
+        .from("user_settings")
+        .upsert({ user_id: user.id }, { onConflict: "user_id" });
+
       await supabase.auth.updateUser({ data: { display_name: trimmed } });
       setStep("location");
     } catch (err) {
@@ -81,7 +85,14 @@ const SetupProfile = () => {
     setStep("voice");
   };
 
-  const finish = () => {
+  const finish = async () => {
+    if (user) {
+      await supabase
+        .from("profiles")
+        .update({ is_profile_complete: true })
+        .eq("user_id", user.id);
+    }
+
     audioAlertPlayer.setGender(gender);
     toast({
       title: `Welcome, ${displayName.trim()}! 🎉`,
@@ -160,7 +171,7 @@ const SetupProfile = () => {
               <div className="space-y-4 text-center">
                 <Bell className="h-12 w-12 mx-auto text-primary" />
                 <p className="text-sm text-muted-foreground">
-                  Climate alerts and 6-hour log reminders are delivered through notifications — even when the app is closed.
+                  Climate alerts and 8-hour log reminders are delivered through notifications — even when the app is closed.
                 </p>
                 <Button onClick={requestNotifications} className="w-full">
                   Allow notifications

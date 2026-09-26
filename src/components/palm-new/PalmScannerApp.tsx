@@ -6,13 +6,20 @@ import JsonOutput from './JsonOutput';
 import ModeInfo from './ModeInfo';
 import StatusDisplay from './StatusDisplay';
 import PalmScannerModal from './PalmScannerModal';
+import { ChevronLeft } from 'lucide-react';
 import { HeartIcon, EdaIcon, MODE_DETAILS } from './constants';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { edaManager } from '@/utils/edaManager';
+import { useEngagement } from '@/hooks/useEngagement';
 
 const PalmScannerApp: React.FC = () => {
   const navigate = useNavigate();
+  const { trackAction } = useEngagement();
+
+  useEffect(() => {
+    trackAction("wearable_simulator_uses");
+  }, [trackAction]);
   const [searchParams] = useSearchParams();
   const returnTo = searchParams.get('returnTo');
   const initialMode = (searchParams.get('mode') as SimulationMode) || 'Resting';
@@ -156,21 +163,38 @@ const PalmScannerApp: React.FC = () => {
       {isScanning && <PalmScannerModal onCapture={handleCapture} onClose={() => setIsScanning(false)} />}
 
       {/* Warrior Glass background */}
-      <div className="min-h-full bg-gradient-to-br from-[#2d1b69] via-[#6d28d9] to-[#be185d] p-4 sm:p-8 relative overflow-hidden">
+      <div className="min-h-full bg-slate-900 p-4 sm:p-8 relative overflow-hidden">
         {/* Ambient glow overlays */}
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl" />
-          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-pink-500/20 rounded-full blur-3xl" />
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-slate-800/50 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-slate-800/50 rounded-full blur-3xl" />
         </div>
 
         <div className="max-w-4xl mx-auto relative z-10">
-          <header className="text-center mb-8">
-            <h1 className="text-4xl sm:text-5xl font-extrabold text-[#22c55e] mb-2 drop-shadow-lg tracking-tight">
-              Wearable Sensor Simulator
-            </h1>
-            <p className="text-[#4ade80] text-base max-w-2xl mx-auto">
-              Generate sensor data and use multimodal analysis to assess stress levels.
-            </p>
+          <header className="mb-8 relative flex flex-col items-center">
+            <div className="w-full flex items-center justify-between mb-4">
+              <button
+                onClick={() => {
+                  if (window.history.length > 2) {
+                    navigate(-1);
+                  } else {
+                    navigate('/home');
+                  }
+                }}
+                className="w-10 h-10 rounded-xl flex items-center justify-center transition-all bg-white/5 border border-white/10"
+              >
+                <ChevronLeft className="h-5 w-5 text-white/70" />
+              </button>
+              <div className="flex-1" />
+            </div>
+            <div className="text-center">
+              <h1 className="text-4xl sm:text-5xl font-extrabold text-[#22c55e] mb-2 drop-shadow-lg tracking-tight">
+                Wearable Sensor Simulator
+              </h1>
+              <p className="text-[#4ade80] text-base max-w-2xl mx-auto">
+                Generate sensor data and use multimodal analysis to assess stress levels.
+              </p>
+            </div>
           </header>
 
           <main className="flex-grow space-y-6">

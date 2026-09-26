@@ -1,0 +1,7 @@
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS age INTEGER,
+  ADD COLUMN IF NOT EXISTS biological_sex TEXT,
+  ADD COLUMN IF NOT EXISTS gender_identity TEXT,
+  ADD COLUMN IF NOT EXISTS diagnosis_type TEXT,
+  ADD COLUMN IF NOT EXISTS country TEXT,
+  ADD COLUMN IF NOT EXISTS is_profile_complete BOOLEAN NOT NULL DEFAULT false;

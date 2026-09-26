@@ -23,7 +23,7 @@ const EpisodeInsights: React.FC<EpisodeInsightsProps> = ({ episode }) => {
 
   const handleShare = async () => {
     const shareData = {
-      title: 'SweatSmart Episode Report',
+      title: 'HidroAlly Episode Report',
       text: `Episode from ${episode.datetime.toLocaleDateString()} - Severity: ${episode.severityLevel}/5`,
       url: window.location.href
     };
@@ -39,7 +39,7 @@ const EpisodeInsights: React.FC<EpisodeInsightsProps> = ({ episode }) => {
         const triggerSummary = episode.triggers
           .map(t => t?.label || t?.value || 'Unknown')
           .join(', ');
-        await navigator.clipboard.writeText(`SweatSmart Episode Report\nDate: ${episode.datetime.toLocaleDateString()}\nSeverity: ${episode.severityLevel}/5\nBody Areas: ${episode.bodyAreas.join(', ')}\nTriggers: ${triggerSummary}\n\nView details: ${window.location.href}`);
+        await navigator.clipboard.writeText(`HidroAlly Episode Report\nDate: ${episode.datetime.toLocaleDateString()}\nSeverity: ${episode.severityLevel}/5\nBody Areas: ${episode.bodyAreas.join(', ')}\nTriggers: ${triggerSummary}\n\nView details: ${window.location.href}`);
         toast({
           title: "Copied to clipboard",
           description: "Episode details have been copied to your clipboard.",

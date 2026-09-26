@@ -1,0 +1,14 @@
+--- src/pages/LogEpisode.tsx
++++ src/pages/LogEpisode.tsx
+@@ -235,6 +235,11 @@
+       setLastSavedEpisodeId(null);
+       setShowInsights(false);
+       setAiInsights(null);
++
++      // Also clean up local storage if we just undid the log
++      const existingLogsStr = localStorage.getItem('sweatSmartLogs');
++      const existingLogs = existingLogsStr ? JSON.parse(existingLogsStr) : [];
++      localStorage.setItem('sweatSmartLogs', JSON.stringify(existingLogs.filter((log: any) => log.id !== lastSavedEpisodeId)));
+     } catch (error) {
+       console.error("Undo failed:", error);
+       toast({

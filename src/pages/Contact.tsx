@@ -36,7 +36,7 @@ const Contact = () => {
         <div className="text-center space-y-4">
           <h1 className="text-4xl font-bold text-foreground">Contact Us</h1>
           <p className="text-xl text-professional-gray max-w-2xl mx-auto">
-            Have questions about SweatSmart? We're here to help you on your hyperhidrosis management journey.
+            Have questions about HidroAlly? We're here to help you on your hyperhidrosis management journey.
           </p>
         </div>
 
@@ -196,73 +196,6 @@ const Contact = () => {
             </Button>
           </CardContent>
         </Card>
-
-        {/* Feedback */}
-        <Card className="border-border/50 shadow-sm bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-3">
-              <Heart className="h-5 w-5 text-blue-500" />
-              Share Your Feedback
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-professional-gray">
-              Your voice matters to us! We're constantly working to improve SweatSmart and make it the best tool for managing hyperhidrosis. Whether it's a feature request, a suggestion, or just sharing your experience — we'd love to hear from you.
-            </p>
-            <p className="text-sm text-professional-gray">
-              Every piece of feedback helps us build a better community and a more supportive experience for everyone living with hyperhidrosis.
-            </p>
-            <Button
-              onClick={() => window.open('https://docs.google.com/forms/d/e/1FAIpQLSfHBkUOMxFhB03UyfpnrEQk5VlszVUFN2n-TqjRwJ1ehqSeTw/viewform?fbzx=7815900527824722421', '_blank')}
-              className="w-full bg-blue-500 hover:bg-blue-600 text-white"
-            >
-              Share Your Feedback
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* FAQ */}
-        <Card className="border-border/50 shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-3">
-              <MessageSquare className="h-5 w-5 text-primary" />
-              Frequently Asked Questions
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold text-foreground mb-2">How do I track my hyperhidrosis episodes?</h3>
-                <p className="text-professional-gray text-sm">
-                  Simply log into your SweatSmart dashboard and click "Log Episode" to record details about your hyperhidrosis episodes, including triggers, severity, and affected areas.
-                </p>
-              </div>
-              <div>
-                <h3 className="font-semibold text-foreground mb-2">Is my health data secure?</h3>
-                <p className="text-professional-gray text-sm">
-                  Yes, we take data security seriously. All your health information is encrypted and stored securely in compliance with healthcare privacy standards.
-                </p>
-              </div>
-              <div>
-                <h3 className="font-semibold text-foreground mb-2">Can I export my data?</h3>
-                <p className="text-professional-gray text-sm">
-                  Yes, you can export your episode data and insights to share with your healthcare provider or for your personal records.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Immediate Help */}
-        <div className="text-center bg-clean-white rounded-lg p-8 border border-border/50">
-          <h2 className="text-2xl font-bold text-foreground mb-4">Need Immediate Help?</h2>
-          <p className="text-professional-gray mb-6">
-            For urgent medical concerns, please consult with your healthcare provider or contact emergency services.
-          </p>
-          <p className="text-sm text-professional-gray">
-            SweatSmart is a tracking and management tool and should not replace professional medical advice.
-          </p>
-        </div>
 
       </div>
     </AppLayout>

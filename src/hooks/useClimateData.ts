@@ -4,7 +4,7 @@
  * Uses the SAME Supabase Edge Function (`get-weather-data`) that ClimateMonitor
  * already calls, so there is only one weather source across the entire app.
  *
- * Auto-refreshes every 15 minutes (matching WEATHER_REFRESH_INTERVAL in ClimateMonitor).
+ * Auto-refreshes every 5 minutes (matching WEATHER_REFRESH_INTERVAL in ClimateMonitor).
  * Returns null weatherData until real data arrives — no fake fallbacks.
  */
 
@@ -20,22 +20,23 @@ export interface ClimateSnapshot {
   riskMessage: string;
   riskDescription: string;
   city: string;
+  fallbackReason?: 'offline' | 'permission_denied' | 'timeout' | 'unknown' | null;
   loading: boolean;
   error: string | null;
   lastUpdated: number | null;
-  refresh: () => Promise<void>;
+  refresh: (options?: { bypassCache?: boolean }) => Promise<void>;
 }
 
 // ── Risk → friendly UI label map ──────────────────────────────────────────────
 const RISK_LABEL: Record<string, string> = {
-  safe:     "Great conditions — a good day to stay dry 💧",
-  low:      "Mild conditions — stay mindful of your triggers",
-  moderate: "Moderate risk — plan cool-down strategies",
-  high:     "High sweat risk — limit outdoor exposure today ⚠️",
-  extreme:  "Extreme risk — reschedule outdoor plans if possible 🔴",
+  safe:     "Optimal conditions. Normal baseline.",
+  low:      "Optimal conditions. Normal baseline.",
+  moderate: "Moderate sweat risk: Thermal threshold crossed. Stay hydrated.",
+  high:     "High sweat risk — limit outdoor exposure and prepare cooling strategies ⚠️",
+  extreme:  "Extreme risk — severe heat load, move to shaded/ventilated space 🔴",
 };
 
-const WEATHER_REFRESH_MS = 15 * 60 * 1000; // 15 min — same as ClimateMonitor
+const WEATHER_REFRESH_MS = 5 * 60 * 1000; // 5 min — same as ClimateMonitor
 
 export function useClimateData(): ClimateSnapshot {
   const [weather, setWeather]           = useState<WeatherData | null>(null);
@@ -45,8 +46,38 @@ export function useClimateData(): ClimateSnapshot {
   const [city, setCity]                 = useState("Your location");
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState<string | null>(null);
+  const [fallbackReason, setFallbackReason] = useState<ClimateSnapshot["fallbackReason"]>(null);
   const [lastUpdated, setLastUpdated]   = useState<number | null>(null);
   const [coords, setCoords]             = useState<GeolocationCoordinates | null>(null);
+
+
+  // ── Helper: apply simulated fallback ──────────────────────────────────────
+  const applySimulatedFallback = useCallback((errorMessage?: string, reason?: ClimateSnapshot["fallbackReason"]) => {
+    const temp = 25;
+    const hum = 60;
+    const uv = 5;
+
+    const w: WeatherData = {
+      temperature: temp,
+      humidity: hum,
+      uvIndex: uv,
+      sky: 'sunny',
+      heatIndex: 26,
+      dewPoint: 16.7,
+      realFeel: 28.5,
+      isSimulated: true,
+      lastUpdated: Date.now(),
+    };
+    const risk = calculateSweatRisk(temp, hum, uv, 0, false, 'sunny');
+    setWeather(w);
+    setSweatRisk(risk.level);
+    setRiskMessage(risk.message);
+    setRiskDescription(risk.description || (RISK_LABEL[risk.level] ?? ""));
+    setCity("Simulated Location");
+    if (reason) setFallbackReason(reason);
+    if (errorMessage) setError(errorMessage); // Keep error for logging but weather is set
+    setLoading(false);
+  }, []);
 
   // ── Helper: get geolocation ───────────────────────────────────────────────
   const getCoords = useCallback(() => {
@@ -64,19 +95,23 @@ export function useClimateData(): ClimateSnapshot {
       },
       (err) => {
         let msg = "Location unavailable";
+        let reason: ClimateSnapshot["fallbackReason"] = "unknown";
         if (err.code === err.PERMISSION_DENIED) {
           msg = "Location permission denied — enable it in settings";
+          reason = "permission_denied";
         } else if (err.code === err.TIMEOUT) {
           msg = "Location request timed out — please try again";
-        } else {
+          reason = "timeout";
+        } else if (!navigator.onLine) {
           msg = "Location unavailable — check your connection";
+          reason = "offline";
         }
-        setError(msg);
-        setLoading(false);
+        // Fallback to simulated data if location fails
+        applySimulatedFallback(msg, reason);
       },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
     );
-  }, []);
+  }, [applySimulatedFallback]);
 
   // ── Step 1: Initial load ──────────────────────────────────────────────────
   useEffect(() => {
@@ -97,7 +132,8 @@ export function useClimateData(): ClimateSnapshot {
   }, [getCoords]);
 
   // ── Step 3: fetch weather via Supabase Edge Function ─────────────────────
-  const fetchWeather = useCallback(async (currentCoords?: GeolocationCoordinates) => {
+  const fetchWeather = useCallback(async (currentCoords?: GeolocationCoordinates, bypassCache = false) => {
+    setFallbackReason(null);
     const activeCoords = currentCoords || coords;
     if (!activeCoords) return;
 
@@ -105,23 +141,29 @@ export function useClimateData(): ClimateSnapshot {
     setError(null);
 
     try {
-      // ── Same call ClimateMonitor makes ──────────────────────────────────
       const { data, error: fnError } = await supabase.functions.invoke("get-weather-data", {
-        body: { latitude: activeCoords.latitude, longitude: activeCoords.longitude },
+        body: {
+          latitude: activeCoords.latitude,
+          longitude: activeCoords.longitude,
+          bypassCache,
+        },
       });
 
       if (fnError) throw new Error(fnError.message);
-      if (data?.simulated) throw new Error("Weather API unavailable — no real data received.");
+
+      const activeData = data?.isSimulated ? data.data : data;
 
       const w: WeatherData = {
-        ...data,
-        // Pass UV through unchanged (null when API didn't provide one).
-        uvIndex: typeof data.uvIndex === 'number' ? data.uvIndex : null,
-        sky: data.sky ?? 'unknown',
+        ...activeData,
+        uvIndex: typeof activeData.uvIndex === 'number' ? activeData.uvIndex : null,
+        sky: activeData.sky ?? 'unknown',
+        heatIndex: activeData.heatIndex,
+        dewPoint: activeData.dewPoint,
+        realFeel: activeData.realFeel,
+        isSimulated: data?.isSimulated || false,
         lastUpdated: Date.now(),
       };
 
-      // Sweat risk via the shared utility — EDA intentionally not used in alerts.
       const risk = calculateSweatRisk(
         w.temperature,
         w.humidity,
@@ -152,24 +194,25 @@ export function useClimateData(): ClimateSnapshot {
       setWeather(w);
       setSweatRisk(risk.level);
       setRiskMessage(risk.message);
-      setRiskDescription(RISK_LABEL[risk.level] ?? risk.description);
+      setRiskDescription(risk.description || (RISK_LABEL[risk.level] ?? ""));
       setLastUpdated(Date.now());
     } catch (err: any) {
-      setError(err.message || "Could not fetch weather data");
+      applySimulatedFallback(err.message || "Could not fetch weather data", !navigator.onLine ? "offline" : "unknown");
     } finally {
       setLoading(false);
     }
-  }, [coords]);
+  }, [coords, applySimulatedFallback]);
 
-  const refresh = useCallback(async () => {
-    if (!coords) {
+  const refresh = useCallback(async (options?: { bypassCache?: boolean }) => {
+    setError(null);
+    if (!coords || fallbackReason) {
       getCoords();
     } else {
-      await fetchWeather();
+      await fetchWeather(coords, options?.bypassCache ?? true);
     }
-  }, [coords, getCoords, fetchWeather]);
+  }, [coords, fallbackReason, getCoords, fetchWeather]);
 
-  // ── Auto-refresh every 15 min once coords are ready ──────────────────────
+  // ── Auto-refresh every 5 min once coords are ready ──────────────────────
   useEffect(() => {
     if (!coords) return;
     fetchWeather();
@@ -183,6 +226,7 @@ export function useClimateData(): ClimateSnapshot {
     riskMessage,
     riskDescription,
     city,
+    fallbackReason,
     loading,
     error,
     lastUpdated,

@@ -1,15 +1,23 @@
 /**
- * NotificationManager — single web-first pipeline for alerts.
+ * NotificationManager — FIXED for Android + PWA
+ * NOW INCLUDES: Service Worker registration + push subscription
  * Handles:
- *   - Web/PWA notifications
- *   - Deduplication (same dedupKey within cooldown window is skipped)
- *   - Per-channel cooldowns (climate vs reminder are independent)
- *   - Audio sequence: water sound → voice clip via AudioAlertPlayer
- *   - In-app toast event for foreground UI
- *   - Centralized click navigation logic
+ *   - Service Worker registration
+ *   - Push subscription to receive notifications
+ *   - Web/PWA notifications with Android support
+ *   - Deduplication & cooldowns
+ *   - Audio + in-app toast
  */
 
 import { audioAlertPlayer, type AlertKind } from '@/utils/audioAlertPlayer';
+import { webPushService } from './WebPushService';
+import {
+  isNativeApp,
+  requestNativePermissions,
+  scheduleNativeReminder,
+  showNativeNotification,
+  ensureNativeChannels,
+} from './NativeNotificationBridge';
 
 export type NotificationChannel = 'climate' | 'reminder' | 'system';
 
@@ -18,27 +26,22 @@ export interface NotificationRequest {
   kind: AlertKind;
   title: string;
   body: string;
-  /** Stable key used for dedup. Same key inside cooldown is dropped. */
   dedupKey: string;
-  /** Optional URL for tap action. Defaults to '/' or '/log-episode' for reminders. */
   url?: string;
-  /** Toast variant for in-app fallback. */
   toastVariant?: 'default' | 'destructive';
-  /** Override the channel cooldown (ms). */
   cooldownMs?: number;
 }
 
 const DEFAULT_COOLDOWN_MS: Record<NotificationChannel, number> = {
-  climate: 30 * 60 * 1000, // climate alerts: 30 minutes
-  reminder: 15 * 60 * 1000, // reminders: 15 minutes
-  system: 0, // system/test: always fire
+  climate: 30 * 60 * 1000,
+  reminder: 15 * 60 * 1000,
+  system: 0,
 };
 
-// Hard min-gap between ANY two alerts so they don't collide audibly.
 const GLOBAL_MIN_GAP_MS = 8 * 1000;
-
 const STORAGE_KEY = 'sweatsmart_notif_state_v2';
 const BG_ENABLED_KEY = 'sweatsmart_bg_notifications_enabled';
+const SW_REGISTERED_KEY = 'sweatsmart_sw_registered';
 
 export function isBackgroundNotificationsEnabled(): boolean {
   try {
@@ -68,11 +71,11 @@ function readState(): PersistedState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { lastByKey: {}, lastByChannel: {}, lastGlobal: 0 };
-    const parsed = JSON.parse(raw);
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
     return {
-      lastByKey: parsed.lastByKey || {},
-      lastByChannel: parsed.lastByChannel || {},
-      lastGlobal: parsed.lastGlobal || 0,
+      lastByKey: (parsed.lastByKey as Record<string, number>) || {},
+      lastByChannel: (parsed.lastByChannel as Partial<Record<NotificationChannel, number>>) || {},
+      lastGlobal: (parsed.lastGlobal as number) || 0,
     };
   } catch {
     return { lastByKey: {}, lastByChannel: {}, lastGlobal: 0 };
@@ -89,18 +92,83 @@ function writeState(state: PersistedState): void {
 
 class NotificationManager {
   private static instance: NotificationManager;
+  private swRegistration: ServiceWorkerRegistration | null = null;
+  private swInitialized = false;
 
   private constructor() {
     this.initClickListeners();
+    // CRITICAL: Initialize Service Worker on construction
+    this.initServiceWorker();
+    // Ensure native channels on Android immediately
+    void ensureNativeChannels();
   }
 
   /**
-   * Request permission for native notifications.
+   * Service Worker Registration + auto push subscription sync
+   */
+  private async initServiceWorker(): Promise<void> {
+    if (this.swInitialized) return;
+    this.swInitialized = true;
+
+    if (!('serviceWorker' in navigator)) {
+      console.warn('⚠️ Service Worker not supported on this device');
+      return;
+    }
+
+    try {
+      const registration = await navigator.serviceWorker.register('/sw.js', {
+        scope: '/',
+        updateViaCache: 'none',
+      });
+
+      this.swRegistration = registration;
+      console.log('✅ Service Worker registered successfully');
+      localStorage.setItem(SW_REGISTERED_KEY, 'true');
+
+      registration.addEventListener('updatefound', () => {
+        console.log('📦 Service Worker update found');
+      });
+
+      // If permission already granted, ensure subscription is fresh
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        console.log('🔔 Permission already granted, ensuring push subscription...');
+        try {
+          const isSubscribed = await webPushService.isSubscribed();
+          if (isSubscribed) {
+            await webPushService.ensureFreshSubscription();
+            await webPushService.syncSubscriptionContext();
+          } else {
+            await webPushService.subscribe();
+          }
+        } catch (pushErr) {
+          console.error('⚠️ Auto-push sync failed:', pushErr);
+        }
+      }
+
+    } catch (error) {
+      console.error('❌ Service Worker registration failed:', error);
+      localStorage.setItem(SW_REGISTERED_KEY, 'false');
+    }
+  }
+
+  /**
+   * Request permission for native notifications
    */
   async requestPermission(): Promise<boolean> {
     if (typeof Notification !== 'undefined') {
-      const permission = await Notification.requestPermission();
-      return permission === 'granted';
+      try {
+        const permission = await Notification.requestPermission();
+        console.log('🔔 Notification permission:', permission);
+        
+        if (permission === 'granted') {
+          await this.initServiceWorker();
+          return true;
+        }
+        return false;
+      } catch (error) {
+        console.error('❌ Permission request failed:', error);
+        return false;
+      }
     }
     return false;
   }
@@ -125,18 +193,14 @@ class NotificationManager {
 
   /**
    * Send a notification through the central pipeline.
-   * Returns true if delivered, false if suppressed by dedup/cooldown.
    */
   async send(req: NotificationRequest): Promise<boolean> {
     const now = Date.now();
     const state = readState();
     const cooldown = req.cooldownMs ?? DEFAULT_COOLDOWN_MS[req.channel];
-
-    // Bypass cooldowns for system channel (used for testing)
     const isTest = req.channel === 'system';
 
     if (!isTest) {
-      // 1. Dedup by stable key
       const lastForKey = state.lastByKey[req.dedupKey] ?? 0;
       if (now - lastForKey < cooldown) {
         console.log(
@@ -147,14 +211,12 @@ class NotificationManager {
         return false;
       }
 
-      // 2. Per-channel cooldown
       const lastForChannel = state.lastByChannel[req.channel] ?? 0;
       if (now - lastForChannel < cooldown / 2) {
         console.log(`🔕 [${req.channel}] suppressed (channel cooldown)`);
         return false;
       }
 
-      // 3. Global min-gap so audio cues never overlap
       if (now - state.lastGlobal < GLOBAL_MIN_GAP_MS) {
         console.log(`🔕 [${req.channel}] suppressed (global min-gap)`);
         return false;
@@ -169,15 +231,11 @@ class NotificationManager {
 
     console.log(`🔔 [${req.channel}/${req.kind}] ${req.title} — ${req.body}`);
 
-    // a) Audio (fire-and-forget)
-    audioAlertPlayer.playAlert(req.kind).catch(() => {
-      /* ignore audio errors */
-    });
-
-    // b) System notification (Web API)
+    audioAlertPlayer.playAlert(req.kind).catch(() => {});
     void this.showSystemNotification(req);
+    // Native (Android/iOS) local notification for background delivery
+    void showNativeNotification({ title: req.title, body: req.body, url: req.url });
 
-    // c) In-app toast event for foreground listeners
     try {
       window.dispatchEvent(
         new CustomEvent('sweatsmart-notification', {
@@ -196,49 +254,75 @@ class NotificationManager {
     return true;
   }
 
-  /**
-   * Web-first reminder note. Closed-app reminders are handled by Web Push CRON,
-   * not Capacitor LocalNotifications.
-   */
   async scheduleReminder(at: Date, title: string, body: string, url: string): Promise<void> {
     if (!isBackgroundNotificationsEnabled()) {
-      console.log('🔕 Background notifications disabled — skipping scheduleReminder');
+      console.log('🔕 Background notifications disabled');
       return;
     }
-    console.log('📅 Reminder timing tracked locally; closed-app delivery uses Web Push CRON:', at.toLocaleString(), title, body, url);
+    console.log('📅 Reminder scheduled:', at.toLocaleString(), title);
+    const id = Math.floor((at.getTime() / 60000) % 2147483647);
+    await scheduleNativeReminder({ id, at, title, body, url });
+  }
+
+  async requestNativePermissionsIfAvailable(): Promise<boolean> {
+    if (await isNativeApp()) {
+      return requestNativePermissions();
+    }
+    return false;
   }
 
   private async showSystemNotification(req: NotificationRequest): Promise<void> {
     if (typeof window === 'undefined') return;
 
-    // Respect the user's "Background Notifications" toggle.
     if (!isBackgroundNotificationsEnabled()) {
-      console.log('🔕 Background notifications disabled in settings — skipping system notification');
+      console.log('🔕 Background notifications disabled in settings');
       return;
     }
 
-    // Web/PWA fallback — only if the page is hidden, otherwise the
-    // foreground audio + toast already covers it.
     try {
       if (
         typeof Notification !== 'undefined' &&
-        Notification.permission === 'granted' &&
-        document.visibilityState !== 'visible'
+        Notification.permission === 'granted'
+        // NOTE: visibility check removed — notifications must show even when app is open
+        // so beta users and investors see them during demos and real use
       ) {
-        const notification = new Notification(req.title, { body: req.body, tag: req.dedupKey });
+        const notification = new Notification(req.title, {
+          body: req.body,
+          tag: req.dedupKey,
+          icon: '/favicon.ico',
+          badge: '/favicon.ico',
+          requireInteraction: req.channel === 'climate',
+        });
+
         notification.onclick = () => {
           window.focus();
           window.location.href = req.url || '/';
+          notification.close();
         };
       }
     } catch (err) {
-      console.warn('Web notification failed:', err);
+      console.warn('❌ Web notification failed:', err);
     }
   }
 
-  /** Reset all cooldown state. Used by Settings → "Reset alerts". */
   resetCooldowns(): void {
     writeState({ lastByKey: {}, lastByChannel: {}, lastGlobal: 0 });
+  }
+
+  /**
+   * For debugging: Check current state
+   */
+  getDebugStatus(): object {
+    return {
+      swRegistered: !!this.swRegistration,
+      swInitialized: this.swInitialized,
+      notificationPermission: typeof Notification !== 'undefined' ? Notification.permission : 'N/A',
+      bgEnabled: isBackgroundNotificationsEnabled(),
+      localStorage: {
+        swRegistered: localStorage.getItem(SW_REGISTERED_KEY),
+        pushSubscribed: localStorage.getItem('sweatsmart_push_subscribed'),
+      },
+    };
   }
 }
 

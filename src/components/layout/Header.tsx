@@ -16,7 +16,6 @@ interface HeaderProps {
   isAuthenticated?: boolean;
 }
 
-// Gradient avatar colours — cycles through 6 vibrant combos based on initials
 const AVATAR_GRADIENTS = [
   "from-violet-500 to-purple-600",
   "from-pink-500 to-rose-500",
@@ -48,48 +47,65 @@ const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
 
   const avatarGradient = getAvatarGradient(userInitials);
 
+  // Custom Avatar rendering logic
+  const renderAvatar = (sizeClasses: string) => {
+    if (profile?.avatar_type === 'image' && profile.avatar) {
+      return (
+        <img
+          src={profile.avatar}
+          alt="Avatar"
+          className={`rounded-full object-cover ${sizeClasses}`}
+        />
+      );
+    } else if (profile?.avatar_type === 'emoji' && profile.avatar) {
+      return (
+        <div className={`rounded-full bg-white flex items-center justify-center ${sizeClasses}`}>
+          <span className="text-xl leading-none">{profile.avatar}</span>
+        </div>
+      );
+    } else {
+      // Default avatar (no picture/emoji selected yet) — matches 5th option in Profile picker
+      return (
+        <div className={`rounded-full bg-white flex items-center justify-center ${sizeClasses}`}>
+          <span className="text-xl leading-none">👩</span>
+        </div>
+      );
+    }
+  };
+
   return (
-    <header className="w-full z-50 sticky top-0">
-      {/* Gradient bar */}
+    <header className="w-full z-50 sticky top-0 safe-area-top bg-violet-600">
       <div className="bg-gradient-to-r from-violet-600 via-purple-500 to-pink-500 shadow-lg shadow-purple-200/50">
         <div className="container flex h-16 items-center justify-between px-4">
 
-          {/* ── Logo ─────────────────────────────────────────────────── */}
+          {/* Logo */}
           <div
             className="flex items-center gap-2.5 cursor-pointer"
             onClick={() => navigate(user ? "/home" : "/")}
           >
-            {/* Logo mark */}
-            <div className="relative h-9 w-9 rounded-xl bg-green-500 flex items-center justify-center shadow-inner border border-green-300/50">
-              <span className="text-white text-lg font-black">S</span>
-              {/* Gold dot accent */}
-              <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-400 border-2 border-white shadow-sm" />
+            <div className="flex items-center justify-center">
+              <span className="text-2xl drop-shadow-md">🤖</span>
             </div>
-            <div>
-              <h1 className="text-green-400 text-xl font-black tracking-tight leading-none">
-                SweatSmart
+            <div className="brand-container">
+              <h1 className="text-white drop-shadow-md brand-title">
+                HidroAlly
               </h1>
-              <p className="text-green-300 text-xs font-bold leading-none mt-0.5">
-                Hyperhidrosis Tracker
-              </p>
+              <p className="text-[#E0E0E0] drop-shadow-md brand-subtitle-1 -ml-0.5">Hyperhidrosis Companion</p>
             </div>
           </div>
 
-          {/* ── Right side ───────────────────────────────────────────── */}
+          {/* Right side */}
           <div className="flex items-center gap-3">
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="relative flex items-center gap-2 focus:outline-none group">
-                    {/* Colourful avatar */}
                     <div className="relative">
-                      {/* Gold ring */}
                       <div className="absolute inset-0 rounded-full bg-gradient-to-br from-amber-300 to-orange-400 scale-[1.15] shadow-md" />
-                      <div className={`relative w-9 h-9 rounded-full bg-gradient-to-br ${avatarGradient} flex items-center justify-center shadow-inner border-2 border-white/60`}>
-                        <span className="text-white text-sm font-black">{userInitials}</span>
+                      <div className="relative w-9 h-9 rounded-full overflow-hidden border-2 border-white/60">
+                        {renderAvatar("w-full h-full")}
                       </div>
-                      {/* Online indicator */}
-                      <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-white shadow-sm" />
+                      <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-white shadow-sm z-10" />
                     </div>
                   </button>
                 </DropdownMenuTrigger>
@@ -98,21 +114,6 @@ const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
                   align="end"
                   className="w-56 rounded-2xl shadow-xl border border-purple-100 p-1 mt-2"
                 >
-                  {/* User info header */}
-                  <div className="px-3 py-3 mb-1">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${avatarGradient} flex items-center justify-center shadow-sm`}>
-                        <span className="text-white text-sm font-black">{userInitials}</span>
-                      </div>
-                      <div className="overflow-hidden">
-                        <p className="font-bold text-sm text-gray-800 truncate">{userName || "User"}</p>
-                        <p className="text-xs text-gray-400 truncate">{user?.email}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <DropdownMenuSeparator className="bg-purple-50" />
-
                   <DropdownMenuItem
                     onClick={() => navigate("/profile")}
                     className="rounded-xl gap-2.5 cursor-pointer py-2.5 focus:bg-purple-50"
@@ -123,60 +124,38 @@ const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
                     <span className="font-medium text-sm">Profile</span>
                   </DropdownMenuItem>
 
-                  <DropdownMenuItem
-                    onClick={() => navigate("/settings")}
-                    className="rounded-xl gap-2.5 cursor-pointer py-2.5 focus:bg-purple-50"
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-pink-100 flex items-center justify-center">
-                      <Settings className="h-3.5 w-3.5 text-pink-600" />
-                    </div>
-                    <span className="font-medium text-sm">Settings</span>
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    onClick={() => window.open("https://docs.google.com/forms/d/e/1FAIpQLSfHBkUOMxFhB03UyfpnrEQk5VlszVUFN2n-TqjRwJ1ehqSeTw/viewform", "_blank", "noopener,noreferrer")}
-                    className="rounded-xl gap-2.5 cursor-pointer py-2.5 focus:bg-purple-50"
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center">
-                      <MessageSquare className="h-3.5 w-3.5 text-amber-600" />
-                    </div>
-                    <span className="font-medium text-sm">Feedback</span>
-                  </DropdownMenuItem>
-
                   <DropdownMenuSeparator className="bg-purple-50" />
 
                   <DropdownMenuItem
                     onClick={handleLogout}
-                    className="rounded-xl gap-2.5 cursor-pointer py-2.5 focus:bg-red-50 text-red-500 focus:text-red-600"
+                    className="rounded-xl gap-2.5 cursor-pointer py-2.5 focus:bg-red-50"
                   >
                     <div className="w-7 h-7 rounded-lg bg-red-100 flex items-center justify-center">
-                      <LogOut className="h-3.5 w-3.5 text-red-500" />
+                      <LogOut className="h-3.5 w-3.5 text-red-600" />
                     </div>
-                    <span className="font-medium text-sm">Logout</span>
+                    <span className="font-medium text-sm text-red-600">Log out</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <div className="flex items-center gap-2">
-                <button
+              <div className="auth-buttons-container">
+                <a
                   onClick={() => navigate("/login")}
-                  className="text-white/90 hover:text-white text-sm font-medium px-3 py-1.5 rounded-lg hover:bg-white/10 transition-all"
+                  className="nav-btn btn-login cursor-pointer"
                 >
                   Login
-                </button>
-                <button
+                </a>
+                <a
                   onClick={() => navigate("/register")}
-                  className="bg-white text-purple-600 text-sm font-bold px-4 py-1.5 rounded-lg hover:bg-purple-50 transition-all shadow-sm"
+                  className="nav-btn btn-signup cursor-pointer"
                 >
                   Sign Up
-                </button>
+                </a>
               </div>
             )}
           </div>
         </div>
       </div>
-
-      {/* Decorative colour stripe under header */}
       <div className="h-0.5 bg-gradient-to-r from-violet-400 via-pink-400 to-amber-400" />
     </header>
   );

@@ -13,6 +13,11 @@ import {
   Settings,
   Hand,
   MapPin,
+  Heart,
+  HelpCircle,
+  Mail,
+  ClipboardList,
+  Medal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -45,34 +50,37 @@ const primaryItems = [
     dotColor: "bg-blue-500",
   },
   {
-    path: "/climate",
-    icon: CloudRainWind,
-    label: "Climate",
-    activeColor: "text-cyan-600",
-    activeBg: "bg-cyan-50",
-    dotColor: "bg-cyan-500",
+    path: "/insights",
+    icon: TrendingUp,
+    label: "Insight",
+    activeColor: "text-pink-600",
+    activeBg: "bg-pink-50",
+    dotColor: "bg-pink-500",
   },
 ];
 
 const moreItems = [
-  { path: "/insights",     icon: TrendingUp,      label: "Insights",   color: "text-pink-600",    bg: "bg-pink-50"    },
-  { path: "/history",      icon: History,          label: "History",    color: "text-violet-600",  bg: "bg-violet-50"  },
   { path: "/climate",      icon: CloudRainWind,    label: "Climate",    color: "text-cyan-600",    bg: "bg-cyan-50"    },
+  { path: "/achievements", icon: Medal,            label: "Achievements",color: "text-amber-600",  bg: "bg-amber-50"   },
   { path: "/palm-scanner", icon: Hand,             label: "Scanner",    color: "text-cyan-600",    bg: "bg-cyan-50"    },
   { path: "/specialist-radar", icon: MapPin,       label: "Specialist", color: "text-teal-600",    bg: "bg-teal-50"    },
-  { path: "/hyper-ai",     icon: Sparkles,         label: "HidroAlly AI",  color: "text-amber-600",   bg: "bg-amber-50"   },
+  { path: "/hidro-ally",     icon: Sparkles,         label: "HidroAlly",  color: "text-amber-600",   bg: "bg-amber-50"   },
+  { path: "/history",      icon: History,          label: "History",    color: "text-violet-600",  bg: "bg-violet-50"  },
   { path: "/community",    icon: Users,            label: "Community",  color: "text-emerald-600", bg: "bg-emerald-50" },
-  { path: "/contact",      icon: MessageSquare,    label: "Feedback",   color: "text-amber-600",   bg: "bg-amber-50"   },
+  { path: "/survey",       icon: ClipboardList,    label: "Survey",     color: "text-violet-600",  bg: "bg-violet-50"  },
+  { path: "/feedback",     icon: Heart,            label: "Feedback",   color: "text-blue-600",    bg: "bg-blue-50"    },
+  { path: "/faqs",         icon: HelpCircle,       label: "FAQs",       color: "text-rose-600",    bg: "bg-rose-50"    },
+  { path: "/contact",      icon: Mail,             label: "Contact",    color: "text-violet-600",  bg: "bg-violet-50"  },
   { path: "/settings",     icon: Settings,         label: "Settings",   color: "text-gray-600",    bg: "bg-gray-50"    },
 ];
 
 const MobileBottomNav: React.FC = () => {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden safe-area-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden safe-area-bottom bg-white/95 backdrop-blur-md border-t border-purple-100">
       {/* Top colour stripe */}
       <div className="h-0.5 bg-gradient-to-r from-violet-400 via-pink-400 to-amber-400" />
 
-      <div className="bg-white/95 backdrop-blur-md border-t border-purple-100 shadow-lg shadow-purple-100/50">
+      <div className="bg-white/95 backdrop-blur-md shadow-lg shadow-purple-100/50">
         <div className="flex items-center justify-around h-16 px-2">
 
           {primaryItems.map((item) => {

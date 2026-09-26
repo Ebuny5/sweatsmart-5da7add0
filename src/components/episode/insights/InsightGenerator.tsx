@@ -1,5 +1,5 @@
 /**
- * InsightGenerator.tsx — SweatSmart Episode Insight Engine
+ * InsightGenerator.tsx — HidroAlly Episode Insight Engine
  *
  * Friendly, plain-language insights for hyperhidrosis episodes.
  * Uses ALL episode data: severity, body areas, triggers, notes, time of day.
@@ -383,7 +383,7 @@ const InsightCard: React.FC<{ insight: clinicalInsight }> = ({ insight }) => {
       };
 
       pdf.setFontSize(16); pdf.setFont('helvetica', 'bold');
-      pdf.text('SweatSmart — Episode Insight', margin, y); y += 8;
+      pdf.text('HidroAlly — Episode Insight', margin, y); y += 8;
       pdf.setFontSize(9); pdf.setFont('helvetica', 'italic');
       pdf.text(`Generated: ${format(new Date(), 'EEEE, MMMM d, yyyy')}`, margin, y); y += 10;
 
@@ -500,7 +500,7 @@ const InsightGenerator: React.FC<InsightGeneratorProps> = ({ episode }) => {
         <InsightCard key={insight.id} insight={insight} />
       ))}
       <p className="text-[10px] text-gray-400 text-center pt-1">
-        Tap any card to expand analysis · SweatSmart Warrior Engine v2
+        Tap any card to expand analysis · HidroAlly Warrior Engine v2
       </p>
     </div>
   );

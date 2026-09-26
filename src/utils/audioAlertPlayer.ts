@@ -19,7 +19,7 @@
 
 export type ClimateAlertKind = 'low' | 'moderate' | 'high' | 'extreme';
 export type ReminderKind = 'reminder' | 'checkin';
-export type AlertKind = ClimateAlertKind | ReminderKind;
+export type AlertKind = ClimateAlertKind | ReminderKind | "missed-checkin";
 export type VoiceGender = 'female' | 'male';
 
 const WATER_SOUND_PATH = '/sounds/water-sound.mp3';
@@ -29,16 +29,21 @@ const FEMALE_VOICES: Record<AlertKind, string> = {
   moderate: '/sounds/voice-female-moderate.mp3',
   high: '/sounds/voice-female-high.mp3',
   extreme: '/sounds/voice-female-extreme.mp3',
-  reminder: '/sounds/voice-female-reminder.mp3',
+  reminder: '/sounds/voice-female-checkin.mp3',
   checkin: '/sounds/voice-female-checkin.mp3',
+  'missed-checkin': '/sounds/voice-female-checkin.mp3',
+
+
 };
 
 // Male voices — we only have low/reminder/checkin uploaded today.
 // Missing entries fall back to the female file of the same kind.
+// Reminder and checkin use the female voice as it's the clinical standard.
 const MALE_VOICES: Partial<Record<AlertKind, string>> = {
   low: '/sounds/voice-male-low.mp3',
-  reminder: '/sounds/voice-male-reminder.mp3',
-  checkin: '/sounds/voice-male-checkin.mp3',
+  reminder: '/sounds/voice-female-checkin.mp3',
+  checkin: '/sounds/voice-female-checkin.mp3',
+
 };
 
 const GENDER_STORAGE_KEY = 'sweatsmart_voice_gender';
@@ -64,10 +69,11 @@ function isSoundEnabled(): boolean {
 }
 
 function resolveVoicePath(kind: AlertKind, gender: VoiceGender): string {
+  const safeKind: AlertKind = kind in FEMALE_VOICES ? kind : 'reminder';
   if (gender === 'male') {
-    return MALE_VOICES[kind] ?? FEMALE_VOICES[kind];
+    return MALE_VOICES[safeKind] ?? FEMALE_VOICES[safeKind];
   }
-  return FEMALE_VOICES[kind];
+  return FEMALE_VOICES[safeKind];
 }
 
 function vibrateForKind(kind: AlertKind) {
@@ -89,7 +95,7 @@ function vibrateForKind(kind: AlertKind) {
 
 class AudioAlertPlayer {
   private static instance: AudioAlertPlayer;
-  private current: HTMLAudioElement | null = null;
+  private currentAudios: HTMLAudioElement[] = [];
 
   static getInstance(): AudioAlertPlayer {
     if (!AudioAlertPlayer.instance) {
@@ -124,15 +130,15 @@ class AudioAlertPlayer {
   }
 
   stop(): void {
-    if (this.current) {
+    this.currentAudios.forEach(audio => {
       try {
-        this.current.pause();
-        this.current.src = '';
+        audio.pause();
+        audio.src = '';
       } catch {
         /* ignore */
       }
-      this.current = null;
-    }
+    });
+    this.currentAudios = [];
   }
 
   /**
@@ -143,15 +149,16 @@ class AudioAlertPlayer {
     return new Promise((resolve) => {
       try {
         const audio = new Audio(src);
+        audio.crossOrigin = 'anonymous';
         audio.preload = 'auto';
         audio.volume = 1;
-        this.current = audio;
+        this.currentAudios.push(audio);
 
         let settled = false;
         const finish = () => {
           if (settled) return;
           settled = true;
-          if (this.current === audio) this.current = null;
+          this.currentAudios = this.currentAudios.filter(a => a !== audio);
           resolve();
         };
 
@@ -174,7 +181,7 @@ class AudioAlertPlayer {
   }
 
   /**
-   * Play the full alert sequence: water sound → voice clip.
+   * Play the full alert sequence: short water cue, then the matching voice clip.
    * Fire-and-forget safe — never throws.
    */
   async playAlert(kind: AlertKind): Promise<void> {
@@ -188,16 +195,10 @@ class AudioAlertPlayer {
     console.log(`🔊 Playing alert sequence for kind: ${kind}`);
     vibrateForKind(kind);
 
-    // 1. Short water cue (hard-capped to ~0.5s so it stays "in a jiffy")
-    console.log(`🔊 Playing water sound: ${WATER_SOUND_PATH}`);
-    await this.playClip(WATER_SOUND_PATH, 550);
-
-    // Tiny gap for clarity between cue and voice
-    await new Promise((r) => setTimeout(r, 80));
-
-    // 2. Voice clip matching the alert kind
     const voicePath = resolveVoicePath(kind, getGender());
-    console.log(`🔊 Playing voice clip: ${voicePath} (Gender: ${getGender()})`);
+    console.log(`🔊 Playing water cue then voice clip: ${WATER_SOUND_PATH} & ${voicePath} (Gender: ${getGender()})`);
+
+    await this.playClip(WATER_SOUND_PATH, 1200);
     await this.playClip(voicePath, 12000);
   }
 }

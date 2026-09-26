@@ -1,0 +1,9 @@
+--- src/pages/HidroAlly.tsx
++++ src/pages/HidroAlly.tsx
+@@ -1216,7 +1216,7 @@
+   // ── Main send handler ──────────────────────────────────────────────────────
+   const handleSend = async (overrideInput?: string, autoSpeak?: boolean) => {
+-    const text = (overrideInput || input).trim();
++    const text = (typeof overrideInput === 'string' ? overrideInput : input).trim();
+     if (!text && !pendingImage) return;
+     if (isLoading) return;

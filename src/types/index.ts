@@ -6,9 +6,16 @@ export interface WeatherData {
   uvIndex: number | null;
   /** Sky condition derived server-side from cloud cover + weather code. */
   sky?: 'sunny' | 'partly_cloudy' | 'overcast' | 'unknown';
+  /** Calculated Rothfusz Heat Index (°C) */
+  heatIndex?: number;
+  /** Calculated Magnus Dew Point (°C) */
+  dewPoint?: number;
+  /** RealFeel temperature considering solar radiation / UV index (°C) */
+  realFeel?: number;
   lastUpdated?: number;
   description?: string;
   location?: string;
+  isSimulated?: boolean;
 }
 
 export interface PhysiologicalData {
@@ -29,7 +36,9 @@ export interface LogEntry {
   hdssLevel: HDSSLevel;
   weather: WeatherData;
   physiologicalData: PhysiologicalData;
+  is_dry_day?: boolean;
 }
+
 
 // Episode types
 export type SeverityLevel = 1 | 2 | 3 | 4 | 5;
@@ -50,7 +59,9 @@ export type BodyArea =
   | 'chest'
   | 'trunk'
   | 'groin'
-  | 'entire_body';
+  | 'thighs'
+  | 'entire_body'
+  | (string & {});
 
 export interface BodyAreaDetail {
   area: BodyArea;
@@ -83,6 +94,7 @@ export interface ProcessedEpisode {
   createdAt: Date;
   updated_at: string;
   userId: string;
+  is_dry_day?: boolean;
 }
 
 export interface TriggerFrequency {
@@ -116,6 +128,16 @@ export interface Profile {
   id: string;
   user_id: string;
   display_name: string | null;
+  age?: number;
+  biological_sex?: string;
+  gender_identity?: string;
+  diagnosis_type?: string;
+  country?: string;
+  is_profile_complete?: boolean;
+  avatar?: string;
+  avatar_type?: 'emoji' | 'image';
+  gender?: string;
+  gender_description?: string;
   created_at: string;
   updated_at: string;
 }
