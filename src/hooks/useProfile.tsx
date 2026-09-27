@@ -28,6 +28,13 @@ export const useProfile = () => {
       if (error) {
         console.error('Error fetching profile:', error);
         setProfile(null);
+      } else if (!data) {
+        // If data is null (row missing entirely), provide a default empty profile
+        setProfile({
+          user_id: user.id,
+          display_name: null,
+          is_profile_complete: false,
+        } as unknown as Profile);
       } else {
         setProfile(data as unknown as Profile);
       }
@@ -43,16 +50,16 @@ export const useProfile = () => {
     if (!user) return;
 
     try {
+      // Use upsert to guarantee the record is created if it does not exist
       const { error } = await supabase
         .from('profiles')
-        .update(updates as any)
-        .eq('user_id', user.id);
+        .upsert({ user_id: user.id, ...updates } as any, { onConflict: 'user_id' });
 
       if (error) {
         throw error;
       }
 
-      setProfile(prev => prev ? { ...prev, ...updates } : null);
+      setProfile(prev => prev ? { ...prev, ...updates } : ({ user_id: user.id, ...updates } as unknown as Profile));
       // Notify other useProfile instances (e.g. Header) to refresh
       window.dispatchEvent(new CustomEvent(PROFILE_UPDATED_EVENT));
       return true;

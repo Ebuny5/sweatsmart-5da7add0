@@ -93,9 +93,19 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/home" replace />;
   }
 
-  // If profile exists and is NOT complete, enforce onboarding (but allow setup pages themselves)
-  if (profile && !profile.is_profile_complete && !setupPaths.includes(location.pathname)) {
-    return <Navigate to="/mandatory-onboarding" replace />;
+  // If profile is NOT complete, intelligently route to the correct setup page
+  if (!profile || !profile.is_profile_complete) {
+    const hasName = !!(profile?.display_name && profile.display_name.trim().length > 0);
+
+    // They have a name but haven't finished mandatory clinical onboarding
+    if (hasName && location.pathname !== '/mandatory-onboarding') {
+      return <Navigate to="/mandatory-onboarding" replace />;
+    }
+
+    // They don't even have a name yet
+    if (!hasName && location.pathname !== '/setup-profile') {
+      return <Navigate to="/setup-profile" replace />;
+    }
   }
 
   return <ErrorBoundary>{children}</ErrorBoundary>;

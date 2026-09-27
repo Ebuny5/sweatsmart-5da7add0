@@ -106,19 +106,8 @@ const AuthCallback = () => {
             }
           }
           
-          if (!profile?.is_profile_complete) {
-            const hasName = !!(profile?.display_name && profile.display_name.trim().length > 0);
-            if (hasName) {
-              console.log('Profile has name but incomplete, redirecting to mandatory-onboarding');
-              navigate("/mandatory-onboarding", { replace: true });
-            } else {
-              console.log('Profile incomplete, redirecting to setup-profile');
-              navigate("/setup-profile", { replace: true });
-            }
-          } else {
-            console.log('Redirecting to home');
-            navigate("/home", { replace: true });
-          }
+          console.log('Redirecting to home');
+          navigate("/home", { replace: true });
         } else {
           console.log('No user found, redirecting to login');
           navigate("/login", { replace: true });

@@ -23,28 +23,6 @@ const Login = () => {
   const { toast } = useToast();
   const { signInWithGoogle, isLoading: googleLoading } = useGoogleAuth();
 
-  const checkProfileStatus = async (userId: string): Promise<{ isComplete: boolean, hasName: boolean }> => {
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("is_profile_complete, display_name")
-        .eq("user_id", userId)
-        .maybeSingle();
-
-      if (error) {
-        console.error("Error fetching profile status:", error);
-        return { isComplete: false, hasName: false };
-      }
-      return {
-        isComplete: data?.is_profile_complete ?? false,
-        hasName: !!(data?.display_name && data.display_name.trim().length > 0)
-      };
-    } catch (err) {
-      console.error("Unexpected error fetching profile:", err);
-      return { isComplete: false, hasName: false };
-    }
-  };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -72,21 +50,11 @@ const Login = () => {
           variant: "destructive",
         });
       } else {
-        const { isComplete, hasName } = await checkProfileStatus(data.user.id);
-
-        if (!isComplete) {
-          if (hasName) {
-            navigate("/mandatory-onboarding");
-          } else {
-            navigate("/setup-profile");
-          }
-        } else {
-          toast({
-            title: "Login successful",
-            description: "Welcome back to HidroAlly!",
-          });
-          navigate("/home");
-        }
+        toast({
+          title: "Login successful",
+          description: "Welcome back to HidroAlly!",
+        });
+        navigate("/home");
       }
     } catch (error) {
       toast({
