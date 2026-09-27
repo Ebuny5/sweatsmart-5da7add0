@@ -775,7 +775,7 @@ serve(async (req) => {
 
           const result = await sendWebPush(
             { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
-            { title, body, tag: 'climate-alert', type: risk, url: '/climate' },
+            { title, body, tag: 'climate-alert', type: risk, kind: risk, url: '/climate' },
             vapidPublicKey, vapidPrivateKey, vapidSubject
           );
 
