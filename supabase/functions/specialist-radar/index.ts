@@ -18,6 +18,57 @@ const normalizeState = (s: string) =>
 
 
 
+
+const isDermatologist = (categories: string[], name: string): boolean => {
+  const combined = [...categories, name].join(' ').toLowerCase();
+  const excludeKeywords = [
+    'pharmacy', 'chemist', 'optician', 'optical', 'dental', 'dentist', 'eye',
+    'obstetric', 'orthop', 'pediatric', 'paediatric', 'veterinary', 'vet',
+    'physiotherapy', 'radiology', 'laboratory',
+  ];
+  if (excludeKeywords.some(k => combined.includes(k))) return false;
+
+  const isTaggedDermatology = categories.some(c => c.includes('dermatology'));
+  const nameLooksDermatology = /derma|skin\s*(clinic|care|centre|center)|hyperhidrosis/i.test(name);
+  return isTaggedDermatology || nameLooksDermatology;
+};
+
+const normaliseGeoapify = (feature: any, userLat: number, userLng: number) => {
+  const p = feature.properties;
+  if (!p.name || !p.name.trim()) return null;
+
+  const [lng, lat] = feature.geometry?.coordinates ?? [p.lon, p.lat];
+  const dist = haversine(userLat, userLng, lat, lng);
+
+  return {
+    id:               `geo-${p.place_id}`,
+    name:             p.name,
+    clinicName:       null,
+    specialty:        'Dermatologist',
+    address:          p.formatted || `${p.street}, ${p.city}`,
+    city:             p.city || null,
+    state:            p.state,
+    country:          p.country,
+    lat, lng,
+    phone:            p.contact?.phone || null,
+    email:            p.contact?.email || null,
+    website:          p.website || null,
+    treatments:       [],
+    isIhsVerified:    false,
+    isNdsMember:      false,
+    isTelehealth:     false,
+    distance:         formatDistance(dist),
+    distanceMeters:   dist,
+    tier:             'external' as const,
+    source:           'geoapify',
+    rating:           null,
+    reviewCount:      null,
+    openNow:          null,
+    languages:        ['English'],
+    specialistConfirmed: false,
+  };
+};
+
 const haversine = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
   const R  = 6371000;
   const φ1 = lat1 * Math.PI / 180;
@@ -163,15 +214,68 @@ serve(async (req) => {
       .map((r: any) => normalise(r, lat, lng))
       .sort((a, b) => (a.distanceMeters ?? Infinity) - (b.distanceMeters ?? Infinity));
 
+
+    // ════════════════════════════════════════════════════════════════
+    // TIER 2 — Geoapify Places fallback (only if curated results < 3)
+    // ════════════════════════════════════════════════════════════════
+    const GEOAPIFY_KEY = Deno.env.get('GEOAPIFY_API_KEY');
+
+    if (physical.length === 0 && GEOAPIFY_KEY) {
+      // In this fallback, we perform a radius search based on the scope level
+      // to find geoapify results when the physical db results are sparse.
+      // This is necessary because Geoapify only takes a point and radius.
+      const radius = scope === 'state' ? 50000 : scope === 'country' ? 500000 : 5000000;
+
+      const url = new URL('https://api.geoapify.com/v2/places');
+      url.searchParams.set('categories', 'healthcare,healthcare.clinic_or_praxis.dermatology');
+      url.searchParams.set('filter', `circle:${lng},${lat},${radius}`);
+      url.searchParams.set('bias', `proximity:${lng},${lat}`);
+      url.searchParams.set('limit', '100');
+      url.searchParams.set('apiKey', GEOAPIFY_KEY);
+
+      let features: any[] = [];
+      try {
+        const res = await fetch(url.toString());
+        const data = await res.json();
+        features = data.features || [];
+      } catch (e) { console.error('Geoapify fetch error:', e); }
+
+      const matched = features
+        .filter(f => f.properties?.name && f.properties.name.trim())
+        .filter(f => isDermatologist(f.properties?.categories || [], f.properties?.name || ''))
+        .slice(0, 20);
+
+      for (const feature of matched) {
+        const doc = normaliseGeoapify(feature, lat, lng);
+        if (doc && !seen.has(doc.id)) {
+          physical.push(doc);
+          seen.add(doc.id);
+        }
+      }
+
+      // Sort physical array again since we added geoapify elements
+      physical.sort((a: any, b: any) => (a.distanceMeters ?? Infinity) - (b.distanceMeters ?? Infinity));
+
+      console.log(`TIER 2 (Geoapify): ${features.length} raw, ${matched.length} matched, ${physical.length} total after`);
+    } else if (physical.length === 0 && !GEOAPIFY_KEY) {
+      console.warn('TIER 2 skipped — GEOAPIFY_API_KEY not configured');
+    }
+
+    // We need to recalculate curated, facilityOnly, external after Geoapify adds
     const curated      = physical.filter(d => d.tier === 'curated');
+
     const facilityOnly = physical.filter(d => d.tier === 'facility');
     const external     = physical.filter(d => d.tier !== 'curated' && d.tier !== 'facility');
 
     // ════════════════════════════════════════════════════════════════
     // Telehealth bridge — global, never mixed with the physical list
     // ════════════════════════════════════════════════════════════════
+    const targetRegions = [wantedCountry, continent, 'Global'].filter(Boolean);
     const { data: telehealthRows } = await supabase
-      .from('specialists').select('*').eq('is_telehealth', true);
+      .from('specialists')
+      .select('*')
+      .eq('is_telehealth', true)
+      .overlaps('covered_regions', targetRegions);
     const telehealthDoctors = (telehealthRows || []).map((r: any) => ({
       ...normalise(r, lat, lng), isTelehealth: true, tier: 'telehealth' as const, distance: null, distanceMeters: null,
     }));
