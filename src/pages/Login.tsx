@@ -23,22 +23,25 @@ const Login = () => {
   const { toast } = useToast();
   const { signInWithGoogle, isLoading: googleLoading } = useGoogleAuth();
 
-  const checkProfileComplete = async (userId: string): Promise<boolean> => {
+  const checkProfileStatus = async (userId: string): Promise<{ isComplete: boolean, hasName: boolean }> => {
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("is_profile_complete")
+        .select("is_profile_complete, display_name")
         .eq("user_id", userId)
         .maybeSingle();
 
       if (error) {
-        console.error("Error fetching profile completion status:", error);
-        return false;
+        console.error("Error fetching profile status:", error);
+        return { isComplete: false, hasName: false };
       }
-      return data?.is_profile_complete ?? false;
+      return {
+        isComplete: data?.is_profile_complete ?? false,
+        hasName: !!(data?.display_name && data.display_name.trim().length > 0)
+      };
     } catch (err) {
       console.error("Unexpected error fetching profile:", err);
-      return false;
+      return { isComplete: false, hasName: false };
     }
   };
 
@@ -69,10 +72,14 @@ const Login = () => {
           variant: "destructive",
         });
       } else {
-        const isProfileComplete = await checkProfileComplete(data.user.id);
+        const { isComplete, hasName } = await checkProfileStatus(data.user.id);
 
-        if (!isProfileComplete) {
-          navigate("/setup-profile");
+        if (!isComplete) {
+          if (hasName) {
+            navigate("/mandatory-onboarding");
+          } else {
+            navigate("/setup-profile");
+          }
         } else {
           toast({
             title: "Login successful",
