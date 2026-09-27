@@ -177,7 +177,7 @@ Always consult with a healthcare provider for personalized medical advice.
       addSection('Lifestyle Modifications', insights.lifestyleModifications);
       addSection('When to Seek Medical Attention', insights.medicalAttention);
 
-      doc.save(`sweatsmart-insights-${new Date().toISOString().split('T')[0]}.pdf`);
+      doc.save('HidroAlly Analysis & Reccomendation.pdf');
       toast({ title: 'PDF downloaded', description: 'Your AI insights have been saved as a PDF.' });
     } catch (error) {
       toast({ title: 'Download failed', description: 'Could not generate PDF.', variant: 'destructive' });

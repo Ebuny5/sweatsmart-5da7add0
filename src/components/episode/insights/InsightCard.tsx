@@ -126,7 +126,7 @@ const InsightCard: React.FC<InsightCardProps> = ({
       pdf.text('Patient should be evaluated clinically before any treatment decisions.', margin, yPosition + 10);
 
       // Save
-      const filename = `sweatsmart-insight-${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+      const filename = 'HidroAlly Analysis & Reccomendation.pdf';
       pdf.save(filename);
 
       toast({
