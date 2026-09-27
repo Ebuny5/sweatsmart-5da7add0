@@ -14,7 +14,6 @@ import Index from "./pages/Index";
 import NewIndex from "./pages/NewIndex";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Auth from "./pages/Auth";
 import VerifyEmail from "./pages/VerifyEmail";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -120,7 +119,6 @@ const AppRoutes = () => {
   <Routes location={location} key={location.pathname}>
     <Route path="/" element={<Index />} />
     <Route path="/old-blue" element={<PublicRoute><NewIndex /></PublicRoute>} />
-    <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
     <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
     <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
     <Route path="/verify-email" element={<PublicRoute><VerifyEmail /></PublicRoute>} />
