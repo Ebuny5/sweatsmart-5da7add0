@@ -136,6 +136,8 @@ interface AnatomicalProfile {
 function normalizeAnatomy(bodyAreas: string[]): AnatomicalProfile {
   const rawList = (bodyAreas || []).map(a => String(a).toLowerCase().trim().replace(/_/g, " "));
 
+  const hasFace = rawList.some(a => a === 'face' || a === 'facial');
+  const hasScalp = rawList.some(a => a === 'scalp' || a === 'cranial');
   const isCraniofacial = rawList.some(a => 
     a.includes("face") || a.includes("scalp") || a.includes("forehead") || a.includes("head") || a.includes("hairline")
   );
@@ -149,18 +151,32 @@ function normalizeAnatomy(bodyAreas: string[]): AnatomicalProfile {
     a.includes("feet") || a.includes("foot") || a.includes("sole") || a.includes("toe")
   );
   const isTruncal = rawList.some(a => 
-    a.includes("chest") || a.includes("back") || a.includes("groin") || a.includes("trunk") || a.includes("abdomen") || a.includes("thigh")
+    a.includes("chest") || a.includes("back") || a.includes("trunk") || a.includes("abdomen") || a.includes("thigh")
   );
+  const hasGroin = rawList.some(a => a.includes("groin"));
   const isSystemic = rawList.some(a => 
     a.includes("entire body") || a.includes("whole body") || a.includes("generalized")
   );
 
   const clinicalZones: string[] = [];
-  if (isCraniofacial) clinicalZones.push("craniofacial region (face and scalp)");
+
+  if (isCraniofacial) {
+    if (hasFace && hasScalp) {
+      clinicalZones.push("craniofacial region (both face and scalp)");
+    } else if (hasFace) {
+      clinicalZones.push("craniofacial region (specifically your face)");
+    } else if (hasScalp) {
+      clinicalZones.push("cranial region (specifically your scalp)");
+    } else {
+      clinicalZones.push("craniofacial region (both face and scalp)");
+    }
+  }
+
   if (isAxillary) clinicalZones.push("axillary vaults (underarms)");
-  if (isPalmar) clinicalZones.push("palmar surfaces (hands)");
-  if (isPlantar) clinicalZones.push("plantar surfaces (feet)");
-  if (isTruncal) clinicalZones.push("truncal zones (torso, back, or groin)");
+  if (isPalmar) clinicalZones.push("palmar surfaces (palms and hands)");
+  if (isPlantar) clinicalZones.push("plantar surfaces (feet and soles)");
+  if (isTruncal) clinicalZones.push("truncal dermatomes (chest and back)");
+  if (hasGroin) clinicalZones.push("inguinal folds (groin)");
   if (isSystemic) clinicalZones.push("generalized systemic distribution");
 
   for (const raw of rawList) {
@@ -244,8 +260,8 @@ function evaluateTriggers(triggers: Array<TriggerInput | string>): TriggerProfil
   const identifiedLabels: string[] = [];
   if (!isIdiopathic) {
     if (isEnvironmental) identifiedLabels.push("environmental thermal load");
-    if (isAdrenergic) identifiedLabels.push("sympathoadrenal arousal");
-    if (isGustatory) identifiedLabels.push("gustatory reflex pathways");
+    if (isAdrenergic) identifiedLabels.push("sympathoadrenal arousal (your body's involuntary 'fight-or-flight' stress reaction)");
+    if (isGustatory) identifiedLabels.push("gustatory sweating (perspiration provoked by eating, tasting, or digesting specific foods)");
     if (isPhysical) identifiedLabels.push("metabolic exertion");
     if (isPharmacological) identifiedLabels.push("pharmacological agents");
   }
@@ -335,30 +351,32 @@ function buildClinicalAnalysis(
   seed: number,
   episodesList?: any[]
 ): string {
-  // 1. Diagnostic Nomenclature
-  let diagnosisLine = "";
-  if (anatomy.isSystemic) {
-    diagnosisLine = `This presentation reveals generalized diaphoresis across the entire body, warranting a formal clinical workup to rule out secondary autonomic or endocrine causes.`;
-  } else if (anatomy.isMultifocal) {
-    diagnosisLine = `This episode documents multifocal primary focal hyperhidrosis involving the ${anatomy.cleanDisplayList}, confirming synchronized postganglionic sympathetic outflow across distinct peripheral nerve distributions.`;
-  } else {
-    diagnosisLine = `This episode represents primary focal hyperhidrosis localized specifically to the ${anatomy.cleanDisplayList}.`;
+  // 1 & 2. Dynamic Opening Analysis (Diagnosis & Mechanism)
+  let triggerList = "idiopathic factors (spontaneous autonomic activity without an identifiable external trigger)";
+  if (!triggers.isIdiopathic && triggers.identifiedLabels.length > 0) {
+    triggerList = triggers.identifiedLabels.join(", ");
   }
 
-  // 2. Physiological Mechanism (Idiopathic vs. Stimulated)
-  let mechanismLine = "";
-  if (triggers.isIdiopathic) {
-    mechanismLine = pick([
-      `Because this event manifested in the absence of external triggers, it reflects spontaneous autonomic dysregulation. Postganglionic sympathetic cholinergic efferents discharged basal signals to dermal eccrine glands independently of physical exertion or ambient heat, demonstrating an intrinsic hypothalamic threshold shift.`,
-      `The absence of external contributors confirms idiopathic sympathetic overdrive. In primary hyperhidrosis, overactive central sudomotor pathways periodically trigger localized acetylcholine release onto muscarinic M3 receptors, provoking profuse perspiration during resting physiological states.`
-    ], seed);
-  } else {
-    const drivers = triggers.identifiedLabels.length > 0 ? triggers.identifiedLabels.join(", ") : "heightened autonomic sensitivity";
-    mechanismLine = `Sudomotor outflow was precipitated by identifiable physiological contributors, specifically ${drivers}. These stimuli lowered your activation threshold, initiating disproportionate eccrine fluid discharge.`;
-  }
+  const openingOptions = [
+    `This episode presents as hyperhidrosis localized to the ${anatomy.cleanDisplayList}, with sweat responses primarily activated by ${triggerList}.`,
+    `Your logged symptoms highlight concentrated perspiration across your ${anatomy.cleanDisplayList}. The primary drivers recorded include ${triggerList}.`,
+    `Clinical tracking for this session indicates an acute flare-up focused on your ${anatomy.cleanDisplayList}, prompted by ${triggerList}.`
+  ];
+
+  // Combine Diagnosis and Mechanism into the dynamic opening
+  let diagnosisLine = pick(openingOptions, seed);
+  let mechanismLine = ""; // Handled dynamically in the opening above
 
   // 3. Severity Sentence
-  const severitySentence = `Your documented severity rating of ${severity.label} ${severity.clinicalImpact}`;
+  let severitySentence = `Your documented severity rating of ${severity.label} ${severity.clinicalImpact}`;
+  if (severity.score === 3) {
+    const sev3Options = [
+      "Documenting an HDSS 3 rating reflects barely tolerable sweating that frequently disrupts daily routines, justifying an escalation to targeted prescription therapies.",
+      "At an HDSS 3 severity level, the functional interference with everyday tasks is significant, representing a clinical benchmark where clinical-grade medical interventions are warranted.",
+      "Your severity score of HDSS 3 demonstrates substantial daily disruption, confirming that conventional over-the-counter options are likely insufficient and formal medical pathways are indicated."
+    ];
+    severitySentence = pick(sev3Options, seed);
+  }
 
   // 4. Notes Context & Knowledge Base (Ch. 7-11)
   const contextNotes: string[] = [];
@@ -414,7 +432,7 @@ function buildImmediateRelief(
 
   if (anatomy.isCraniofacial) {
     actions.push(
-      "Targeted Craniofacial Thermal Reset: Compress the frontal hairline, temporal arteries, and forehead firmly using a cold, damp cloth for 60 to 90 seconds. Facial skin features a concentrated vascular and thermoreceptive network; localized conduction cooling rapidly dampens retrograde sudomotor signaling to the hypothalamus."
+      "Targeted Craniofacial Thermal Reset: Compress the frontal hairline, temporal arteries, and forehead firmly using a cold, damp cloth for 60 to 90 seconds. Facial skin features a concentrated vascular and craniofacial thermoreceptive network (temperature-sensing nerve endings in your face and head); localized conduction cooling rapidly dampens retrograde sudomotor signaling (feedback messages sent to the brain's internal thermostat) to the hypothalamus."
     );
   }
 
@@ -432,7 +450,7 @@ function buildImmediateRelief(
 
   if (anatomy.isTruncal || actions.length < 2) {
     actions.push(
-      "Autonomic Sympathetic Downregulation: Sit in a well-ventilated space and perform five minutes of paced diaphragmatic breathing (four-second nasal inhalation, six-second oral exhalation). Paced respiration stimulates vagal tone, curbing acute cholinergic outflow."
+      "Autonomic Sympathetic Downregulation: Sit in a well-ventilated space and perform five minutes of paced diaphragmatic breathing (four-second nasal inhalation, six-second oral exhalation). Paced respiration stimulates vagal tone (calming nerve activity from your body's rest-and-digest system), curbing acute cholinergic outflow (the chemical messenger acetylcholine commanding your sweat glands to open)."
     );
   }
 
@@ -450,7 +468,7 @@ function buildTreatments(
   // Craniofacial: Strict exclusion of Aluminum Chloride
   if (anatomy.isCraniofacial) {
     treatments.push(
-      "Craniofacial Receptor Antagonism: Delicate facial skin does not tolerate metallic salt antiperspirants. The evidence-based pathway utilizes prescription 2.4% topical Glycopyrronium wipes (Qbrexza) to competitively inhibit cutaneous muscarinic receptors without causing epidermal barrier breakdown, or intradermal botulinum toxin microinjections along the frontal hairline for 4 to 6 months of symptom cessation."
+      "Craniofacial Receptor Antagonism: Delicate facial skin does not tolerate metallic salt antiperspirants. The evidence-based pathway utilizes prescription 2.4% topical Glycopyrronium wipes (Qbrexza) to competitively inhibit cutaneous muscarinic receptors (the microscopic docking sites on sweat glands that receive activation signals) without causing epidermal barrier breakdown, or intradermal botulinum toxin microinjections along the frontal hairline for 4 to 6 months of symptom cessation."
     );
   }
 
@@ -518,18 +536,20 @@ function buildLifestyle(
 function buildMedical(
   anatomy: AnatomicalProfile,
   triggers: TriggerProfile,
-  severity: SeverityProfile
+  severity: SeverityProfile,
+  seed: number
 ): string {
   if (triggers.hasRedFlags || anatomy.isSystemic) {
-    return "Comprehensive Secondary Screening Recommended: The occurrence of generalized diaphoresis, nocturnal sweating, or potential medication-induced diaphoresis warrants a formal medical workup. Consult a physician to evaluate thyroid hormones, glycemic regulation, and pharmacological side effects.";
+    return "Comprehensive Secondary Screening Recommended: The occurrence of generalized diaphoresis (profuse, non-exertional sweating), nocturnal sweating, or potential medication-induced diaphoresis (profuse, non-exertional sweating) warrants a formal medical workup. Consult a physician to evaluate thyroid hormones, glycemic regulation, and pharmacological side effects.";
   }
 
-  if (severity.score === 4) {
-    return "Specialist Dermatology Referral Indicated: At HDSS 4, functional impairment is severe. Present your objective HidroAlly longitudinal logs to a dermatologist to discuss clinical escalation, such as intradermal botulinum toxin chemodenervation, microwave thermolysis (miraDry), or oral anticholinergics.";
-  }
-
-  if (severity.score === 3) {
-    return "Clinical Review Threshold Reached: At HDSS 3, sweating frequently disrupts daily routines. If consistent nocturnal topical therapy does not produce measurable control after four weeks, schedule a consultation to obtain prescription topical anticholinergics.";
+  if (severity.score >= 3) {
+    const closingOptions = [
+      "Your episode markers follow an identifiable pattern without acute red flags. If first-line topical options fail to provide relief after 4 weeks of consistent nightly application, consult a healthcare provider for prescription topicals.",
+      "While this episode is consistent with primary hyperhidrosis, persistent daily disruption warrants professional review. Schedule a consultation with a dermatologist or GP if over-the-counter antiperspirants have plateaued.",
+      "The logged symptoms reflect chronic localized hyperhidrosis rather than an emergent issue. Bringing this HidroAlly longitudinal report to your physician will provide the empirical baseline needed for prescription therapies."
+    ];
+    return pick(closingOptions, seed);
   }
 
   return "Standard Longitudinal Monitoring: No acute clinical red flags are present in this record. Continue monitoring episode frequency. If symptoms accelerate or begin interfering with daily functioning, schedule a clinical consultation.";
@@ -566,7 +586,7 @@ function buildDryDayProtocol(
 
   if (currentStreak >= 3) {
     header = `Sustained Clinical Remission: ${currentStreak} Consecutive Dry Days`;
-    clinicalAnalysis = "Consecutive asymptomatic days confirm effective intraductal eccrine occlusion and stabilized basal sympathetic tone. Your current clinical protocol is successfully counteracting hypothalamic sudomotor outflow.";
+    clinicalAnalysis = "Consecutive asymptomatic days confirm effective intraductal eccrine occlusion and stabilized basal sympathetic tone. Your current clinical protocol is successfully counteracting hypothalamic sudomotor outflow (the nerve signals that trigger your sweat glands).";
     immediateRelief = [
       "Maintenance Protocol Titration: If you have maintained four or more consecutive dry days, discuss tapering topical application to a 2 to 3 night weekly maintenance schedule to protect skin barrier integrity.",
       "Epidermal Mantle Restoration: Apply ceramide-dominant, non-comedogenic moisturizers on off-nights to soothe micro-irritation and restore the acid mantle.",
@@ -583,7 +603,7 @@ function buildDryDayProtocol(
     ];
   } else {
     header = "Dry Baseline Reset: 1 Asymptomatic Day Documented";
-    clinicalAnalysis = "Today demonstrates that your eccrine sweat glands are capable of achieving quiescence under current physiological conditions. This asymptomatic baseline indicates that your sympathovagal tone remained below your sweating threshold.";
+    clinicalAnalysis = "Today demonstrates that your eccrine sweat glands are capable of achieving quiescence under current physiological conditions. This asymptomatic baseline indicates that your sympathovagal tone (calming nerve activity from your body's rest-and-digest system) remained below your sweating threshold.";
     immediateRelief = [
       "Maintain Protocol Adherence: Intermittent dry days require consistent adherence tonight. Prematurely skipping applications allows forming ductal plugs to dissolve.",
       "Hydration Equilibrium: Continue consistent oral hydration to support internal thermoregulation even in the absence of visible perspiration.",
@@ -668,7 +688,7 @@ export function generateEpisodeInsights(input: EpisodeInput): EpisodeInsights & 
     immediateRelief: buildImmediateRelief(anatomy, triggerProfile),
     treatmentOptions: buildTreatments(anatomy, severityProfile),
     lifestyleModifications: buildLifestyle(anatomy, triggerProfile),
-    medicalAttention: buildMedical(anatomy, triggerProfile, severityProfile),
+    medicalAttention: buildMedical(anatomy, triggerProfile, severityProfile, seed),
     emotionalOpener: `${greeting}, your personal hyperhidrosis clinical guide. Here is your evidence-based analysis for this logged episode.`,
     cta,
   };
