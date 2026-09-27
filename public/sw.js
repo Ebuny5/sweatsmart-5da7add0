@@ -131,7 +131,7 @@ self.addEventListener('push', (event) => {
       try {
         data = event.data.json();
       } catch (e) {
-        data = { title: 'SweatSmart', body: event.data.text() };
+        data = { title: 'HidroAlly', body: event.data.text() };
       }
     }
   } catch (e) {
