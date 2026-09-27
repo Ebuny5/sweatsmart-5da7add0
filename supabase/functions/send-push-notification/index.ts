@@ -757,25 +757,25 @@ serve(async (req) => {
 
           const realFeel = calculateRealFeel(temp, humidity, uv);
 
-          let title = '⚠️ SweatSmart: Moderate Sweat Risk';
+          let title = '⚠️ HidroAlly: Moderate Sweat Risk';
           let body = `Moderate Sweat Risk: Heat Index reached ${calculateHeatIndex(temp, humidity).toFixed(1)}°C. Monitor symptoms and stay hydrated.`;
 
           if (risk === 'extreme') {
-            title = '🚨 SweatSmart: Extreme Flare Hazard';
+            title = '🚨 HidroAlly: Extreme Flare Hazard';
             body = `Extreme Flare Hazard: Severe heat load (RealFeel ${realFeel.toFixed(1)}°C). Move to cool/shaded environment.`;
           } else if (risk === 'high') {
             if (uv >= 7.0) {
                title = `☀️ Scorching Sun Alert (UV ${uv.toFixed(1)})`;
                body = 'Scorching Sun Alert: Intense direct solar radiation detected. High risk of sudden facial and palm sweat flares. Seek shade and use cooling compress.';
             } else {
-               title = '⚠️ SweatSmart: High Sweat Alert';
+               title = '⚠️ HidroAlly: High Sweat Alert';
                body = `High Sweat Alert: RealFeel ${realFeel.toFixed(1)}°C with high humidity (${humidity}%). Prepare cool-down strategies.`;
             }
           }
 
           const result = await sendWebPush(
             { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
-            { title, body, tag: 'climate-alert', type: risk, url: '/climate' },
+            { title, body, tag: 'climate-alert', type: risk, kind: risk, url: '/climate' },
             vapidPublicKey, vapidPrivateKey, vapidSubject
           );
 

@@ -131,7 +131,7 @@ self.addEventListener('push', (event) => {
       try {
         data = event.data.json();
       } catch (e) {
-        data = { title: 'SweatSmart', body: event.data.text() };
+        data = { title: 'HidroAlly', body: event.data.text() };
       }
     }
   } catch (e) {
@@ -140,9 +140,9 @@ self.addEventListener('push', (event) => {
 
   data = normalizeReminderPayload(data);
 
-  // If the payload was stripped/empty, fall back to the check-in reminder copy
-  // instead of a meaningless "You have a new alert".
-  if (!data.body) {
+  // Only fall back to reminder copy if it's explicitly missing text AND it's not a climate alert
+  const isClimate = data.tag?.includes('climate') || data.type === 'climate' || data.type === 'moderate' || data.type === 'high' || data.type === 'extreme';
+  if (!data.body && !isClimate) {
     data = {
       ...data,
       title: data.title || LOG_REMINDER_TITLE,
@@ -154,7 +154,7 @@ self.addEventListener('push', (event) => {
     };
   }
 
-  const title = data.title || LOG_REMINDER_TITLE;
+  const title = data.title || (isClimate ? 'HidroAlly Alert' : LOG_REMINDER_TITLE);
   const tag = data.tag || 'sweatsmart-push';
   const url = data.url || '/';
 
@@ -224,6 +224,7 @@ self.addEventListener('push', (event) => {
             data: { url },
             silent: false,
             requireInteraction: true,
+            vibrate: [200, 100, 200],
           });
         } catch (e) {
           console.error('📱 [SW] Fallback notification also failed:', e);
