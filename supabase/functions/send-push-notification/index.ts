@@ -338,12 +338,14 @@ function calculateRealFeel(tempC: number, humidity: number, uvIndex?: number | n
 }
 
 // ── Upgraded 4-Tier Sweat Risk Evaluator ──
-function calculateSweatRisk(temp: number, humidity: number, uv: number, thresholds: any = {}) {
+function calculateSweatRisk(temp: number, humidity: number, uv: number, thresholds: any = {}, weatherId?: number) {
   const realFeel = calculateRealFeel(temp, humidity, uv);
   const uvVal = uv != null && !isNaN(uv) ? uv : 0;
 
-  // GATEKEEPER 1: Cool Rainy Weather (Works for Night, Morning, and Afternoon Downpours)
-  if (temp < 23.5 && uvVal < 2.0 && realFeel < 27) {
+  const isActiveRain = weatherId != null && weatherId >= 200 && weatherId < 700;
+
+  // GATEKEEPER 1: Active Rain & Cool Weather
+  if ((isActiveRain && temp <= 27.5 && uvVal < 2.0 && realFeel < 31) || (!isActiveRain && temp < 25.0 && uvVal < 2.0 && realFeel < 27)) {
     return 'low';
   }
 
@@ -725,7 +727,7 @@ serve(async (req) => {
              }
           }
 
-          const risk = calculateSweatRisk(temp, humidity, uv, customThresholds);
+          const risk = calculateSweatRisk(temp, humidity, uv, customThresholds, weatherId);
           // Dispatch automatic push notifications for Moderate, High, and Extreme Risk
           if (risk !== 'high' && risk !== 'extreme' && risk !== 'moderate') { skipped++; continue; }
 

@@ -30,6 +30,7 @@ type WeatherResult = {
   location?: string;
   timestamp: number;
   isSimulated?: boolean;
+  weatherId?: number;
 };
 
 // In-memory cache to reduce redundant API calls (3 minutes TTL for rapid tracking)
@@ -283,6 +284,7 @@ serve(async (req: Request) => {
       location: weatherData.name,
       timestamp: Date.now(),
       isSimulated: false,
+      weatherId,
     };
 
     // Update cache
