@@ -79,12 +79,15 @@ function calculateDewPoint(tempC: number, humidity: number): number {
 }
 
 function calculateRealFeel(tempC: number, humidity: number, uvIndex?: number | null): number {
-  const hi = calculateHeatIndex(tempC, humidity);
-  let solarAdj = 0;
-  if (uvIndex != null && !isNaN(uvIndex) && uvIndex > 6) {
-    solarAdj = 2.5;
+  let realFeel = tempC;
+  if (tempC >= 20) {
+    const vaporPressure = (humidity / 100) * 6.105 * Math.exp((17.27 * tempC) / (237.7 + tempC));
+    realFeel = tempC + 0.33 * vaporPressure - 4.0;
   }
-  return Math.round((hi + solarAdj) * 10) / 10;
+  if (uvIndex != null && !isNaN(uvIndex) && uvIndex >= 6) {
+    realFeel += (uvIndex - 5) * 0.6;
+  }
+  return Math.round(realFeel * 10) / 10;
 }
 
 serve(async (req: Request) => {

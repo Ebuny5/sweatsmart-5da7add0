@@ -201,9 +201,9 @@ export function calculateSweatRiskV2(input: SweatRiskInput): SweatRiskResult {
   const isActiveRain = weatherId != null && weatherId >= 200 && weatherId < 700;
 
   // GATEKEEPER 1: Active Rain & Cool Weather
-  // If it's actively raining with low UV, we tolerate up to 27°C and RealFeel < 31°C before calling it High Risk.
+  // If it's actively raining with low UV, we tolerate ambient temp up to 27.5°C before calling it High Risk (ignoring high realFeel due to humidity).
   // If it's not raining, we use a standard cool baseline of < 25.0°C and low UV.
-  if ((isActiveRain && temperature <= 27.5 && uvVal < 2.0 && realFeel < 31) || (!isActiveRain && temperature < 25.0 && uvVal < 2.0 && realFeel < 27)) {
+  if ((isActiveRain && temperature <= 27.5 && uvVal < 2.0) || (!isActiveRain && temperature < 25.0 && uvVal < 2.0 && realFeel < 27)) {
     level = 'low';
     message = isActiveRain ? 'Rain-Cooled Environment' : 'Cool Weather Baseline';
     description = isActiveRain
