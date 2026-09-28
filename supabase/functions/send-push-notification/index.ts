@@ -669,6 +669,8 @@ serve(async (req) => {
           const weather = await weatherRes.json();
           const temp = weather.main?.temp || 0;
           const humidity = weather.main?.humidity || 0;
+          const clouds = weather.clouds?.all ?? 0;
+          const weatherId = weather.weather?.[0]?.id ?? 800;
 
           const nowUnix = Math.floor(Date.now() / 1000);
           const sunrise = weather.sys?.sunrise || 0;
@@ -698,6 +700,18 @@ serve(async (req) => {
               );
               const uvData = await uvRes.json();
               uv = uvData.value || 0;
+
+              // WMO-style cloud attenuation: UV_eff = UV * (1 - 0.75 * cloudFraction^3.4)
+              const cloudFraction = Math.max(0, Math.min(100, clouds)) / 100;
+              const attenuation = 1 - 0.75 * Math.pow(cloudFraction, 3.4);
+              uv = uv * attenuation;
+
+              // Precipitation / thunderstorm / heavy cloud codes cut UV further
+              if (weatherId >= 200 && weatherId < 800) {
+                uv = uv * 0.6;
+              }
+
+              uv = Math.round(Math.max(0, uv) * 10) / 10;
             } catch { /* optional */ }
           }
 
