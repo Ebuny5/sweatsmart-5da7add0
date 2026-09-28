@@ -37,6 +37,8 @@ export interface SweatRiskInput {
   sky?: SkyCondition;
   edaValue?: number;
   isSimulated?: boolean;
+  /** OpenWeather condition ID to detect active precipitation (e.g. 200-699) */
+  weatherId?: number;
 }
 
 /**
@@ -129,7 +131,7 @@ const LEVEL_META: Record<
  * Primary Sweat Risk Matrix Evaluator V2
  */
 export function calculateSweatRiskV2(input: SweatRiskInput): SweatRiskResult {
-  const { temperature, humidity, uvIndex, sky = 'unknown', edaValue, isSimulated } = input;
+  const { temperature, humidity, uvIndex, sky = 'unknown', edaValue, isSimulated, weatherId } = input;
 
   const heatIndex = calculateHeatIndex(temperature, humidity);
   const dewPoint = calculateDewPoint(temperature, humidity);
@@ -196,12 +198,17 @@ export function calculateSweatRiskV2(input: SweatRiskInput): SweatRiskResult {
   const roundedRealFeel = Math.round(realFeel);
   const uvVal = uvIndex != null && !isNaN(uvIndex) ? uvIndex : 0;
 
-  // GATEKEEPER 1: Cool Rainy Weather (Works for Night, Morning, and Afternoon Downpours)
-  // If it's under 23.5°C and there is no strong direct sun (UV < 2.0), rain humidity does NOT trigger sweat flares
-  if (temperature < 23.5 && uvVal < 2.0 && realFeel < 27) {
+  const isActiveRain = weatherId != null && weatherId >= 200 && weatherId < 700;
+
+  // GATEKEEPER 1: Active Rain & Cool Weather
+  // If it's actively raining with low UV, we tolerate up to 27°C and RealFeel < 31°C before calling it High Risk.
+  // If it's not raining, we use a standard cool baseline of < 25.0°C and low UV.
+  if ((isActiveRain && temperature <= 27.5 && uvVal < 2.0 && realFeel < 31) || (!isActiveRain && temperature < 25.0 && uvVal < 2.0 && realFeel < 27)) {
     level = 'low';
-    message = 'Cool Weather Baseline';
-    description = `Feels like ${roundedRealFeel}°C. Cool temperatures keep sweat glands dormant despite rain-saturated air (${humidity.toFixed(0)}%).`;
+    message = isActiveRain ? 'Rain-Cooled Environment' : 'Cool Weather Baseline';
+    description = isActiveRain
+      ? `Feels like ${roundedRealFeel}°C. Active rainfall and heavy cloud cover are suppressing thermal sweat triggers, despite high ambient humidity (${humidity.toFixed(0)}%).`
+      : `Feels like ${roundedRealFeel}°C. Cool temperatures keep sweat glands dormant despite ambient moisture (${humidity.toFixed(0)}%).`;
 
   // EXTREME RISK: Intense sun + high humidity OR RealFeel >= 32°C (Afternoon Steam Trap)
   } else if (realFeel >= 32 || (uvVal >= 3.0 && humidity >= 85 && temperature >= 28)) {
@@ -263,8 +270,9 @@ export function calculateSweatRisk(
   edaValue?: number,
   isSimulated?: boolean,
   sky: SkyCondition = 'unknown',
+  weatherId?: number,
 ): SweatRiskResult {
-  return calculateSweatRiskV2({ temperature, humidity, uvIndex, sky, edaValue, isSimulated });
+  return calculateSweatRiskV2({ temperature, humidity, uvIndex, sky, edaValue, isSimulated, weatherId });
 }
 
 export function getRiskSeverity(
