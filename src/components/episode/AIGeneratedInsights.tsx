@@ -172,9 +172,9 @@ Always consult with a healthcare provider for personalized medical advice.
       y += disc.length * 4 + 10;
 
       addSection('Clinical Analysis', insights.clinicalAnalysis);
-      addSection('Immediate Relief Strategies', insights.immediateRelief);
+      addSection(insights.isDryDay ? 'Barrier Care & Skin Protocol' : 'Immediate Relief Strategies', insights.immediateRelief);
       addSection('Treatment Recommendations', insights.treatmentOptions);
-      addSection('Lifestyle Modifications', insights.lifestyleModifications);
+      addSection(insights.isDryDay ? 'Environmental & Routine Replication' : 'Lifestyle Modifications', insights.lifestyleModifications);
       addSection('When to Seek Medical Attention', insights.medicalAttention);
 
       doc.save('HidroAlly Analysis & Reccomendation.pdf');
@@ -306,7 +306,7 @@ Always consult with a healthcare provider for personalized medical advice.
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center space-x-2">
               <Heart className="h-5 w-5 text-green-600" />
-              <CardTitle>{insights.isDryDay ? 'Maintenance & Skin Protocol' : 'Immediate Relief Strategies'}</CardTitle>
+              <CardTitle>{insights.isDryDay ? 'Barrier Care & Skin Protocol' : 'Immediate Relief Strategies'}</CardTitle>
             </div>
             <ListenButton
               text={listify('Immediate relief strategies', insights.immediateRelief)}
@@ -314,7 +314,7 @@ Always consult with a healthcare provider for personalized medical advice.
               label="immediate relief strategies"
             />
           </div>
-          <CardDescription>Evidence-based techniques for symptom management</CardDescription>
+          <CardDescription>{insights.isDryDay ? 'Techniques for skin recovery and barrier protection' : 'Evidence-based techniques for symptom management'}</CardDescription>
         </CardHeader>
         <CardContent>
           <ul className="space-y-3">
@@ -364,7 +364,7 @@ Always consult with a healthcare provider for personalized medical advice.
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center space-x-2">
               <Lightbulb className="h-5 w-5 text-orange-600" />
-              <CardTitle>Lifestyle Modifications</CardTitle>
+              <CardTitle>{insights.isDryDay ? 'Environmental & Routine Replication' : 'Lifestyle Modifications'}</CardTitle>
             </div>
             <ListenButton
               text={listify('Lifestyle modifications', insights.lifestyleModifications)}

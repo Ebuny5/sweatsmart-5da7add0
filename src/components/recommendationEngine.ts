@@ -586,10 +586,10 @@ function buildDryDayProtocol(
 
   if (currentStreak >= 3) {
     header = `Sustained Clinical Remission: ${currentStreak} Consecutive Dry Days`;
-    clinicalAnalysis = "Consecutive asymptomatic days confirm effective intraductal eccrine occlusion and stabilized basal sympathetic tone. Your current clinical protocol is successfully counteracting hypothalamic sudomotor outflow (the nerve signals that trigger your sweat glands).";
+    clinicalAnalysis = "Consecutive asymptomatic days confirm effective intraductal eccrine occlusion (physical plugging of the sweat pores) and stabilized basal sympathetic tone (the baseline resting activity of your involuntary nervous system). Your current clinical protocol is successfully counteracting hypothalamic sudomotor outflow (the nerve signals that command your sweat glands to release sweat). Whether achieved through clinical antiperspirants, prescription therapy, oral anticholinergics (medications that block sweating signals), or climate management, this session reflects effective therapeutic control.";
     immediateRelief = [
       "Maintenance Protocol Titration: If you have maintained four or more consecutive dry days, discuss tapering topical application to a 2 to 3 night weekly maintenance schedule to protect skin barrier integrity.",
-      "Epidermal Mantle Restoration: Apply ceramide-dominant, non-comedogenic moisturizers on off-nights to soothe micro-irritation and restore the acid mantle.",
+      "Epidermal Barrier Recovery (Skin Mantle Care): On nights when you do not apply active treatments, apply a ceramide-rich, non-comedogenic moisturizer (a gentle lotion that does not clog pores) to your treated zones. This repairs your acid mantle (the delicate, acidic protective film on your skin's surface) and prevents irritation or flaking.",
       "Documenting Therapeutic Response: Consecutive dry days provide objective longitudinal evidence of treatment success for your clinical records."
     ];
   } else if (dryDaysLast7 >= 3) {
@@ -606,8 +606,8 @@ function buildDryDayProtocol(
     clinicalAnalysis = "Today demonstrates that your eccrine sweat glands are capable of achieving quiescence under current physiological conditions. This asymptomatic baseline indicates that your sympathovagal tone (calming nerve activity from your body's rest-and-digest system) remained below your sweating threshold.";
     immediateRelief = [
       "Maintain Protocol Adherence: Intermittent dry days require consistent adherence tonight. Prematurely skipping applications allows forming ductal plugs to dissolve.",
-      "Hydration Equilibrium: Continue consistent oral hydration to support internal thermoregulation even in the absence of visible perspiration.",
-      "Barrier Protection: Use non-irritating, gentle moisturizers during non-sweating windows to keep the epidermal barrier intact."
+      "Hydration Equilibrium: Continue consistent oral hydration to support internal thermoregulation (your body's internal temperature balancing system) even in the absence of visible perspiration.",
+      "Epidermal Barrier Recovery (Skin Mantle Care): Use non-irritating, gentle moisturizers during non-sweating windows to keep the epidermal barrier intact and protect your acid mantle (the delicate, acidic protective film on your skin's surface)."
     ];
   }
 
@@ -618,12 +618,13 @@ function buildDryDayProtocol(
     clinicalAnalysis,
     immediateRelief,
     treatmentOptions: [
-      "Maintain current therapeutic adherence. Continuity is essential to preserve ductal occlusion and autonomic suppression."
+      "Preserve Treatment Adherence: Do not abruptly abandon your regimen. Rebound diaphoresis (sudden, heavy return of sweating) frequently occurs when clinical topicals or iontophoresis regimens are stopped completely rather than gradually tapered into a maintenance schedule."
     ],
     lifestyleModifications: [
-      "Continue logging both dry days and active episodes to provide objective evidence of therapeutic efficacy."
+      "Audit & Replicate Your Environment: Take mental note of where you spent your day: your indoor temperature, air circulation (fans or air conditioning), clothing fabrics, and hydration levels. Replicating this microclimate (the layer of air directly surrounding your skin) on stressful or warm days will help prevent future flare-ups.",
+      "Monitor for Compensatory Sweating: Check whether your body redirected heat dissipation to non-target zones (such as your lower back, chest, or thighs). Documenting whether other areas stayed dry helps confirm balanced full-body thermoregulation (your body's internal temperature balancing system)."
     ],
-    medicalAttention: "No clinical red flags present today. Continue standard tracking.",
+    medicalAttention: "No active flare-up or clinical red flags detected today. Continue recording dry days alongside flare-ups to demonstrate treatment efficacy during your next clinical appointment.",
     cta: "If you need a more clinical or in-depth evaluation of this episode, our HidroAlly clinical assistant is ready in the chat.",
     isDryDay: true,
     dryDayMetrics: {
