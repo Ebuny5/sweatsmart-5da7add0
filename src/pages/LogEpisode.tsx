@@ -456,6 +456,24 @@ const LogEpisode = () => {
   const [notes, setNotes] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isDryDay, setIsDryDay] = useState<boolean>(false);
+  const [dryDayFactors, setDryDayFactors] = useState<string[]>([]);
+
+  const DRY_DAY_PRESETS = [
+    { id: "antiperspirant", label: "🧴 Clinical Antiperspirant (Applied Last Night)" },
+    { id: "oral_med", label: "💊 Oral Medication (e.g., Glycopyrrolate)" },
+    { id: "ionto", label: "⚡ Iontophoresis / In-Clinic Therapy" },
+    { id: "ac_fan", label: "❄️ Continuous AC / Personal Fan" },
+    { id: "low_stress", label: "🧘 Low Stress / Restful Day" },
+    { id: "breathable_clothing", label: "👕 Breathable / Natural Fabrics" },
+    { id: "cool_weather", label: "🌿 Cool / Low-Humidity Climate" },
+  ];
+
+  const toggleDryFactor = (label: string) => {
+    setDryDayFactors(prev =>
+      prev.includes(label) ? prev.filter(f => f !== label) : [...prev, label]
+    );
+  };
+
   const [showInsights, setShowInsights] = useState<boolean>(false);
   const [aiInsights, setAiInsights] = useState<any>(null);
   const [isLoadingInsights, setIsLoadingInsights] = useState<boolean>(false);
@@ -601,7 +619,10 @@ const LogEpisode = () => {
 
     const baseNotes = manualNotes !== undefined ? manualNotes : notes;
     const finalNotes = isDryDay
-      ? (baseNotes?.trim() ? `Dry day / treatment — ${baseNotes.trim()}` : "Dry day / treatment logged")
+      ? [
+          dryDayFactors.length > 0 ? `Factors: ${dryDayFactors.join(", ")}` : "",
+          baseNotes?.trim() ? `Context: ${baseNotes.trim()}` : ""
+        ].filter(Boolean).join(" | ") || "Dry day / maintenance logged"
       : baseNotes;
 
     try {
@@ -865,6 +886,63 @@ const LogEpisode = () => {
               className="data-[state=checked]:bg-teal-500"
             />
           </div>
+
+          {/* ── SPECIALIZED DRY DAY TRACKING CARD ── */}
+          {isDryDay && (
+            <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-teal-100 space-y-4 animate-in fade-in duration-200">
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-teal-600 font-bold text-xs uppercase tracking-wider block">
+                    Therapeutic Success Tracking
+                  </span>
+                </div>
+                <h3 className="text-sm font-bold text-slate-800">What Kept You Dry Today?</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Tap all treatments, environments, and routines that contributed to zero sweating today.
+                </p>
+              </div>
+
+              {/* Quick-tap factor chips */}
+              <div className="flex flex-wrap gap-2">
+                {DRY_DAY_PRESETS.map((preset) => {
+                  const isSelected = dryDayFactors.includes(preset.label);
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => toggleDryFactor(preset.label)}
+                      className={cn(
+                        "py-2 px-3 rounded-2xl text-xs font-semibold border transition-all text-left flex items-center gap-1.5 active:scale-95",
+                        isSelected
+                          ? "bg-teal-600 text-white border-teal-600 shadow-sm"
+                          : "bg-teal-50/60 text-teal-950 border-teal-200/70 hover:bg-teal-100/60"
+                      )}
+                    >
+                      <span>{preset.label}</span>
+                      {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Dedicated Qualitative Context */}
+              <div className="pt-2 border-t border-slate-100">
+                <Label htmlFor="dry-notes" className="text-xs font-bold text-slate-700 block mb-1">
+                  Notes & Environmental Context <span className="font-normal text-slate-400">— What worked?</span>
+                </Label>
+                <Textarea
+                  id="dry-notes"
+                  placeholder="e.g., Applied Qbrexza at 10 PM last night, kept desk fan on low, worked in an air-conditioned room all afternoon..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="rounded-2xl border-slate-200 text-xs min-h-[95px] resize-none focus:border-teal-400"
+                />
+                <p className="text-[10px] text-slate-400 mt-1.5 italic">
+                  Tracking what worked teaches the HidroAlly engine which environments and products protect your skin barrier best.
+                </p>
+              </div>
+            </div>
+          )}
 
           {!isDryDay && (
             <>
