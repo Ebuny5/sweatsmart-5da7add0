@@ -345,7 +345,7 @@ function calculateSweatRisk(temp: number, humidity: number, uv: number, threshol
   const isActiveRain = weatherId != null && weatherId >= 200 && weatherId < 700;
 
   // GATEKEEPER 1: Active Rain & Cool Weather
-  if ((isActiveRain && temp <= 27.5 && uvVal < 2.0 && realFeel < 31) || (!isActiveRain && temp < 25.0 && uvVal < 2.0 && realFeel < 27)) {
+  if ((isActiveRain && temp <= 27.5 && uvVal < 2.0) || (!isActiveRain && temp < 25.0 && uvVal < 2.0 && realFeel < 27)) {
     return 'low';
   }
 
