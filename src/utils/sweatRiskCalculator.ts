@@ -301,11 +301,12 @@ export function shouldTriggerAlert(
   _thresholds?: { temperature: number; humidity: number; uvIndex: number },
   isSimulated?: boolean,
   sky: SkyCondition = 'unknown',
-  edaValue?: number
+  edaValue?: number,
+  weatherId?: number,
 ): { shouldAlert: boolean; triggers: string[]; level: SweatRiskLevel } {
   if (isSimulated) return { shouldAlert: false, triggers: [], level: 'low' };
 
-  const risk = calculateSweatRiskV2({ temperature, humidity, uvIndex, sky, edaValue });
+  const risk = calculateSweatRiskV2({ temperature, humidity, uvIndex, sky, edaValue, weatherId });
 
   if (risk.level === 'high' || risk.level === 'extreme') {
     return {
