@@ -349,18 +349,18 @@ function calculateSweatRisk(temp: number, humidity: number, uv: number, threshol
     return 'low';
   }
 
-  // EXTREME RISK: Intense sun + high humidity OR RealFeel >= 32°C (Afternoon Steam Trap)
-  if (realFeel >= 32 || (uvVal >= 3.0 && humidity >= 85 && temp >= 28)) {
+  // EXTREME RISK: Intense sun + high humidity OR RealFeel >= 35°C (Afternoon Steam Trap)
+  if (realFeel >= 35 || (uvVal >= 3.0 && humidity >= 85 && temp >= 28)) {
     return 'extreme';
   }
 
-  // HIGH RISK: Daytime evaporative block (Temp >= 24°C AND Humidity >= 85% AND UV >= 2.0) OR RealFeel >= 30°C
-  if (realFeel >= 30 || (temp >= 24.0 && humidity >= 85 && uvVal >= 2.0)) {
+  // HIGH RISK: Daytime evaporative block (Temp >= 24°C AND Humidity >= 85% AND UV >= 2.0) OR RealFeel >= 32°C
+  if (realFeel >= 32 || (temp >= 24.0 && humidity >= 85 && uvVal >= 2.0)) {
     return 'high';
   }
 
-  // MODERATE RISK: Warm muggy weather (Temp >= 24°C + Humidity >= 70%) OR RealFeel >= 28°C
-  if (realFeel >= 28 || (temp >= 24.0 && humidity >= 70)) {
+  // MODERATE RISK: Warm muggy weather (Temp >= 24°C + Humidity >= 70%) OR RealFeel >= 30°C
+  if (realFeel >= 30 || (temp >= 24.0 && humidity >= 70)) {
     return 'moderate';
   }
 
