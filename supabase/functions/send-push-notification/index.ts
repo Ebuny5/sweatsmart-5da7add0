@@ -729,12 +729,12 @@ serve(async (req) => {
 
           const risk = calculateSweatRisk(temp, humidity, uv, customThresholds, weatherId);
           // Only dispatch automatic push notifications for High and Extreme Risk to prevent spam
-          if (risk !== 'high' && risk !== 'extreme') { skipped++; continue; }
+          if (risk === 'low' || risk === 'safe') { skipped++; continue; }
 
-          const notifType = risk === 'extreme' ? 'climate_extreme' : 'climate_high';
+          const notifType = risk === 'extreme' ? 'climate_extreme' : risk === 'high' ? 'climate_high' : 'climate_moderate';
 
           const totalToday = await getNotificationCountToday(supabase, sub.id, 'climate_high') +
-            await getNotificationCountToday(supabase, sub.id, 'climate_extreme');
+            await getNotificationCountToday(supabase, sub.id, 'climate_extreme') + await getNotificationCountToday(supabase, sub.id, 'climate_moderate');
 
           if (totalToday >= 6) { skipped++; continue; } // Reduced max to 6 per day to avoid Chrome spam detection
 
@@ -743,7 +743,7 @@ serve(async (req) => {
              .from('notification_log')
              .select('sent_at, notification_type')
              .eq('subscription_id', sub.id)
-             .in('notification_type', ['climate_extreme', 'climate_high'])
+             .in('notification_type', ['climate_extreme', 'climate_high', 'climate_moderate'])
              .order('sent_at', { ascending: false })
              .limit(1)
              .maybeSingle();
@@ -756,7 +756,7 @@ serve(async (req) => {
              // If we've sent any climate alert in the last 2 hours, block it to prevent spam
              if (nowMs - lastSentMs < twoHoursMs) {
                 // The only exception is escalating from High to Extreme
-                if (!(lastNotif.notification_type === 'climate_high' && notifType === 'climate_extreme')) {
+                if (!((lastNotif.notification_type === 'climate_high' && notifType === 'climate_extreme') || (lastNotif.notification_type === 'climate_moderate' && (notifType === 'climate_extreme' || notifType === 'climate_high')))) {
                    skipped++; continue;
                 }
              }
