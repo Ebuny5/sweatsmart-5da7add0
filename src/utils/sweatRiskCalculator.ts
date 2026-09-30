@@ -210,20 +210,20 @@ export function calculateSweatRiskV2(input: SweatRiskInput): SweatRiskResult {
       ? `Feels like ${roundedRealFeel}°C. Active rainfall and heavy cloud cover are suppressing thermal sweat triggers, despite high ambient humidity (${humidity.toFixed(0)}%).`
       : `Feels like ${roundedRealFeel}°C. Cool temperatures keep sweat glands dormant despite ambient moisture (${humidity.toFixed(0)}%).`;
 
-  // EXTREME RISK: Intense sun + high humidity OR RealFeel >= 32°C (Afternoon Steam Trap)
-  } else if (realFeel >= 32 || (uvVal >= 3.0 && humidity >= 85 && temperature >= 28)) {
+  // EXTREME RISK: Intense sun + high humidity OR RealFeel >= 35°C (Afternoon Steam Trap)
+  } else if (realFeel >= 35 || (uvVal >= 3.0 && humidity >= 85 && temperature >= 28)) {
     level = 'extreme';
     message = 'Extreme Thermal & Moisture Stress';
     description = `Feels like ${roundedRealFeel}°C. Severe compound load from direct sun and heavy humidity. Autonomic cooling is overwhelmed.`;
 
-  // HIGH RISK: Daytime evaporative block (Temp >= 24°C AND Humidity >= 85% AND UV >= 2.0) OR RealFeel >= 30°C
-  } else if (realFeel >= 30 || (temperature >= 24.0 && humidity >= 85 && uvVal >= 2.0)) {
+  // HIGH RISK: Daytime evaporative block (Temp >= 24°C AND Humidity >= 85% AND UV >= 2.0) OR RealFeel >= 32°C
+  } else if (realFeel >= 32 || (temperature >= 24.0 && humidity >= 85 && uvVal >= 2.0)) {
     level = 'high';
     message = 'Evaporative Impairment Flare Risk';
     description = `Feels like ${roundedRealFeel}°C. High ambient humidity (${humidity.toFixed(0)}%) prevents sweat from evaporating naturally during activity.`;
 
-  // MODERATE RISK: Warm muggy weather (Temp >= 24°C + Humidity >= 70%) OR RealFeel >= 28°C
-  } else if (realFeel >= 28 || (temperature >= 24.0 && humidity >= 70)) {
+  // MODERATE RISK: Warm muggy weather (Temp >= 24°C + Humidity >= 70%) OR RealFeel >= 30°C
+  } else if (realFeel >= 30 || (temperature >= 24.0 && humidity >= 70)) {
     level = 'moderate';
     message = 'Elevated Moisture Load';
     description = `Feels like ${roundedRealFeel}°C. Ambient moisture slows skin drying. Maintain airflow with fans.`;
