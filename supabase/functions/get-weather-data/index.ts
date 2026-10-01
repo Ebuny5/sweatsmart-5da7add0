@@ -79,13 +79,10 @@ function calculateDewPoint(tempC: number, humidity: number): number {
 }
 
 function calculateRealFeel(tempC: number, humidity: number, uvIndex?: number | null): number {
-  let realFeel = tempC;
-  if (tempC >= 20) {
-    const vaporPressure = (humidity / 100) * 6.105 * Math.exp((17.27 * tempC) / (237.7 + tempC));
-    realFeel = tempC + 0.33 * vaporPressure - 4.0;
-  }
-  if (uvIndex != null && !isNaN(uvIndex) && uvIndex >= 6) {
-    realFeel += (uvIndex - 5) * 0.6;
+  // Unified RealFeel: NOAA Heat Index + solar load when UV > 6 (same in app, weather API and push)
+  let realFeel = calculateHeatIndex(tempC, humidity);
+  if (uvIndex != null && !isNaN(uvIndex) && uvIndex > 6) {
+    realFeel += (uvIndex - 6) * 0.5;
   }
   return Math.round(realFeel * 10) / 10;
 }

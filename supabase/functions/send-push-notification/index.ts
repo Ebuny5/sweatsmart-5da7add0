@@ -326,13 +326,10 @@ function calculateHeatIndex(tempC: number, humidity: number): number {
 }
 
 function calculateRealFeel(tempC: number, humidity: number, uvIndex?: number | null): number {
-  let realFeel = tempC;
-  if (tempC >= 20) {
-    const vaporPressure = (humidity / 100) * 6.105 * Math.exp((17.27 * tempC) / (237.7 + tempC));
-    realFeel = tempC + 0.33 * vaporPressure - 4.0;
-  }
-  if (uvIndex != null && !isNaN(uvIndex) && uvIndex >= 6) {
-    realFeel += (uvIndex - 5) * 0.6;
+  // Unified RealFeel: NOAA Heat Index + solar load when UV > 6 (same in app, weather API and push)
+  let realFeel = calculateHeatIndex(tempC, humidity);
+  if (uvIndex != null && !isNaN(uvIndex) && uvIndex > 6) {
+    realFeel += (uvIndex - 6) * 0.5;
   }
   return Math.round(realFeel * 10) / 10;
 }
@@ -345,22 +342,22 @@ function calculateSweatRisk(temp: number, humidity: number, uv: number, threshol
   const isActiveRain = weatherId != null && weatherId >= 200 && weatherId < 700;
 
   // GATEKEEPER 1: Active Rain & Cool Weather
-  if ((isActiveRain && temp <= 27.5 && uvVal < 2.0) || (!isActiveRain && temp < 25.0 && uvVal < 2.0 && realFeel < 27)) {
+  if ((isActiveRain && temp <= 27.5 && uvVal < 2.0) || (!isActiveRain && realFeel < 27)) {
     return 'low';
   }
 
   // EXTREME RISK: Intense sun + high humidity OR RealFeel >= 35°C (Afternoon Steam Trap)
-  if (realFeel >= 35 || (uvVal >= 3.0 && humidity >= 85 && temp >= 28)) {
+  if (realFeel >= 35) {
     return 'extreme';
   }
 
   // HIGH RISK: Daytime evaporative block (Temp >= 24°C AND Humidity >= 85% AND UV >= 2.0) OR RealFeel >= 32°C
-  if (realFeel >= 32 || (temp >= 24.0 && humidity >= 85 && uvVal >= 2.0)) {
+  if (realFeel >= 30) {
     return 'high';
   }
 
   // MODERATE RISK: Warm muggy weather (Temp >= 24°C + Humidity >= 70%) OR RealFeel >= 30°C
-  if (realFeel >= 30 || (temp >= 24.0 && humidity >= 70)) {
+  if (realFeel >= 27) {
     return 'moderate';
   }
 
@@ -545,7 +542,7 @@ serve(async (req) => {
           }
 
           const todayCount = await getNotificationCountToday(supabase, sub.id, 'logging_reminder');
-          if (todayCount >= 4) {
+          if (todayCount >= 2) {
             console.log(`⏭️ Sub ${sub.id}: Max today (${todayCount})`);
             skipped++;
             skipReasons.dailyLimit++;
@@ -765,7 +762,7 @@ serve(async (req) => {
           const realFeel = calculateRealFeel(temp, humidity, uv);
 
           let title = '⚠️ HidroAlly: Moderate Sweat Risk';
-          let body = `Moderate Sweat Risk: Heat Index reached ${calculateHeatIndex(temp, humidity).toFixed(1)}°C. Monitor symptoms and stay hydrated.`;
+          let body = `Moderate Sweat Risk: RealFeel reached ${realFeel.toFixed(1)}°C. Monitor symptoms and stay hydrated.`;
 
           if (risk === 'extreme') {
             title = '🚨 HidroAlly: Extreme Flare Hazard';
