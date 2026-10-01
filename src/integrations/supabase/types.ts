@@ -109,6 +109,114 @@ export type Database = {
         }
         Relationships: []
       }
+      clinical_anatomical_protocols: {
+        Row: {
+          advanced_treatment: string
+          contraindications: string | null
+          display_name: string
+          first_line_treatment: string
+          id: string
+          immediate_relief: string
+          region_key: string
+        }
+        Insert: {
+          advanced_treatment: string
+          contraindications?: string | null
+          display_name: string
+          first_line_treatment: string
+          id: string
+          immediate_relief: string
+          region_key: string
+        }
+        Update: {
+          advanced_treatment?: string
+          contraindications?: string | null
+          display_name?: string
+          first_line_treatment?: string
+          id?: string
+          immediate_relief?: string
+          region_key?: string
+        }
+        Relationships: []
+      }
+      clinical_dry_day_insights: {
+        Row: {
+          barrier_recovery: string
+          clinical_analysis: string
+          id: string
+          immediate_maintenance: string
+          theme_title: string
+          tracking_milestone: string
+          treatment_continuity: string
+        }
+        Insert: {
+          barrier_recovery: string
+          clinical_analysis: string
+          id: string
+          immediate_maintenance: string
+          theme_title: string
+          tracking_milestone: string
+          treatment_continuity: string
+        }
+        Update: {
+          barrier_recovery?: string
+          clinical_analysis?: string
+          id?: string
+          immediate_maintenance?: string
+          theme_title?: string
+          tracking_milestone?: string
+          treatment_continuity?: string
+        }
+        Relationships: []
+      }
+      clinical_severity_thresholds: {
+        Row: {
+          clinical_burden: string
+          hdss_score: number
+          referral_guidance: string
+          severity_label: string
+        }
+        Insert: {
+          clinical_burden: string
+          hdss_score: number
+          referral_guidance: string
+          severity_label: string
+        }
+        Update: {
+          clinical_burden?: string
+          hdss_score?: number
+          referral_guidance?: string
+          severity_label?: string
+        }
+        Relationships: []
+      }
+      clinical_trigger_etiologies: {
+        Row: {
+          category_key: string
+          category_name: string
+          id: string
+          is_red_flag: boolean | null
+          lifestyle_strategy: string
+          pathology_explanation: string
+        }
+        Insert: {
+          category_key: string
+          category_name: string
+          id: string
+          is_red_flag?: boolean | null
+          lifestyle_strategy: string
+          pathology_explanation: string
+        }
+        Update: {
+          category_key?: string
+          category_name?: string
+          id?: string
+          is_red_flag?: boolean | null
+          lifestyle_strategy?: string
+          pathology_explanation?: string
+        }
+        Relationships: []
+      }
       episodes: {
         Row: {
           body_areas: string[]
@@ -497,6 +605,7 @@ export type Database = {
           continent: string
           country: string
           country_code: string
+          covered_regions: string[] | null
           created_at: string | null
           email: string | null
           id: string
@@ -525,6 +634,7 @@ export type Database = {
           continent: string
           country: string
           country_code: string
+          covered_regions?: string[] | null
           created_at?: string | null
           email?: string | null
           id?: string
@@ -553,6 +663,7 @@ export type Database = {
           continent?: string
           country?: string
           country_code?: string
+          covered_regions?: string[] | null
           created_at?: string | null
           email?: string | null
           id?: string
@@ -671,6 +782,16 @@ export type Database = {
     }
     Functions: {
       delete_user: { Args: never; Returns: undefined }
+      get_clinical_episode_insights: {
+        Args: {
+          p_body_areas: string[]
+          p_is_dry_day?: boolean
+          p_notes?: string
+          p_severity: number
+          p_triggers: string[]
+        }
+        Returns: Json
+      }
       get_tracking_consistency: { Args: never; Returns: number }
       increment_notification_count: {
         Args: { p_date: string; p_user_id: string }
