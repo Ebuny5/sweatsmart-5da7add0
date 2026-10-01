@@ -90,13 +90,10 @@ export function calculateHeatIndex(tempC: number, humidity: number): number {
  * Direct sun exposure adds ~2.5°C radiant thermal load when UV > 6.
  */
 export function calculateRealFeel(tempC: number, humidity: number, uvIndex?: number | null): number {
-  let realFeel = tempC;
-  if (tempC >= 20) {
-    const vaporPressure = (humidity / 100) * 6.105 * Math.exp((17.27 * tempC) / (237.7 + tempC));
-    realFeel = tempC + 0.33 * vaporPressure - 4.0;
-  }
-  if (uvIndex != null && !isNaN(uvIndex) && uvIndex >= 6) {
-    realFeel += (uvIndex - 5) * 0.6;
+  // Unified RealFeel: NOAA Heat Index + solar load when UV > 6 (same in app, weather API and push)
+  let realFeel = calculateHeatIndex(tempC, humidity);
+  if (uvIndex != null && !isNaN(uvIndex) && uvIndex > 6) {
+    realFeel += (uvIndex - 6) * 0.5;
   }
   return Math.round(realFeel * 10) / 10;
 }
@@ -203,7 +200,7 @@ export function calculateSweatRiskV2(input: SweatRiskInput): SweatRiskResult {
   // GATEKEEPER 1: Active Rain & Cool Weather
   // If it's actively raining with low UV, we tolerate ambient temp up to 27.5°C before calling it High Risk (ignoring high realFeel due to humidity).
   // If it's not raining, we use a standard cool baseline of < 25.0°C and low UV.
-  if ((isActiveRain && temperature <= 27.5 && uvVal < 2.0) || (!isActiveRain && temperature < 25.0 && uvVal < 2.0 && realFeel < 27)) {
+  if ((isActiveRain && temperature <= 27.5 && uvVal < 2.0) || (!isActiveRain && realFeel < 27)) {
     level = 'low';
     message = isActiveRain ? 'Rain-Cooled Environment' : 'Cool Weather Baseline';
     description = isActiveRain
@@ -211,19 +208,19 @@ export function calculateSweatRiskV2(input: SweatRiskInput): SweatRiskResult {
       : `Feels like ${roundedRealFeel}°C. Cool temperatures keep sweat glands dormant despite ambient moisture (${humidity.toFixed(0)}%).`;
 
   // EXTREME RISK: Intense sun + high humidity OR RealFeel >= 35°C (Afternoon Steam Trap)
-  } else if (realFeel >= 35 || (uvVal >= 3.0 && humidity >= 85 && temperature >= 28)) {
+  } else if (realFeel >= 35) {
     level = 'extreme';
     message = 'Extreme Thermal & Moisture Stress';
     description = `Feels like ${roundedRealFeel}°C. Severe compound load from direct sun and heavy humidity. Autonomic cooling is overwhelmed.`;
 
   // HIGH RISK: Daytime evaporative block (Temp >= 24°C AND Humidity >= 85% AND UV >= 2.0) OR RealFeel >= 32°C
-  } else if (realFeel >= 32 || (temperature >= 24.0 && humidity >= 85 && uvVal >= 2.0)) {
+  } else if (realFeel >= 30) {
     level = 'high';
     message = 'Evaporative Impairment Flare Risk';
     description = `Feels like ${roundedRealFeel}°C. High ambient humidity (${humidity.toFixed(0)}%) prevents sweat from evaporating naturally during activity.`;
 
   // MODERATE RISK: Warm muggy weather (Temp >= 24°C + Humidity >= 70%) OR RealFeel >= 30°C
-  } else if (realFeel >= 30 || (temperature >= 24.0 && humidity >= 70)) {
+  } else if (realFeel >= 27) {
     level = 'moderate';
     message = 'Elevated Moisture Load';
     description = `Feels like ${roundedRealFeel}°C. Ambient moisture slows skin drying. Maintain airflow with fans.`;
@@ -308,7 +305,7 @@ export function shouldTriggerAlert(
 
   const risk = calculateSweatRiskV2({ temperature, humidity, uvIndex, sky, edaValue, weatherId });
 
-  if (risk.level === 'high' || risk.level === 'extreme') {
+  if (risk.level === 'moderate' || risk.level === 'high' || risk.level === 'extreme') {
     return {
       shouldAlert: true,
       triggers: risk.triggers,
