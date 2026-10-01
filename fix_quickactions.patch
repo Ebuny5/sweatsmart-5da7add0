@@ -1,0 +1,10 @@
+--- src/components/dashboard/QuickActions.tsx
++++ src/components/dashboard/QuickActions.tsx
+@@ -282,6 +282,7 @@
+         id: data.id,
+         datetime: isoDate,
+         severityLevel: quickHDSS,
++        hdssLevel: quickHDSS,
+         bodyAreas: [],
+         triggers: [],
+         notes: "Quick HDSS Capture"

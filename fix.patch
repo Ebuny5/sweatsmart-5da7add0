@@ -1,0 +1,86 @@
+--- src/components/dashboard/QuickActions.tsx
++++ src/components/dashboard/QuickActions.tsx
+@@ -71,7 +71,7 @@
+   };
+
+   // If we don't have weather data yet, show either error or loading state
+-  if (!weather) {
++  if (!weather && error) {
+     if (error) {
+       return (
+         <div className="rounded-2xl bg-gray-50 border border-gray-200 p-4 flex items-center gap-3">
+@@ -89,7 +89,9 @@
+         </div>
+       );
+     }
+-
++  }
++
++  if (!weather) {
+     return (
+       <div className="rounded-2xl bg-white border border-gray-100 p-4 shadow-sm animate-pulse">
+         <div className="h-3 w-28 bg-gray-100 rounded mb-3" />
+--- src/hooks/useClimateData.ts
++++ src/hooks/useClimateData.ts
+@@ -48,6 +48,32 @@
+   const [lastUpdated, setLastUpdated]   = useState<number | null>(null);
+   const [coords, setCoords]             = useState<GeolocationCoordinates | null>(null);
+
++  // ── Helper: apply simulated fallback ──────────────────────────────────────
++  const applySimulatedFallback = useCallback((errorMessage?: string) => {
++    const temp = 25;
++    const hum = 60;
++    const uv = 5;
++
++    const w: WeatherData = {
++      temperature: temp,
++      humidity: hum,
++      uvIndex: uv,
++      sky: 'sunny',
++      heatIndex: 26,
++      dewPoint: 16.7,
++      realFeel: 28.5,
++      isSimulated: true,
++      lastUpdated: Date.now(),
++    };
++    const risk = calculateSweatRisk(temp, hum, uv, 0, false, 'sunny');
++    setWeather(w);
++    setSweatRisk(risk.level);
++    setRiskMessage(risk.message);
++    setRiskDescription(risk.description || (RISK_LABEL[risk.level] ?? ""));
++    setCity("Simulated Location");
++    if (errorMessage) setError(errorMessage); // Keep error for logging but weather is set
++    setLoading(false);
++  }, []);
++
+   // ── Helper: get geolocation ───────────────────────────────────────────────
+   const getCoords = useCallback(() => {
+     if (!navigator.geolocation) {
+@@ -70,10 +96,9 @@
+         } else {
+           msg = "Location unavailable — check your connection";
+         }
+-        setError(msg);
+-        setLoading(false);
++        applySimulatedFallback(msg);
+       },
+       { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+     );
+-  }, []);
++  }, [applySimulatedFallback]);
+
+   // ── Step 1: Initial load ──────────────────────────────────────────────────
+@@ -161,11 +186,11 @@
+       setRiskDescription(risk.description || (RISK_LABEL[risk.level] ?? ""));
+       setLastUpdated(Date.now());
+     } catch (err: any) {
+-      setError(err.message || "Could not fetch weather data");
++      applySimulatedFallback(err.message || "Could not fetch weather data");
+     } finally {
+       setLoading(false);
+     }
+-  }, [coords]);
++  }, [coords, applySimulatedFallback]);
+
+   const refresh = useCallback(async (options?: { bypassCache?: boolean }) => {
+     if (!coords) {

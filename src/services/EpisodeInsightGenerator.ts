@@ -20,6 +20,7 @@ interface GeneratedInsights {
   treatmentOptions: string[];
   lifestyleModifications: string[];
   medicalAttention: string;
+  emotionalSupport?: string;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -29,13 +30,67 @@ const hasAny = (text: string, ...words: string[]) => words.some(w => text.includ
 class EpisodeInsightGenerator {
 
   generateCompleteInsight(episode: Episode): GeneratedInsights {
+    const mentalHealth = this.detectsMentalHealthImpact(episode.notes || '', episode.triggers.map(t => t.label || t.value || ''));
+
     return {
       clinicalAnalysis: this.buildClinicalAnalysis(episode),
       immediateRelief: this.buildReliefStrategies(episode),
       treatmentOptions: this.buildTreatmentRecommendations(episode),
       lifestyleModifications: this.buildLifestyleModifications(episode),
       medicalAttention: this.buildMedicalAttention(episode),
+      emotionalSupport: mentalHealth.detected ? this.generateEmpathyResponse(mentalHealth.themes) : undefined,
     };
+  }
+
+  private detectsMentalHealthImpact(notes: string, triggers: string[]): {
+    detected: boolean;
+    themes: string[];
+  } {
+    const lowerNotes = notes.toLowerCase();
+    const themes: string[] = [];
+
+    if (hasAny(lowerNotes, 'low self esteem', 'self esteem', 'ashamed', 'worthless', 'embarrassed', 'humiliat')) {
+      themes.push('self_esteem');
+    }
+    if (hasAny(lowerNotes, 'depress', 'hopeless', 'giving up', 'cant cope', "can't cope", 'struggling')) {
+      themes.push('depression');
+    }
+    if (hasAny(lowerNotes, 'anxious', 'panic', 'scared', 'fear', 'terrified', 'dread')) {
+      themes.push('anxiety');
+    }
+    if (hasAny(lowerNotes, 'confus', 'overwhelm', "don't understand", 'why me', 'not fair')) {
+      themes.push('confusion_overwhelm');
+    }
+    if (hasAny(lowerNotes, 'isolat', 'avoid', 'stay home', 'cancel', 'hiding', 'alone')) {
+      themes.push('social_isolation');
+    }
+    if (hasAny(lowerNotes, 'angry', 'anger', 'frustrated', 'furious', 'rage')) {
+      themes.push('anger');
+    }
+
+    // Also check triggers
+    if (triggers.some(t => {
+      const lt = t.toLowerCase();
+      return hasAny(lt, 'embarrass', 'anxiety', 'stress', 'social');
+    })) {
+      if (!themes.includes('anxiety')) themes.push('anxiety');
+    }
+
+    return { detected: themes.length > 0, themes };
+  }
+
+  private generateEmpathyResponse(themes: string[]): string {
+    const responses: Record<string, string> = {
+      self_esteem: "What you're feeling makes complete sense. Hyperhidrosis has a way of attacking confidence from the inside — not because you are less capable or less worthy, but because the condition creates visible moments that feel impossible to control. Your self-worth is entirely separate from your sweat glands. Many warriors in this community have felt exactly what you're describing, and it gets better — especially as you gain more tools to manage it. You are already doing the hardest part: tracking it, understanding it, and refusing to let it define you.",
+      depression: "It is completely understandable to feel weighed down by this. Living with a condition that affects how you move through the world every day is exhausting. What you're feeling is valid. But hyperhidrosis is treatable — often significantly so — and the fact that you are still here, still logging, still trying, means you haven't given up. That matters. If these feelings persist beyond your episodes, speaking to a GP or counsellor alongside managing your hyperhidrosis is genuinely worth considering.",
+      anxiety: "The anxiety-sweat cycle is real and incredibly taxing. Feeling on edge or dreading the next episode is a recognized part of living with this condition. You're not overreacting; your nervous system is simply in a high-alert state. We can work on grounding techniques to help quiet that 'smoke alarm' in your brain over time.",
+      confusion_overwhelm: "It can feel overwhelming to manage something that seems to have no clear pattern or cause. But the data you're building here is starting to change that. Hyperhidrosis is not random — it responds to specific triggers, and the more you log, the clearer those patterns become. You don't have to figure it all out today.",
+      social_isolation: "Withdrawing from situations because of sweating is one of the most common — and most painful — parts of living with hyperhidrosis. You are not alone in this. Many warriors have cancelled plans, avoided handshakes, or chosen what to wear based on sweat, not preference. This is a recognised part of the condition, and it deserves to be treated as seriously as the physical symptoms.",
+      anger: "Anger at this condition is legitimate. It is genuinely unfair to deal with something your body does involuntarily that affects how others perceive you and how you feel in your own skin. Use that energy — it often makes the most determined warriors. The goal is to channel it into understanding your triggers and advocating for the treatment you deserve."
+    };
+
+    // Return the first detected theme's response, or a general one if themes are empty but somehow detected was true
+    return themes.length > 0 ? responses[themes[0]] : "I hear how difficult this is for you. Living with hyperhidrosis is as much a mental challenge as a physical one, and your feelings are completely valid. You're doing the right thing by tracking and understanding your journey.";
   }
 
   private buildClinicalAnalysis(ep: Episode): string {
@@ -261,7 +316,7 @@ export function generateFallbackInsights(
   return insightGenerator.generateCompleteInsight({
     severityLevel: severity,
     bodyAreas,
-    triggers,
+    triggers: triggers.map(t => ({ label: t.label, type: t.type, value: t.value })),
     notes,
   });
 }

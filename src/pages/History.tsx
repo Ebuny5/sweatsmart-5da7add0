@@ -7,14 +7,25 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Search, Filter, ChevronRight } from "lucide-react";
+import { Calendar, Search, Filter, ChevronRight, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { SeverityLevel } from "@/types";
 import { useEpisodes } from "@/hooks/useEpisodes";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const History = () => {
   const navigate = useNavigate();
-  const { episodes, loading, error, refetch } = useEpisodes();
+  const { episodes, loading, error, refetch, deleteEpisode } = useEpisodes();
   const [searchTerm, setSearchTerm] = useState("");
   const [severityFilter, setSeverityFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
@@ -186,16 +197,22 @@ const History = () => {
                 onClick={() => navigate(`/episode/${episode.id}`)}
               >
                 <CardContent className="p-4 sm:p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0 pr-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1 min-w-0">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
                         <h3 className="font-medium text-sm sm:text-base truncate">
                           {format(episode.datetime, "EEEE, MMMM d, yyyy")}
                         </h3>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Badge className={`${getSeverityColor(episode.severityLevel)} text-xs`}>
-                            {getSeverityLabel(episode.severityLevel)}
-                          </Badge>
+                          {episode.is_dry_day ? (
+                            <Badge className="bg-green-100 text-green-800 border-green-200 text-xs shadow-sm">
+                              ✨ Dry Day / Treatment
+                            </Badge>
+                          ) : (
+                            <Badge className={`${getSeverityColor(episode.severityLevel)} text-xs`}>
+                              {getSeverityLabel(episode.severityLevel)}
+                            </Badge>
+                          )}
                           <span className="text-xs sm:text-sm text-muted-foreground">
                             {format(episode.datetime, "h:mm a")}
                           </span>
@@ -221,8 +238,43 @@ const History = () => {
                         </p>
                       )}
                     </div>
-                    
-                    <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground flex-shrink-0" />
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="rounded-3xl">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Episode?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. This will permanently delete the episode record.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteEpisode(episode.id);
+                              }}
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+
+                      <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
