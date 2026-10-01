@@ -34,6 +34,7 @@ export interface EpisodeInput {
   bodyAreas: string[];
   triggers: Array<TriggerInput | string>;
   notes?: string;
+  climate?: ClimateInput;
   episodeCount?: number;
   userName?: string;
   isDryDay?: boolean;
