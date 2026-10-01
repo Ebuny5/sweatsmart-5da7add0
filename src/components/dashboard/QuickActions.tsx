@@ -303,12 +303,12 @@ const WarriorLaunchpad = () => {
     if (totalEpisodes === 0) {
       const index = Math.floor(Date.now() / (4 * 60 * 60 * 1000)) % FIRST_TIMER_ONBOARDING_MESSAGES.length;
       const msg = FIRST_TIMER_ONBOARDING_MESSAGES[index];
-      return { icon: msg.icon, text: msg.text.replace("{firstName || 'Warrior'}", profile?.first_name || 'Warrior') };
+      return { icon: msg.icon, text: msg.text.replace("{firstName || 'Warrior'}", (profile as any)?.first_name || 'Warrior') };
     }
     if (sweatRisk === "extreme") return { icon: "⚠️", text: "Extreme sweat risk today — consider rescheduling outdoor plans" };
     if (sweatRisk === "high") return { icon: "🌡️", text: "High humidity today — carry cooling wipes and stay hydrated" };
     return { icon: "💡", text: isMissedCheckIn ? "Check out your insights & recommendations today" : rawWarriorInsight.message };
-  }, [sweatRisk, isMissedCheckIn, rawWarriorInsight.message, episodes.length, profile?.first_name]);
+  }, [sweatRisk, isMissedCheckIn, rawWarriorInsight.message, episodes.length, (profile as any)?.first_name]);
 
   const tip = COMMUNITY_TIPS[tipIndex];
 

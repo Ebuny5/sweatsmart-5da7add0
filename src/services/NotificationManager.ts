@@ -292,7 +292,7 @@ class NotificationManager {
           icon: '/favicon.ico',
           badge: '/favicon.ico',
           requireInteraction: req.channel === 'climate',
-          vibrate: [200, 100, 200],
+          ...({ vibrate: [200, 100, 200] } as any),
         });
 
         notification.onclick = () => {
