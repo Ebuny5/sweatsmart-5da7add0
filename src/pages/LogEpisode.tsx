@@ -690,7 +690,7 @@ const LogEpisode = () => {
           finalNotes,
           undefined,
           isDryDay,
-          fullEpisodesList
+          fullEpisodesList as any
         );
 
         setAiInsights(insights);

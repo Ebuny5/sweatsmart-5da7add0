@@ -75,7 +75,7 @@ const AuthCallback = () => {
         if (user) {
           console.log('Checking profile for user:', user.id);
           // Check if user has a display name set
-          const { data: profile } = await supabase
+          const { data: profileRaw } = await supabase
             .from('profiles')
             .select('display_name, has_received_welcome, is_profile_complete')
             .eq('user_id', user.id)
