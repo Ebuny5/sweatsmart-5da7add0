@@ -75,11 +75,12 @@ const AuthCallback = () => {
         if (user) {
           console.log('Checking profile for user:', user.id);
           // Check if user has a display name set
-          const { data: profile } = await supabase
+          const { data: profileRaw } = await supabase
             .from('profiles')
             .select('display_name, has_received_welcome, is_profile_complete')
             .eq('user_id', user.id)
             .maybeSingle();
+          const profile = profileRaw as any;
 
           // Check if this is a first-time Google Auth login that missed the email trigger
           if (profile && !profile.has_received_welcome) {
@@ -88,7 +89,7 @@ const AuthCallback = () => {
               // Update flag immediately so we don't trigger it twice
               await supabase
                 .from('profiles')
-                .update({ has_received_welcome: true })
+                .update({ has_received_welcome: true } as any)
                 .eq('user_id', user.id);
 
               // We simulate the webhook payload for the edge function since the
