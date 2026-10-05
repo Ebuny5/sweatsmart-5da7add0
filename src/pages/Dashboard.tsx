@@ -345,13 +345,13 @@ const Dashboard = () => {
             />
           </div>
 
-          {/* Top Affected Areas */}
+          {/* Most Affected Areas */}
           {dashboardData.bodyAreas.length > 0 && (
             <div className="w-full bg-white rounded-3xl p-4 shadow-sm border border-slate-100 overflow-hidden">
               <div className="px-4 pt-4 pb-2 border-b border-gray-50 flex items-center gap-2">
                 <span className="text-lg">🫶</span>
                 <div>
-                  <h2 className="font-bold text-sm text-gray-800">Top Affected Areas</h2>
+                  <h2 className="font-bold text-sm text-gray-800">Most Affected Areas</h2>
                   <p className="text-xs text-gray-400">
                     {dashboardData.bodyAreas.length} areas tracked across {totalEpisodes} episodes
                   </p>
