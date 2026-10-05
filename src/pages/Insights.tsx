@@ -395,47 +395,59 @@ const Insights = () => {
 
           <div className="relative w-52 h-52 flex items-center justify-center">
             
-            {/* Outer Anti-Clockwise Rolling Divided / Segmented Ring */}
-            <div className="absolute inset-[-6px] animate-divided-ring pointer-events-none flex items-center justify-center">
+            {/* Outer Anti-Clockwise Rolling Divided / Segmented Ring (Only when scanning) */}
+            <div className={cn(
+              "absolute inset-[-6px] pointer-events-none flex items-center justify-center",
+              isScanning && "animate-divided-ring"
+            )}>
               <div className={cn(
                 "w-full h-full border-2 border-dashed rounded-full transition-colors duration-700",
                 isScanning ? "border-pink-400/70" : "border-teal-400/60"
               )} />
             </div>
 
-            {/* Inner Clockwise Rolling Bubble Orbit Ring */}
-            <div className="absolute inset-[-2px] animate-bubble-ring pointer-events-none flex items-center justify-center">
+            {/* Inner Clockwise Rolling Bubble Orbit Ring (Only when scanning) */}
+            <div className={cn(
+              "absolute inset-[-2px] pointer-events-none flex items-center justify-center",
+              isScanning && "animate-bubble-ring"
+            )}>
               <div className="w-full h-full relative">
-                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-3 bg-teal-300 rounded-full bubble-item-1 shadow-sm border border-white"></span>
-                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-pink-400 rounded-full bubble-item-2 shadow-sm border border-white"></span>
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-indigo-400 rounded-full bubble-item-3 shadow-sm border border-white"></span>
-                <span className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-emerald-300 rounded-full bubble-item-4 shadow-sm border border-white"></span>
+                <span className={cn("absolute top-0 left-1/2 -translate-x-1/2 w-3 h-3 bg-teal-300 rounded-full shadow-sm border border-white", isScanning && "bubble-item-1")}></span>
+                <span className={cn("absolute bottom-0 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-pink-400 rounded-full shadow-sm border border-white", isScanning && "bubble-item-2")}></span>
+                <span className={cn("absolute left-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-indigo-400 rounded-full shadow-sm border border-white", isScanning && "bubble-item-3")}></span>
+                <span className={cn("absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-emerald-300 rounded-full shadow-sm border border-white", isScanning && "bubble-item-4")}></span>
               </div>
             </div>
 
-            {/* Main Organic Central Analysis Core */}
+            {/* Main Central Analysis Core */}
             <div
               onClick={!isScanning ? executeScan : undefined}
-              className={cn(
-                "relative w-44 h-44 animate-organic flex flex-col items-center justify-center text-center p-4 shadow-xl cursor-pointer select-none transition-all duration-700",
-                isScanning
-                  ? "bg-gradient-to-tr from-teal-400 via-indigo-500 to-pink-500 shadow-pink-300/40"
-                  : "bg-gradient-to-tr from-teal-500 via-emerald-400 to-indigo-600 shadow-teal-200/50"
-              )}
+              className="relative w-44 h-44 flex flex-col items-center justify-center text-center p-4 cursor-pointer select-none"
             >
-              <div className="w-8 h-8 rounded-full bg-white/25 flex items-center justify-center mb-1.5 backdrop-blur-sm shadow-xs">
-                {isScanning ? (
-                  <Loader2 className="h-4 w-4 text-white animate-spin" />
-                ) : (
-                  <Sparkles className="h-4 w-4 text-white fill-white" />
-                )}
+              {/* Separate background layer so text remains upright and stationary */}
+              <div className={cn(
+                "absolute inset-0 transition-all duration-700",
+                isScanning
+                  ? "animate-organic bg-gradient-to-tr from-teal-400 via-indigo-500 to-pink-500 shadow-xl shadow-pink-300/40"
+                  : "rounded-full bg-gradient-to-tr from-teal-500 via-emerald-400 to-indigo-600 shadow-xl shadow-teal-200/50"
+              )} />
+
+              {/* Stationed text content overlay */}
+              <div className="relative z-10 flex flex-col items-center justify-center text-center">
+                <div className="w-8 h-8 rounded-full bg-white/25 flex items-center justify-center mb-1.5 backdrop-blur-sm shadow-xs">
+                  {isScanning ? (
+                    <Loader2 className="h-4 w-4 text-white animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4 text-white fill-white" />
+                  )}
+                </div>
+                <p className="text-xs font-bold text-white px-2 leading-snug transition-all duration-500 drop-shadow-xs">
+                  {isScanning ? scanStepText : `Patterns Updated: ${analytics?.totalEpisodes || 0} episodes correlated`}
+                </p>
+                <span className="text-[9px] text-white/90 mt-1 font-semibold tracking-wide">
+                  {isScanning ? "Processing telemetry..." : "Tap to scan again"}
+                </span>
               </div>
-              <p className="text-xs font-bold text-white px-2 leading-snug transition-all duration-500 drop-shadow-xs">
-                {isScanning ? scanStepText : `Patterns Updated: ${analytics?.totalEpisodes || 0} episodes correlated`}
-              </p>
-              <span className="text-[9px] text-white/90 mt-1 font-semibold tracking-wide">
-                {isScanning ? "Processing telemetry..." : "Tap to scan again"}
-              </span>
             </div>
 
           </div>

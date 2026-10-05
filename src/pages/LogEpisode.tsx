@@ -469,6 +469,15 @@ const LogEpisode = () => {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [time, setTime] = useState<string>(format(new Date(), "HH:mm"));
   const [severity, setSeverity] = useState<SeverityLevel>(3);
+
+  // Compute combined timestamp date & time for upper-right header synchronization
+  const selectedTimestampDate = useMemo(() => {
+    if (!date) return new Date();
+    const [h, m] = (time || "00:00").split(":").map(Number);
+    const d = new Date(date);
+    d.setHours(isNaN(h) ? 0 : h, isNaN(m) ? 0 : m, 0, 0);
+    return d;
+  }, [date, time]);
   const [bodyAreas, setBodyAreas] = useState<string[]>([]);
   const [triggers, setTriggers] = useState<Trigger[]>([]);
   const [notes, setNotes] = useState<string>("");
@@ -835,8 +844,8 @@ const LogEpisode = () => {
                 </h1>
               </div>
               <div className="text-right pt-0.5">
-                <p className="text-xs font-bold text-slate-200">{format(new Date(), "EEEE, MMM d")}</p>
-                <p className="text-[10px] text-teal-400 font-mono font-medium">{lastLoggedDisplay}</p>
+                <p className="text-xs font-bold text-slate-200">{format(selectedTimestampDate, "EEEE, MMM d")}</p>
+                <p className="text-[10px] text-teal-400 font-mono font-medium">{format(selectedTimestampDate, "h:mm a")}</p>
               </div>
             </div>
             <p className="text-[11px] text-slate-300/80 mt-2 max-w-sm leading-snug">
