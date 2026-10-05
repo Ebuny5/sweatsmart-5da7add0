@@ -65,6 +65,7 @@ const queryClient = new QueryClient({
 
 import MandatoryOnboarding from "./pages/MandatoryOnboarding";
 import { useProfile } from "@/hooks/useProfile";
+import { isOnboardedCached } from "@/utils/onboardingStatus";
 
 // Protected Route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -87,20 +88,20 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // If profile is already complete, never show setup pages again — send straight to home
+  // Returning users never see setup again. Only a verified, loaded profile
+  // without clinical intake is sent to onboarding (network errors fail to home).
   const setupPaths = ['/setup-profile', '/mandatory-onboarding', '/onboarding'];
-  if (profile?.is_profile_complete && setupPaths.includes(location.pathname)) {
+  const onboarded =
+    isOnboardedCached(user.id) ||
+    !!profile?.is_profile_complete ||
+    !!(profile?.age && profile?.diagnosis_type && profile?.country);
+
+  if (onboarded && location.pathname === '/mandatory-onboarding') {
     return <Navigate to="/home" replace />;
   }
 
-  // If profile exists and is NOT complete, enforce onboarding (but allow setup pages themselves)
-  if (profile && !profile.is_profile_complete && !setupPaths.includes(location.pathname)) {
-    const hasName = !!(profile.display_name && profile.display_name.trim().length > 0);
-    if (hasName) {
-      return <Navigate to="/mandatory-onboarding" replace />;
-    } else {
-      return <Navigate to="/setup-profile" replace />;
-    }
+  if (profile && !onboarded && !setupPaths.includes(location.pathname)) {
+    return <Navigate to="/mandatory-onboarding" replace />;
   }
 
   return <ErrorBoundary>{children}</ErrorBoundary>;
