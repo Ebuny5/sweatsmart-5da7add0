@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { resolvePostLoginRoute } from "@/utils/onboardingStatus";
 
 const AuthCallback = () => {
   const navigate = useNavigate();
