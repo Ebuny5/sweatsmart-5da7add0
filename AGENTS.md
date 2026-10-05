@@ -1,0 +1,1 @@
+- Post-login routing goes only through src/utils/onboardingStatus.ts resolvePostLoginRoute; network/profile errors route to /home, never to setup — prevents returning users being forced through onboarding again.
