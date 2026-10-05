@@ -1,713 +1,1383 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
 import AppLayout from "@/components/layout/AppLayout";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import AIGeneratedInsights from "@/components/episode/AIGeneratedInsights";
+import { SeverityLevel, BodyArea, Trigger } from "@/types";
 import {
-  Sparkles,
-  RefreshCw,
-  Check,
-  Loader2,
-  Clock,
-  Flame,
-  Shield,
-  TrendingUp,
-  TrendingDown,
-  Info,
-  X,
-  ExternalLink,
-  ChevronRight,
-  HeartPulse
+  CalendarIcon, Clock, Loader2, LayoutDashboard, History,
+  Plus, Droplets, Square, X, Info, Check
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
 import { useEngagement } from "@/hooks/useEngagement";
-import { formatHdss } from "@/utils/hdssGauger";
-import { cn } from "@/lib/utils";
+import { useEpisodes } from "@/hooks/useEpisodes";
+import { generateFallbackInsights } from "@/components/recommendationEngine";
+import { loggingReminderService, LAST_LOG_TIME_KEY, CURRENT_HDSS_KEY } from "@/services/LoggingReminderService";
+import { useVoiceLogging } from "@/hooks/useVoiceLogging";
+import VoiceVisualizer from "@/components/episode/VoiceVisualizer";
 
-// ── CLINICAL KNOWLEDGE MATRIX (WITH PLAIN-ENGLISH BRACKET TRANSLATIONS) ────────
-const TRIGGER_CLINICAL_MAP: Record<string, {
-  mechanism: string;
-  medicalRoute: string;
-  acuteRelief: string;
-  icon: string;
-}> = {
-  "Synthetic Fabrics": {
-    mechanism: "Non-breathable synthetic fibers trap ambient heat and humidity against the skin, halting evaporative cooling and commanding continuous eccrine discharge (active sweat release from your cooling glands).",
-    medicalRoute: "Nocturnal application of 15–20% aluminum chloride hexahydrate or topical glycopyrronium wipes to suppress regional ductal firing.",
-    acuteRelief: "Immediately transition skin-contact layer to breathable natural fibers (100% merino wool, bamboo, or loose cotton) and increase convective airflow.",
-    icon: "🧶"
+// ── COMPREHENSIVE CLINICAL KNOWLEDGE MATRIX ──────────────────────────────────
+const CLINICAL_KNOWLEDGE: Record<string, { title: string; mechanism: string; icon: string }> = {
+  // Primary Focal Zones
+  palms: {
+    title: "Palmar Hyperhidrosis",
+    mechanism: "High eccrine density on volar skin. Rapid barrier breakdown, grip failure, paper/screen damage, and handshake avoidance.",
+    icon: "✋"
   },
-  "Hot Temp": {
-    mechanism: "Ambient thermal load directly stimulates preoptic hypothalamic thermoreceptors (the brain's internal thermostat), prompting broad sudomotor outflow (nerve signals commanding sweat glands).",
-    medicalRoute: "First-line prescription antiperspirants applied at bedtime; systemic oral anticholinergics if diaphoresis (profuse sweating) is generalized.",
-    acuteRelief: "Firmly apply a cold, damp cloth to temporal arterial beds (temples) and wrists for 60 to 90 seconds to rapidly lower perceived blood temperature.",
+  underarms: {
+    title: "Axillary Hyperhidrosis",
+    mechanism: "Dense eccrine and apocrine concentration in the axillary vault causing garment saturation, salt staining, and contact irritation.",
+    icon: "👕"
+  },
+  soles: {
+    title: "Plantar Hyperhidrosis",
+    mechanism: "Plantar eccrine hyperactivity compromises foot traction, accelerates shoe degradation, and increases risk of fungal maceration.",
+    icon: "🦶"
+  },
+  feet: {
+    title: "Foot & Digital Perspiration",
+    mechanism: "Weight-bearing occlusion fosters bacterial breakdown of keratin, causing painful friction shears and bromhidrosis.",
+    icon: "👟"
+  },
+  face: {
+    title: "Craniofacial (Facial)",
+    mechanism: "Preotic facial thermoreceptors produce immediate visual sweating under both mild ambient heat and subtle social evaluation.",
+    icon: "👤"
+  },
+  scalp: {
+    title: "Cranial (Scalp)",
+    mechanism: "High follicular vascularity across the galea aponeurotica; trapped by hair, leading to rapid sweat pooling and facial dripping.",
+    icon: "🧢"
+  },
+  hands: {
+    title: "Manual Hyperhidrosis",
+    mechanism: "Hyperactive sympathetic discharge via T2-T3 thoracic ganglia targeting the volar hand surfaces.",
+    icon: "👋"
+  },
+
+  // Truncal / Secondary Zones (Including Head & Neck)
+  head_neck: {
+    title: "Cervicocranial (Head & Neck)",
+    mechanism: "Dense cervical sympathetic innervation across the posterior scalp, nape, and lateral neck. Hallmark of secondary hyperhidrosis or systemic thermoregulatory compensation.",
+    icon: "🧣"
+  },
+  chest: {
+    title: "Anterior Truncal Perspiration",
+    mechanism: "Broad surface-area sweating often linked to rapid post-exertional cooling, hormonal shifts, or autonomic overcompensation.",
+    icon: "🫁"
+  },
+  back: {
+    title: "Posterior Truncal Sweating",
+    mechanism: "Seated posture traps thermal radiation against spinal dermatomes, blocking normal convective evaporative cooling.",
+    icon: "🥋"
+  },
+  groin: {
+    title: "Inguinal Hyperhidrosis",
+    mechanism: "Intertriginous friction under high regional humidity, significantly increasing the risk of chafing and epidermal barrier breakdown.",
+    icon: "🩲"
+  },
+  thighs: {
+    title: "Femoral Perspiration",
+    mechanism: "Commonly occurs during prolonged sitting or brisk movement; exacerbated by non-breathable synthetic clothing.",
+    icon: "🦵"
+  },
+  entire_body: {
+    title: "Generalized Diaphoresis",
+    mechanism: "Multisegmental sweating across non-focal dermatomes; warrants review for secondary, metabolic, or medication-related drivers.",
+    icon: "🌐"
+  },
+
+  // Phase 1: Environment & Situation
+  hot_temperature: {
+    title: "Ambient Thermal Load",
+    mechanism: "Directly stimulates preoptic anterior hypothalamic thermoreceptors to trigger eccrine sweating for core defense.",
     icon: "🌡️"
   },
-  "Temp Shift": {
-    mechanism: "Abrupt ambient transitions (e.g. stepping from cold air conditioning into exterior heat) overload hypothalamic set-points, provoking acute cholinergic outflow (the chemical messenger commanding sweat glands to open).",
-    medicalRoute: "Pre-treatment with topical aluminum formulations to maintain ductal occlusion during thermal swings.",
-    acuteRelief: "Practice paced diaphragmatic breathing (4s inhale, 6s exhale) to stimulate vagal tone (rest-and-digest nerve activity) during environmental changes.",
-    icon: "🔄"
-  },
-  "Sun Exposure": {
-    mechanism: "Direct radiant infrared load heats dermal nociceptors (skin sensors), accelerating localized cutaneous vasodilation (blood vessel widening) and sweat secretion.",
-    medicalRoute: "Broad-spectrum physical mineral sunscreen combined with clinical-strength barrier antiperspirants.",
-    acuteRelief: "Move into convective shade and mist exposed skin with cool water under active air circulation.",
-    icon: "☀️"
-  },
-  "Stress": {
-    mechanism: "Mental strain prompts immediate sympathoadrenal arousal (your involuntary fight-or-flight stress reaction), releasing acetylcholine directly onto palmar and craniofacial sweat receptors.",
-    medicalRoute: "Tap-water iontophoresis (low electrical current to temporarily disable glands) or targeted intradermal botulinum toxin microinjections.",
-    acuteRelief: "Engage in 5 minutes of box breathing (inhale 4s, hold 4s, exhale 4s, hold 4s) to rapidly downregulate basal sympathetic tone.",
-    icon: "⚡"
-  },
-  "Anxiety": {
-    mechanism: "Anticipatory anxiety establishes a hyper-vigilant feedback loop where worrying about sweating prematurely lowers the firing threshold of sweat glands.",
-    medicalRoute: "Low-dose systemic oral anticholinergics (such as Glycopyrrolate) or localized botulinum toxin injections for 4–6 months of clinical protection.",
-    acuteRelief: "Utilize sensory grounding (name 5 things you see, 4 you feel, 3 you hear) to disrupt acute sympathetic surges.",
-    icon: "🧠"
-  },
-  "High Humidity": {
-    mechanism: "High ambient water vapor halts sweat evaporation, causing rapid sweat accumulation on the skin surface without producing any physiological cooling.",
-    medicalRoute: "High-concentration metallic salt formulations (aluminum chloride 20%) applied to dry skin at night.",
-    acuteRelief: "Position a high-velocity personal fan directly across exposed skin to mechanically force air movement.",
+  humidity: {
+    title: "Evaporative Failure",
+    mechanism: "High ambient vapor pressure halts sweat evaporation, causing rapid sweat pooling on the skin rather than cooling.",
     icon: "💧"
   },
-  "Spicy Food": {
-    mechanism: "Capsaicin binds oral TRPV1 thermal receptors, tricking the brain into sensing an internal fever and initiating gustatory sweating (food-provoked perspiration).",
-    medicalRoute: "Avoid dietary capsaicin or discuss topical anticholinergics for localized craniofacial gustatory sweating with your doctor.",
-    acuteRelief: "Consume dairy products (casein binds capsaicin molecules) and rinse mouth thoroughly with cold water.",
+  transitional_temp: {
+    title: "Rapid Thermal Transition",
+    mechanism: "Sudden temperature contrast (e.g., exiting air-conditioning into heat) sparks transient autonomic overcompensation.",
+    icon: "🔄"
+  },
+  sun_exposure: {
+    title: "Radiant Solar Load",
+    mechanism: "Direct infrared radiation on dermal nociceptors elevates skin temperature faster than core thermoregulation can adapt.",
+    icon: "☀️"
+  },
+  synthetic_fabrics: {
+    title: "Occlusive Microclimate",
+    mechanism: "Non-breathable fibers (polyester, nylon) trap heat and humidity against the skin, blocking convective cooling.",
+    icon: "🧶"
+  },
+  poor_ventilation: {
+    title: "Microclimate Stagnation",
+    mechanism: "Zero air velocity halts boundary-layer sweat evaporation, accelerating clothing saturation.",
+    icon: "🚪"
+  },
+  crowded_spaces: {
+    title: "Social-Thermal Density",
+    mechanism: "Combines shared ambient body heat and reduced ventilation with subtle social evaluation, activating dual sweat pathways.",
+    icon: "👥"
+  },
+  bright_lights: {
+    title: "Sensory & Thermal Strain",
+    mechanism: "Intense lighting emits radiant heat while stimulating the autonomic nervous system via visual sensory pathways.",
+    icon: "💡"
+  },
+  loud_noises: {
+    title: "Acoustic Sympathetic Arousal",
+    mechanism: "Sudden or sustained loud noise stimulates the locus coeruleus, prompting an acute noradrenergic release.",
+    icon: "🔊"
+  },
+  no_trigger: {
+    title: "Spontaneous Idiopathic Episode",
+    mechanism: "Intrinsic paroxysmal burst of the sympathetic sweat axis without any identifiable external or emotional trigger.",
+    icon: "❓"
+  },
+
+  // Phase 2: Emotional & Cognitive
+  stress: {
+    title: "Sympathoadrenal Activation",
+    mechanism: "Acute mental stress triggers rapid acetylcholine release onto eccrine M3 receptors within milliseconds.",
+    icon: "⚡"
+  },
+  anxiety: {
+    title: "Anticipatory Sympathetic Priming",
+    mechanism: "Heightened vigilance regarding sweating lowers the threshold for eccrine activation, creating a reinforcing feedback loop.",
+    icon: "🧠"
+  },
+  anticipatory: {
+    title: "Conditioned Sweating Reflex",
+    mechanism: "Remembering or dreading a past sweating episode activates autonomic memory circuits prior to any physical trigger.",
+    icon: "⏳"
+  },
+  public_speaking: {
+    title: "Performance Social Strain",
+    mechanism: "Perceived social scrutiny produces an intense surge of epinephrine, provoking abrupt palmar and facial sweating.",
+    icon: "🎙️"
+  },
+  nervousness: {
+    title: "Acute Adrenergic Surge",
+    mechanism: "Peripheral vasoconstriction paired with sudomotor activation, resulting in cold, clammy hands and feet.",
+    icon: "😬"
+  },
+  embarrassment: {
+    title: "Dysautonomic Flushing & Sweating",
+    mechanism: "Facial cutaneous vasodilation accompanied by instant craniofacial perspiration mediated by trigeminal autonomic fibers.",
+    icon: "😳"
+  },
+  excitement: {
+    title: "High Sympathetic Valence",
+    mechanism: "Intense positive emotional anticipation shares identical autonomic arousal pathways with acute fight-or-flight states.",
+    icon: "🤩"
+  },
+  anger: {
+    title: "Noradrenergic Hypertensive Spike",
+    mechanism: "Abrupt catecholamine release accelerates heart rate and triggers prompt eccrine activity across the forehead and trunk.",
+    icon: "💢"
+  },
+
+  // Phase 3: Physical, Dietary & Lifestyle (Including Trekking)
+  trekking: {
+    title: "Locomotive Exertion (Trekking)",
+    mechanism: "Prolonged ambulation recruits major lower-extremity muscle groups, initiating metabolic heat production that commands active eccrine discharge.",
+    icon: "🥾"
+  },
+  physical_exertion: {
+    title: "Metabolic Thermogenesis",
+    mechanism: "Active muscular contraction generates internal heat, commanding massive eccrine recruitment for core defense.",
+    icon: "🏃"
+  },
+  spicy_food: {
+    title: "Gustatory Sweating (TRPV1)",
+    mechanism: "Capsaicin stimulates oral thermal pain receptors (TRPV1), tricking the brain into reacting as if core temperature spiked.",
     icon: "🌶️"
   },
-  "No Clear Trigger": {
-    mechanism: "Spontaneous idiopathic episodes reflect intrinsic paroxysmal bursts along postganglionic sympathetic nerves without any identifiable external catalyst.",
-    medicalRoute: "Longitudinal consistency tracking to establish baseline response to first-line clinical antiperspirants or iontophoresis.",
-    acuteRelief: "Rest in a neutral air-conditioned environment and record contextual notes to isolate subtle emerging triggers.",
-    icon: "❓"
+  caffeine: {
+    title: "Adenosine Antagonism",
+    mechanism: "Caffeine stimulates the central nervous system, increasing heart rate, blood pressure, and resting sweat gland sensitivity.",
+    icon: "☕"
+  },
+  hot_drinks: {
+    title: "Oropharyngeal Thermal Reflex",
+    mechanism: "Direct heat on abdominal and esophageal thermoreceptors induces immediate reflexive sweating even before core temp rises.",
+    icon: "🍵"
+  },
+  alcohol: {
+    title: "Peripheral Vasodilation",
+    mechanism: "Ethanol widens cutaneous capillaries, inducing flushing and compensatory sweating while altering central thermoregulation.",
+    icon: "🍷"
+  },
+  heavy_meals: {
+    title: "Diet-Induced Thermogenesis",
+    mechanism: "Gastrointestinal metabolism and digestion elevate internal heat production, provoking truncal perspiration.",
+    icon: "🍽️"
+  },
+  nicotine: {
+    title: "Nicotinic Receptor Stimulation",
+    mechanism: "Nicotine binds acetylcholine receptors in sympathetic autonomic ganglia, directly stimulating sweat gland activity.",
+    icon: "🚬"
+  },
+
+  // Phase 4: Medication, Systemic & Hormonal
+  bp_meds: {
+    title: "Vasomotor Blood Pressure Shifts",
+    mechanism: "Antihypertensive agents alter peripheral resistance, inducing compensatory autonomic vasomotor sweating episodes.",
+    icon: "💊"
+  },
+  diabetes_meds: {
+    title: "Glycemic Autonomic Shifts",
+    mechanism: "Blood glucose fluctuations stimulate adrenaline release, which acts as a potent eccrine sweat trigger.",
+    icon: "💉"
+  },
+  new_medication: {
+    title: "Drug-Induced Diaphoresis",
+    mechanism: "Numerous pharmacotherapies (such as SSRIs or cholinergics) alter neurotransmitter balance and stimulate sweating.",
+    icon: "🔔"
+  },
+  supplements: {
+    title: "Herbal/Metabolic Stimulation",
+    mechanism: "Thermogenic or stimulant compounds (e.g., yohimbine, ephedra, guarana) increase basal sudomotor sensitivity.",
+    icon: "🌿"
+  },
+  hormonal: {
+    title: "Endocrine Thermoregulatory Shifts",
+    mechanism: "Estrogen or thyroid fluctuations narrow the hypothalamic thermoneutral zone, triggering sudden hot flashes.",
+    icon: "🧬"
+  },
+  fever: {
+    title: "Pyrogenic Defervescence",
+    mechanism: "As the hypothalamic temperature set-point resets, profuse sweating occurs to dissipate accumulated fever heat.",
+    icon: "🤒"
   }
 };
 
-const DEFAULT_CLINICAL = {
-  mechanism: "Autonomic stimulation activates eccrine glands (microscopic water-secreting glands), triggering acute sweat output.",
-  medicalRoute: "First-line prescription topical antiperspirants applied nightly on clean, dry skin.",
-  acuteRelief: "Move to a well-ventilated space, sit upright, and focus on slow diaphragmatic breathing.",
-  icon: "💡"
+// ── ANATOMICAL ZONE LISTS ───────────────────────────────────────────────────
+const PRIMARY_ZONES = [
+  { id: "palms", label: "Palms", icon: "✋" },
+  { id: "underarms", label: "Underarms", icon: "👕" },
+  { id: "soles", label: "Soles", icon: "🦶" },
+  { id: "feet", label: "Feet", icon: "👟" },
+  { id: "face", label: "Face", icon: "👤" },
+  { id: "scalp", label: "Scalp", icon: "🧢" },
+  { id: "hands", label: "Hands", icon: "👋" },
+];
+
+const TRUNCAL_ZONES = [
+  { id: "head_neck", label: "Head & Neck", icon: "🧣" },
+  { id: "chest", label: "Chest", icon: "🫁" },
+  { id: "back", label: "Back", icon: "🥋" },
+  { id: "groin", label: "Groin", icon: "🩲" },
+  { id: "thighs", label: "Thighs", icon: "🦵" },
+  { id: "entire_body", label: "Entire Body", icon: "🌐" },
+];
+
+// ── 4 COMPREHENSIVE TRIGGER PHASES ──────────────────────────────────────────
+const TRIGGER_GROUPS = [
+  {
+    phase: "Phase 1: Environment & Situation",
+    desc: "Physical surroundings and thermal changes that amplify eccrine activity",
+    colorKey: "sky" as const,
+    items: [
+      { id: "hot_temperature", label: "Hot Temp", type: "environment", icon: "🌡️" },
+      { id: "humidity", label: "High Humidity", type: "environment", icon: "💧" },
+      { id: "transitional_temp", label: "Temp Shift", type: "environment", icon: "🔄" },
+      { id: "sun_exposure", label: "Sun Exposure", type: "environment", icon: "☀️" },
+      { id: "synthetic_fabrics", label: "Synthetic Fabrics", type: "environment", icon: "🧶" },
+      { id: "poor_ventilation", label: "Poor Airflow", type: "environment", icon: "🚪" },
+      { id: "crowded_spaces", label: "Crowded Space", type: "social", icon: "👥" },
+      { id: "bright_lights", label: "Bright Lights", type: "environment", icon: "💡" },
+      { id: "loud_noises", label: "Loud Noises", type: "environment", icon: "🔊" },
+      { id: "no_trigger", label: "No Clear Trigger", type: "spontaneous", icon: "❓" },
+    ]
+  },
+  {
+    phase: "Phase 2: Emotional & Cognitive",
+    desc: "Psychological and cognitive catalysts that activate the sympathetic fight-or-flight reflex",
+    colorKey: "rose" as const,
+    items: [
+      { id: "stress", label: "Stress", type: "emotional", icon: "⚡" },
+      { id: "anxiety", label: "Anxiety", type: "emotional", icon: "🧠" },
+      { id: "anticipatory", label: "Anticipatory Sweating", type: "emotional", icon: "⏳" },
+      { id: "public_speaking", label: "Public Speaking", type: "social", icon: "🎙️" },
+      { id: "nervousness", label: "Nervousness", type: "emotional", icon: "😬" },
+      { id: "embarrassment", label: "Embarrassment", type: "emotional", icon: "😳" },
+      { id: "excitement", label: "Excitement", type: "emotional", icon: "🤩" },
+      { id: "anger", label: "Anger / Frustration", type: "emotional", icon: "💢" },
+    ]
+  },
+  {
+    phase: "Phase 3: Physical, Dietary & Lifestyle",
+    desc: "Locomotion, exertion, stimulants, and gustatory triggers elevating core temperature",
+    colorKey: "orange" as const,
+    items: [
+      { id: "trekking", label: "Trekking / Walking", type: "physical", icon: "🥾" },
+      { id: "physical_exertion", label: "Exercise / Exertion", type: "physical", icon: "🏃" },
+      { id: "spicy_food", label: "Spicy Food", type: "dietary", icon: "🌶️" },
+      { id: "caffeine", label: "Caffeine / Coffee", type: "dietary", icon: "☕" },
+      { id: "hot_drinks", label: "Hot Drinks", type: "dietary", icon: "🍵" },
+      { id: "alcohol", label: "Alcohol", type: "dietary", icon: "🍷" },
+      { id: "heavy_meals", label: "Heavy Meals", type: "dietary", icon: "🍽️" },
+      { id: "nicotine", label: "Nicotine", type: "lifestyle", icon: "🚬" },
+    ]
+  },
+  {
+    phase: "Phase 4: Medication, Systemic & Hormonal",
+    desc: "Pharmacological and endocrine changes that alter central thermoregulation",
+    colorKey: "purple" as const,
+    items: [
+      { id: "bp_meds", label: "Blood Pressure Meds", type: "medication", icon: "💊" },
+      { id: "diabetes_meds", label: "Insulin / Diabetes Meds", type: "medication", icon: "💉" },
+      { id: "new_medication", label: "New Medication", type: "medication", icon: "🔔" },
+      { id: "supplements", label: "Supplements / Herbal", type: "dietary", icon: "🌿" },
+      { id: "hormonal", label: "Hormonal / Menopause", type: "systemic", icon: "🧬" },
+      { id: "fever", label: "Fever / Infection", type: "systemic", icon: "🤒" },
+    ]
+  }
+];
+
+// ── FLO COLOR SCHEMES ────────────────────────────────────────────────────────
+const FLO_THEMES = {
+  emerald: {
+    unselected: "bg-emerald-50/70 border border-emerald-200/60 text-emerald-950 hover:bg-emerald-100/60",
+    selected: "bg-emerald-100/90 border-2 border-emerald-500 text-emerald-950 shadow-xs ring-2 ring-emerald-400/25",
+    badge: "bg-emerald-500 text-white",
+  },
+  amber: {
+    unselected: "bg-amber-50/70 border border-amber-200/60 text-amber-950 hover:bg-amber-100/60",
+    selected: "bg-amber-100/90 border-2 border-amber-500 text-amber-950 shadow-xs ring-2 ring-amber-400/25",
+    badge: "bg-amber-500 text-white",
+  },
+  sky: {
+    unselected: "bg-sky-50/70 border border-sky-200/60 text-sky-950 hover:bg-sky-100/60",
+    selected: "bg-sky-100/90 border-2 border-sky-500 text-sky-950 shadow-xs ring-2 ring-sky-400/25",
+    badge: "bg-sky-500 text-white",
+  },
+  rose: {
+    unselected: "bg-rose-50/70 border border-rose-200/60 text-rose-950 hover:bg-rose-100/60",
+    selected: "bg-rose-100/90 border-2 border-rose-500 text-rose-950 shadow-xs ring-2 ring-rose-400/25",
+    badge: "bg-rose-500 text-white",
+  },
+  orange: {
+    unselected: "bg-orange-50/70 border border-orange-200/60 text-orange-950 hover:bg-orange-100/60",
+    selected: "bg-orange-100/90 border-2 border-orange-500 text-orange-950 shadow-xs ring-2 ring-orange-400/25",
+    badge: "bg-orange-500 text-white",
+  },
+  purple: {
+    unselected: "bg-purple-50/70 border border-purple-200/60 text-purple-950 hover:bg-purple-100/60",
+    selected: "bg-purple-100/90 border-2 border-purple-500 text-purple-950 shadow-xs ring-2 ring-purple-400/25",
+    badge: "bg-purple-500 text-white",
+  },
 };
 
-const Insights = () => {
-  const { user } = useAuth();
-  const { toast } = useToast();
+const HDSS_GRADES = [
+  { grade: 1 as SeverityLevel, title: "HDSS 1 · Mild", subtitle: "Never noticeable", desc: "Sweating is never noticeable and never interferes with daily life." },
+  { grade: 2 as SeverityLevel, title: "HDSS 2 · Moderate", subtitle: "Tolerable", desc: "Tolerable, but sometimes interferes with daily activities." },
+  { grade: 3 as SeverityLevel, title: "HDSS 3 · Severe", subtitle: "Barely tolerable", desc: "Barely tolerable; frequently interferes with daily tasks." },
+  { grade: 4 as SeverityLevel, title: "HDSS 4 · Intolerable", subtitle: "Intolerable", desc: "Intolerable; constantly interferes with daily activities." }
+];
+
+// ── ANCHORED MICRO-TOOLTIP COMPONENT ─────────────────────────────────────────
+const MicroTooltip = ({
+  icon,
+  title,
+  mechanism,
+  align = "center",
+  onDismiss
+}: {
+  icon: string;
+  title: string;
+  mechanism: string;
+  align?: "left" | "right" | "center";
+  onDismiss: () => void;
+}) => {
+  const alignClasses =
+    align === "left" ? "left-0" :
+    align === "right" ? "right-0" :
+    "left-1/2 -translate-x-1/2";
+
+  const arrowClasses =
+    align === "left" ? "left-6" :
+    align === "right" ? "right-6" :
+    "left-1/2 -translate-x-1/2";
+
+  return (
+    <div
+      onClick={onDismiss}
+      className={`absolute bottom-[calc(100%+8px)] ${alignClasses} z-50 w-56 sm:w-64 p-3 rounded-2xl bg-slate-900/95 backdrop-blur-md text-white border border-teal-400/50 shadow-2xl cursor-pointer select-none animate-in fade-in zoom-in-95 duration-150`}
+    >
+      <div className="flex items-center justify-between gap-1.5 mb-1">
+        <div className="flex items-center gap-1.5 truncate">
+          <span className="text-xs">{icon}</span>
+          <span className="text-[10px] font-bold text-teal-300 truncate">{title}</span>
+        </div>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDismiss();
+          }}
+          className="text-slate-400 hover:text-white p-0.5"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      </div>
+      <p className="text-[10px] text-slate-200 leading-tight">
+        {mechanism}
+      </p>
+      <div className="flex items-center justify-between mt-2 pt-1 border-t border-white/10 text-[8px] text-teal-300/80 font-mono">
+        <span>Clinical insight</span>
+        <span>Tap to close</span>
+      </div>
+      <div className={`absolute top-full ${arrowClasses} border-4 border-transparent border-t-slate-900`} />
+    </div>
+  );
+};
+
+// ── MAIN LOG EPISODE COMPONENT ───────────────────────────────────────────────
+const LogEpisode = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { toast } = useToast();
+  const { user } = useAuth();
   const { trackAction } = useEngagement();
+  const { episodes } = useEpisodes();
+  const searchParams = new URLSearchParams(location.search);
+  const isNow = searchParams.get("now") === "true";
 
-  const [episodes, setEpisodes] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Form State
+  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [time, setTime] = useState<string>(format(new Date(), "HH:mm"));
+  const [severity, setSeverity] = useState<SeverityLevel>(3);
+  const [bodyAreas, setBodyAreas] = useState<string[]>([]);
+  const [triggers, setTriggers] = useState<Trigger[]>([]);
+  const [notes, setNotes] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isDryDay, setIsDryDay] = useState<boolean>(false);
+  const [dryDayFactors, setDryDayFactors] = useState<string[]>([]);
+  const [showInsights, setShowInsights] = useState<boolean>(false);
+  const [aiInsights, setAiInsights] = useState<any>(null);
+  const [isLoadingInsights, setIsLoadingInsights] = useState<boolean>(false);
+  const [lastLoggedDisplay, setLastLoggedDisplay] = useState<string>("");
+  const [lastSavedEpisodeId, setLastSavedEpisodeId] = useState<string | null>(null);
 
-  // ── FLO-STYLE SCANNER / ORB STATE MACHINE ──────────────────────────────────
-  const [isScanning, setIsScanning] = useState(true);
-  const [scanStepText, setScanStepText] = useState("Auditing sudomotor outflow...");
-  const [selectedTriggerModal, setSelectedTriggerModal] = useState<any>(null);
+  // Custom Items State
+  const [showCustomAreaInput, setShowCustomAreaInput] = useState(false);
+  const [customAreaText, setCustomAreaText] = useState("");
+  const [showCustomTriggerInput, setShowCustomTriggerInput] = useState(false);
+  const [customTriggerText, setCustomTriggerText] = useState("");
+
+  // 10s Micro-Tooltip Lifecycle
+  const [activeTooltipId, setActiveTooltipId] = useState<string | null>(null);
+  const tooltipTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const triggerTooltip = (id: string) => {
+    if (tooltipTimerRef.current) {
+      clearTimeout(tooltipTimerRef.current);
+      tooltipTimerRef.current = null;
+    }
+    if (!CLINICAL_KNOWLEDGE[id]) {
+      setActiveTooltipId(null);
+      return;
+    }
+    setActiveTooltipId(id);
+    tooltipTimerRef.current = setTimeout(() => {
+      setActiveTooltipId(null);
+      tooltipTimerRef.current = null;
+    }, 10000);
+  };
 
   useEffect(() => {
-    trackAction("growth_radar_views");
-  }, [trackAction]);
-
-  // Run the dynamic scan sequence
-  const executeScan = useCallback(() => {
-    setIsScanning(true);
-    setScanStepText("Auditing episode history...");
-
-    const t1 = setTimeout(() => {
-      setScanStepText("Correlating sudomotor triggers with timestamps...");
-    }, 600);
-
-    const t2 = setTimeout(() => {
-      setScanStepText("Synthesizing barrier care & clinical protocols...");
-    }, 1200);
-
-    const t3 = setTimeout(() => {
-      setIsScanning(false);
-    }, 1800);
-
     return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
+      if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
     };
   }, []);
 
-  // Fetch episodes from Supabase
+  // ── ACCURATE LIVE TIME SYNCHRONIZATION ───────────────────────────────────────
+  const syncLiveTime = useCallback(() => {
+    const currentNow = new Date();
+    setDate(currentNow);
+    setTime(format(currentNow, "HH:mm"));
+  }, []);
+
   useEffect(() => {
-    const fetchEpisodes = async () => {
-      if (!user) {
-        setIsLoading(false);
-        setIsScanning(false);
+    syncLiveTime();
+    const handleFocus = () => syncLiveTime();
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") syncLiveTime();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [syncLiveTime]);
+
+  useEffect(() => {
+    const lastLogTime = localStorage.getItem(LAST_LOG_TIME_KEY);
+    if (lastLogTime) {
+      setLastLoggedDisplay(format(new Date(parseInt(lastLogTime)), "MMM d, h:mm a"));
+    } else {
+      setLastLoggedDisplay("First time logging");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isNow) syncLiveTime();
+  }, [isNow, syncLiveTime]);
+
+  const episodesThisWeek = useMemo(() => {
+    if (!episodes) return 0;
+    return episodes.filter(e => {
+      const diff = (Date.now() - new Date(e.datetime).getTime()) / (1000 * 60 * 60 * 24);
+      return diff <= 7;
+    }).length;
+  }, [episodes]);
+
+  // Toggles
+  const toggleArea = (areaId: string) => {
+    setBodyAreas(prev =>
+      prev.includes(areaId) ? prev.filter(a => a !== areaId) : [...prev, areaId]
+    );
+  };
+
+  const toggleTrigger = (item: { id: string; label: string; type: string }) => {
+    setTriggers(prev => {
+      const exists = prev.some(t => t.value === item.id);
+      if (exists) {
+        return prev.filter(t => t.value !== item.id);
+      } else {
+        return [...prev, { type: item.type as any, value: item.id, label: item.label }];
+      }
+    });
+  };
+
+  const toggleDryFactor = (label: string) => {
+    setDryDayFactors(prev =>
+      prev.includes(label) ? prev.filter(f => f !== label) : [...prev, label]
+    );
+  };
+
+  const handleAddCustomArea = () => {
+    const trimmed = customAreaText.trim();
+    if (trimmed && !bodyAreas.includes(trimmed)) {
+      setBodyAreas(prev => [...prev, trimmed]);
+      setCustomAreaText("");
+      setShowCustomAreaInput(false);
+    }
+  };
+
+  const handleAddCustomTrigger = () => {
+    const trimmed = customTriggerText.trim();
+    if (trimmed && !triggers.some(t => t.value === trimmed)) {
+      setTriggers(prev => [...prev, { type: "custom" as any, value: trimmed, label: trimmed }]);
+      setCustomTriggerText("");
+      setShowCustomTriggerInput(false);
+    }
+  };
+
+  // Submit Handler
+  const handleSubmit = useCallback(async (
+    e?: React.FormEvent,
+    manualNotes?: string,
+    manualBodyAreas?: string[],
+    manualTriggers?: Trigger[],
+    manualSeverity?: SeverityLevel
+  ) => {
+    if (e) e.preventDefault();
+    const finalBodyAreas = isDryDay ? [] : (manualBodyAreas ?? bodyAreas);
+    const finalTriggers = isDryDay ? [] : (manualTriggers ?? triggers);
+    const finalSeverity = isDryDay ? (1 as SeverityLevel) : (manualSeverity ?? severity);
+
+    if (!user) {
+      toast({ title: "Authentication required", description: "Please log in to save episodes.", variant: "destructive" });
+      navigate("/login");
+      return;
+    }
+    if (!date) {
+      toast({ title: "Date required", description: "Please select a date for the episode.", variant: "destructive" });
+      return;
+    }
+    if (!isDryDay && finalBodyAreas.length === 0) {
+      if (manualNotes === undefined) {
+        toast({ title: "Body areas required", description: "Please select at least one affected body area.", variant: "destructive" });
         return;
       }
-      try {
-        const { data, error } = await supabase
-          .from("episodes")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
-
-        if (error) {
-          toast({
-            title: "Error loading insights",
-            description: "Failed to load historical data.",
-            variant: "destructive",
-          });
-          setEpisodes([]);
-        } else {
-          setEpisodes(data || []);
-          executeScan();
-        }
-      } catch {
-        toast({
-          title: "Error",
-          description: "Unexpected error loading insights.",
-          variant: "destructive",
-        });
-        setEpisodes([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchEpisodes();
-  }, [user, toast, executeScan]);
-
-  // ── DERIVED ANALYTICS ───────────────────────────────────────────────────────
-  const nonDryEpisodes = useMemo(() => episodes.filter((e) => !e.is_dry_day), [episodes]);
-  const dryEpisodes = useMemo(() => episodes.filter((e) => e.is_dry_day), [episodes]);
-
-  const dryStats = useMemo(() => {
-    const toKey = (d: Date) =>
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    const dryKeys = new Set(
-      dryEpisodes.map((e) => toKey(new Date(e.date || e.created_at)))
-    );
-    const now = Date.now();
-    const last30Dry = [...dryKeys].filter(
-      (k) => now - new Date(k).getTime() < 30 * 864e5
-    ).length;
-    const last7Dry = [...dryKeys].filter(
-      (k) => now - new Date(k).getTime() < 7 * 864e5
-    ).length;
-
-    let streak = 0;
-    for (let i = 0; i < 60; i++) {
-      const d = new Date();
-      d.setHours(0, 0, 0, 0);
-      d.setDate(d.getDate() - i);
-      if (dryKeys.has(toKey(d))) streak++;
-      else if (i > 0) break;
     }
-    return { total: dryKeys.size, last7Dry, last30Dry, streak };
-  }, [dryEpisodes]);
 
-  const analytics = useMemo(() => {
-    if (!nonDryEpisodes.length) return null;
+    setIsSubmitting(true);
+    const [hours, minutes] = time.split(":").map(Number);
+    const datetime = new Date(date);
+    datetime.setHours(hours, minutes);
 
-    // Trigger Frequencies & Avg Severities
-    const triggerMap = new Map<string, { count: number; severities: number[]; type: string }>();
-    nonDryEpisodes.forEach((ep) => {
-      const triggers = Array.isArray(ep.triggers) ? ep.triggers : [];
-      triggers.forEach((t: any) => {
-        const raw = typeof t === "string" ? JSON.parse(t) : t;
-        const key = raw?.label || raw?.value || "Unknown";
-        const existing = triggerMap.get(key) || {
-          count: 0,
-          severities: [],
-          type: raw?.type || "environmental",
+    const baseNotes = manualNotes !== undefined ? manualNotes : notes;
+    const finalNotes = isDryDay
+      ? [
+          dryDayFactors.length > 0 ? `Factors: ${dryDayFactors.join(", ")}` : "",
+          baseNotes?.trim() ? `Context: ${baseNotes.trim()}` : ""
+        ].filter(Boolean).join(" | ") || "Dry day / maintenance logged"
+      : baseNotes;
+
+    try {
+      const triggerStrings = finalTriggers.map((t) =>
+        JSON.stringify({ type: t.type, value: t.value, label: t.label })
+      );
+
+      const { data, error } = await supabase.from("episodes").insert({
+        user_id: user.id,
+        severity: finalSeverity,
+        body_areas: finalBodyAreas,
+        triggers: triggerStrings,
+        notes: finalNotes || null,
+        date: datetime.toISOString(),
+        is_dry_day: isDryDay,
+      }).select();
+
+      if (error) throw error;
+
+      if (data && data[0]) {
+        setLastSavedEpisodeId(data[0].id);
+        localStorage.setItem(CURRENT_HDSS_KEY, finalSeverity.toString());
+        const existingLogsStr = localStorage.getItem("sweatSmartLogs");
+        const existingLogs = existingLogsStr ? JSON.parse(existingLogsStr) : [];
+        const newLog = {
+          id: data[0].id,
+          datetime: datetime.toISOString(),
+          severityLevel: finalSeverity,
+          is_dry_day: isDryDay,
+          hdssLevel: finalSeverity
         };
-        existing.count++;
-        existing.severities.push(Number(ep.severity));
-        triggerMap.set(key, existing);
-      });
-    });
+        localStorage.setItem("sweatSmartLogs", JSON.stringify([newLog, ...existingLogs]));
+      }
 
-    const topTriggers = Array.from(triggerMap.entries())
-      .map(([name, d]) => ({
-        name,
-        count: d.count,
-        type: d.type,
-        avgSeverity: formatHdss(
-          d.severities.reduce((a, b) => a + b, 0) / d.severities.length
-        ),
-        percentage: Math.round((d.count / nonDryEpisodes.length) * 100),
-      }))
-      .sort((a, b) => b.count - a.count);
+      if (isDryDay) {
+        trackAction("dry_mode_entries");
+      } else {
+        trackAction("episodes_logged");
+      }
 
-    // Severity Stats
-    const severities = nonDryEpisodes.map((ep) => Number(ep.severity));
-    const avgSeverity = formatHdss(
-      severities.reduce((a, b) => a + b, 0) / severities.length
-    );
+      loggingReminderService.handleLogSaved();
 
-    // Peak Time Analysis
-    const hourCounts = new Array(24).fill(0);
-    nonDryEpisodes.forEach((ep) => {
-      const h = new Date(ep.created_at || ep.date).getHours();
-      hourCounts[h]++;
-    });
+      setIsLoadingInsights(true);
+      try {
+        const triggerData = (finalTriggers || []).map(t => ({
+          type: t.type,
+          value: t.value,
+          label: t.label,
+        }));
 
-    // Time window bucketing
-    const morningCount = hourCounts.slice(6, 12).reduce((a, b) => a + b, 0);
-    const afternoonCount = hourCounts.slice(12, 18).reduce((a, b) => a + b, 0);
-    const eveningCount = hourCounts.slice(18, 24).reduce((a, b) => a + b, 0);
-    const nightCount = hourCounts.slice(0, 6).reduce((a, b) => a + b, 0);
+        const newEpisodeForStreak = {
+          id: data?.[0]?.id || "temp",
+          datetime: datetime.toISOString(),
+          severityLevel: finalSeverity,
+          is_dry_day: isDryDay,
+          hdssLevel: finalSeverity
+        };
 
-    const windows = [
-      { name: "Morning (6 AM – 12 PM)", count: morningCount, advice: "Aligns with morning cortisol awakening surges and commute transitions." },
-      { name: "Afternoon (12 PM – 6 PM)", count: afternoonCount, advice: "Reflects peak environmental temperatures and post-lunch thermogenesis." },
-      { name: "Evening (6 PM – Midnight)", count: eveningCount, advice: "Correlates with mental decompression and cumulative daytime thermal stress." },
-      { name: "Night (Midnight – 6 AM)", count: nightCount, advice: "Sweating during deep sleep warrants specialist evaluation for nocturnal diaphoresis." },
-    ];
-    const peakWindow = windows.sort((a, b) => b.count - a.count)[0];
-    const peakPercentage = Math.round((peakWindow.count / nonDryEpisodes.length) * 100);
+        const fullEpisodesList = [newEpisodeForStreak, ...(episodes || [])];
 
-    // Trajectory trend
-    const now = Date.now();
-    const last14 = nonDryEpisodes.filter(
-      (e) => now - new Date(e.date || e.created_at).getTime() < 14 * 864e5
-    );
-    const prev14 = nonDryEpisodes.filter((e) => {
-      const age = (now - new Date(e.date || e.created_at).getTime()) / 864e5;
-      return age >= 14 && age < 28;
-    });
+        const insights = generateFallbackInsights(
+          finalSeverity,
+          finalBodyAreas as BodyArea[],
+          triggerData,
+          finalNotes,
+          undefined,
+          isDryDay,
+          fullEpisodesList
+        );
 
-    const avgLast14 = last14.length
-      ? last14.reduce((s, e) => s + Number(e.severity), 0) / last14.length
-      : 0;
-    const avgPrev14 = prev14.length
-      ? prev14.reduce((s, e) => s + Number(e.severity), 0) / prev14.length
-      : avgLast14;
+        setAiInsights(insights);
+        toast(
+          isDryDay
+            ? { title: "Dry day recorded ✨", description: "Zero sweating logged for this period." }
+            : { title: "Episode logged 🎉", description: "Clinical recommendations generated." }
+        );
+      } catch (insightError) {
+        console.error("Insight error:", insightError);
+      } finally {
+        setIsLoadingInsights(false);
+        setShowInsights(true);
+      }
+    } catch (error) {
+      toast({ title: "Failed to log", description: "Could not save your episode.", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [user, date, time, severity, bodyAreas, triggers, notes, isDryDay, dryDayFactors, episodes, navigate, toast, trackAction]);
 
-    const hdssDelta = parseFloat((avgPrev14 - avgLast14).toFixed(1));
-    const isImproving = hdssDelta > 0.2;
+  // Voice logging
+  const {
+    isListening,
+    voiceStatus,
+    startListening,
+    stopListening,
+    transcript,
+    volume,
+  } = useVoiceLogging({
+    onAnalysisComplete: async (detectedAreas, detectedTriggers, transcriptText, extractedSeverity) => {
+      setBodyAreas(detectedAreas);
+      setTriggers(detectedTriggers);
+      setNotes(transcriptText);
 
-    return {
-      topTriggers,
-      avgSeverity,
-      peakWindow,
-      peakPercentage,
-      hdssDelta,
-      isImproving,
-      totalEpisodes: nonDryEpisodes.length
-    };
-  }, [nonDryEpisodes]);
+      const finalSeverity = extractedSeverity ? (extractedSeverity as SeverityLevel) : severity;
+      if (extractedSeverity) setSeverity(finalSeverity);
 
-  // Loading skeleton
-  if (isLoading) {
+      await handleSubmit(
+        undefined,
+        transcriptText,
+        detectedAreas,
+        detectedTriggers,
+        finalSeverity
+      );
+    }
+  });
+
+  const voiceUIStatus = {
+    LISTENING: { label: "LISTENING", hint: "Speak naturally about your episode" },
+    CONFIRMING: { label: "CONFIRMING", hint: "Processing symptoms..." },
+    REASONING: { label: "REASONING", hint: "Synthesizing clinical markers" },
+    SAVING: { label: "SAVING", hint: "Saving episode record" },
+  }[voiceStatus as string] || { label: "Voice log", hint: "Tap to record by voice" };
+
+  if (showInsights) {
     return (
       <AppLayout>
-        <div className="w-full max-w-xl mx-auto py-10 px-4 space-y-6">
-          <div className="w-44 h-44 rounded-full bg-slate-200 animate-pulse mx-auto" />
-          <div className="h-28 bg-slate-200 rounded-3xl animate-pulse" />
-          <div className="h-48 bg-slate-200 rounded-3xl animate-pulse" />
-        </div>
-      </AppLayout>
-    );
-  }
+        <div className="min-h-screen bg-slate-900/95 py-8 px-4 text-white">
+          <div className="max-w-xl mx-auto space-y-4">
+            {isLoadingInsights ? (
+              <div className="w-full bg-slate-800/90 rounded-3xl p-8 border border-slate-700/50 flex flex-col items-center gap-4 text-center">
+                <Loader2 className="h-8 w-8 animate-spin text-teal-400" />
+                <p className="font-semibold text-slate-100">Synthesizing Clinical Insights...</p>
+                <p className="text-xs text-slate-400">Cross-referencing hyperhidrosis guidelines and your historical patterns.</p>
+              </div>
+            ) : aiInsights ? (
+              <AIGeneratedInsights insights={aiInsights} />
+            ) : (
+              <div className="w-full bg-slate-800 rounded-3xl p-6 border border-slate-700 text-center">
+                <p className="text-slate-300 text-sm">Episode saved. View your history for full longitudinal tracking.</p>
+              </div>
+            )}
 
-  // Empty state
-  if (nonDryEpisodes.length === 0 && dryEpisodes.length === 0) {
-    return (
-      <AppLayout>
-        <div className="w-full max-w-xl mx-auto px-4 py-12 text-center space-y-4">
-          <div className="w-20 h-20 rounded-3xl bg-teal-50 text-teal-600 flex items-center justify-center text-4xl mx-auto shadow-sm">
-            🌱
+            <div className="flex flex-col gap-2.5 pt-2">
+              <button
+                onClick={() => navigate("/home")}
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-teal-500 to-indigo-600 hover:opacity-95 text-white font-bold transition-all shadow-lg flex items-center justify-center gap-2 text-sm"
+              >
+                <LayoutDashboard className="h-4 w-4" /> Go to Dashboard
+              </button>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => {
+                    syncLiveTime();
+                    setSeverity(3);
+                    setBodyAreas([]);
+                    setTriggers([]);
+                    setNotes("");
+                    setIsDryDay(false);
+                    setDryDayFactors([]);
+                    setShowInsights(false);
+                    setAiInsights(null);
+                  }}
+                  className="py-3 rounded-2xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Log Another
+                </button>
+                <button
+                  onClick={() => navigate("/history")}
+                  className="py-3 rounded-2xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all"
+                >
+                  <History className="h-3.5 w-3.5" /> View History
+                </button>
+              </div>
+            </div>
           </div>
-          <h2 className="text-xl font-bold text-slate-800">Your Intelligence Hub Awaits</h2>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
-            Log your first episode or dry day. HidroAlly will continuously analyze your triggers, circadian rhythms, and barrier response to build your personalized clinical protocol.
-          </p>
-          <button
-            onClick={() => navigate("/log-episode")}
-            className="w-full py-4 rounded-2xl bg-gradient-to-r from-teal-500 to-indigo-600 text-white font-bold text-xs shadow-lg shadow-teal-100"
-          >
-            Log First Episode
-          </button>
         </div>
       </AppLayout>
     );
   }
-
-  const primaryTrigger = analytics?.topTriggers[0];
-  const triggerKnowledge = primaryTrigger
-    ? TRIGGER_CLINICAL_MAP[primaryTrigger.name] || DEFAULT_CLINICAL
-    : DEFAULT_CLINICAL;
 
   return (
     <AppLayout>
-      <div className="w-full max-w-xl mx-auto pb-28 px-4">
+      <div className="min-h-screen bg-slate-50/70 pb-28">
 
-        {/* ── TOP HEADER SECTION: CLINICAL INTELLIGENCE (LEFT) & SCANNING (RIGHT) ── */}
-        <div className="pt-6 pb-2 flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-black tracking-widest text-teal-800 uppercase">
-              Clinical Intelligence
-            </h2>
-          </div>
-          <button
-            onClick={executeScan}
-            disabled={isScanning}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/90 backdrop-blur-md border border-slate-200/80 shadow-sm hover:bg-slate-100 text-slate-700 text-xs font-semibold transition-all active:scale-95"
-          >
-            <RefreshCw className={cn("h-3.5 w-3.5 text-teal-600", isScanning && "animate-spin")} />
-            <span>{isScanning ? "Scanning..." : "Re-analyze"}</span>
-          </button>
-        </div>
-
-        {/* ── PATTERN SYNTHESIS SUB-TITLE CENTERED ABOVE CIRCLE ────────────── */}
-        <div className="text-center mb-1">
-          <h1 className="text-sm font-bold text-slate-700 tracking-tight">
-            Pattern Synthesis
-          </h1>
-        </div>
-
-        {/* ── FLO-INSPIRED LIVING HERO ORB WITH ORGANIC FLOWER & DOT SPRINKLES ── */}
-        <div className="py-2 flex flex-col items-center justify-center relative">
-          <style>{`
-            @keyframes organicMorph {
-              0% { border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; transform: rotate(0deg); }
-              50% { border-radius: 60% 40% 30% 70% / 50% 60% 40% 50%; transform: rotate(180deg); }
-              100% { border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; transform: rotate(360deg); }
-            }
-            @keyframes floatBubble {
-              0%, 100% { transform: translateY(0px) scale(1); opacity: 0.8; }
-              50% { transform: translateY(-5px) scale(1.1); opacity: 1; }
-            }
-            .animate-organic {
-              animation: organicMorph 14s linear infinite;
-            }
-            .animate-bubble-1 {
-              animation: floatBubble 3s ease-in-out infinite;
-            }
-            .animate-bubble-2 {
-              animation: floatBubble 4s ease-in-out infinite 1s;
-            }
-          `}</style>
-
-          <div className="relative w-60 h-60 flex items-center justify-center">
-            {/* Organic flower/blob outer ring with divided lobes and dot sprinkles */}
-            <div className="absolute inset-[-6px] rounded-full border border-teal-300/60 animate-organic pointer-events-none flex items-center justify-center">
-              <span className="absolute top-2 left-1/3 w-2 h-2 bg-teal-500 rounded-full animate-bubble-1 shadow-sm"></span>
-              <span className="absolute bottom-3 right-1/3 w-2.5 h-2.5 bg-pink-400 rounded-full animate-bubble-2 shadow-sm"></span>
-              <span className="absolute top-1/2 right-1.5 w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bubble-1"></span>
-              <span className="absolute top-1/3 left-1 w-2 h-2 bg-emerald-400 rounded-full animate-bubble-2"></span>
+        {/* ── TOP HERO HEADER (TIGHTENED & EXECUTIVE STYLING) ─────────────────── */}
+        <div className="w-full bg-gradient-to-b from-slate-900 via-indigo-950 to-slate-900 text-white pt-4 pb-6 px-5 rounded-b-[2.2rem] shadow-xl mb-4">
+          <div className="max-w-xl mx-auto">
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="inline-block text-[11px] font-black uppercase tracking-[0.24em] text-teal-300 bg-teal-950/70 px-2.5 py-1 rounded-lg border border-teal-500/30 shadow-xs">
+                  ✦ Clinical Suite
+                </span>
+                <h1 className="text-[12px] font-bold tracking-wider text-slate-300 uppercase mt-1 pl-0.5">
+                  Log Episode
+                </h1>
+              </div>
+              <div className="text-right pt-0.5">
+                <p className="text-xs font-bold text-slate-200">{format(new Date(), "EEEE, MMM d")}</p>
+                <p className="text-[10px] text-teal-400 font-mono font-medium">{lastLoggedDisplay}</p>
+              </div>
             </div>
+            <p className="text-[11px] text-slate-300/80 mt-2 max-w-sm leading-snug">
+              Standardized HDSS & anatomical tracking. Every entry dynamically refines your clinical care algorithms.
+            </p>
+          </div>
+        </div>
 
-            {/* Main Gradient Core Circle (No internal white rolling spinner) */}
-            <div
-              onClick={!isScanning ? executeScan : undefined}
+        <div className="max-w-xl mx-auto px-4 space-y-4">
+
+          {/* ── CARD: COMPACT DATE & SYNCHRONIZED TIME ────────────────────────── */}
+          <div className="w-full bg-white rounded-3xl p-5 shadow-xs border border-slate-100">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-indigo-600" />
+                <h3 className="text-sm font-bold text-slate-800">Timestamp</h3>
+              </div>
+              <button
+                type="button"
+                onClick={syncLiveTime}
+                className="text-[10px] font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 px-2 py-0.5 rounded-full transition-colors"
+              >
+                Sync Current Time
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-[11px] font-semibold text-slate-500 mb-1 block">Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="w-full h-11 px-3 rounded-2xl border border-slate-200 bg-slate-50/70 hover:bg-slate-100 flex items-center justify-between text-xs font-semibold text-slate-700 transition-colors"
+                    >
+                      <span className="truncate">{date ? format(date, "MMM d, yyyy") : "Date"}</span>
+                      <CalendarIcon className="h-3.5 w-3.5 text-slate-400 shrink-0 ml-1" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 rounded-2xl shadow-2xl border-slate-200">
+                    <Calendar mode="single" selected={date} onSelect={setDate} disabled={(d) => d > new Date()} />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div>
+                <Label className="text-[11px] font-semibold text-slate-500 mb-1 block">Time</Label>
+                <div className="h-11 px-3 rounded-2xl border border-slate-200 bg-slate-50/70 flex items-center justify-between">
+                  <Input
+                    type="time"
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                    className="border-0 bg-transparent p-0 text-xs font-semibold text-slate-700 h-auto focus-visible:ring-0 focus-visible:ring-offset-0"
+                  />
+                  <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── CARD: DRY MODE TOGGLE ─────────────────────────────────────────── */}
+          <div className="w-full bg-white rounded-3xl p-5 shadow-xs border border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-teal-50 flex items-center justify-center text-teal-600 font-bold">
+                ✨
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-slate-800">Dry Mode / Treatment Active</h4>
+                <p className="text-xs text-slate-400">Zero active sweating or therapy maintenance day</p>
+              </div>
+            </div>
+            <Switch
+              checked={isDryDay}
+              onCheckedChange={setIsDryDay}
+              className="data-[state=checked]:bg-teal-500"
+            />
+          </div>
+
+          {!isDryDay ? (
+            <>
+              {/* ── CARD 1: EPISODE SEVERITY (HDSS 1-4) ────────────────────────── */}
+              <div className="w-full bg-white rounded-3xl p-5 shadow-xs border border-slate-100">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <span className="text-indigo-600 font-bold text-xs uppercase tracking-wider block">Validated Scale</span>
+                    <h3 className="text-sm font-bold text-slate-800">Hyperhidrosis Disease Severity (HDSS)</h3>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-xs font-bold">
+                    Grade {severity}/4
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  {HDSS_GRADES.map(item => {
+                    const isSelected = severity === item.grade;
+                    return (
+                      <button
+                        key={item.grade}
+                        type="button"
+                        onClick={() => setSeverity(item.grade)}
+                        className={cn(
+                          "p-3 rounded-2xl text-left border transition-all relative overflow-hidden",
+                          isSelected
+                            ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
+                            : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"
+                        )}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={cn("text-xs font-bold", isSelected ? "text-white" : "text-slate-900")}>
+                            {item.title}
+                          </span>
+                          {isSelected && <Check className="h-3.5 w-3.5 text-white" />}
+                        </div>
+                        <p className={cn("text-[11px] line-clamp-1", isSelected ? "text-indigo-100" : "text-slate-500")}>
+                          {item.subtitle}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-3 p-3 bg-slate-50 rounded-2xl border border-slate-100 text-[11px] text-slate-600 flex items-start gap-2">
+                  <Info className="h-3.5 w-3.5 text-slate-400 mt-0.5 shrink-0" />
+                  <span>{HDSS_GRADES.find(g => g.grade === severity)?.desc}</span>
+                </div>
+              </div>
+
+              {/* ── CARD 2: PRIMARY FOCAL ZONES (FLO EMERALD THEME) ────────────── */}
+              <div className="w-full bg-white rounded-3xl p-5 shadow-xs border border-slate-100">
+                <div className="mb-3">
+                  <span className="text-emerald-700 font-bold text-xs uppercase tracking-wider block">Primary Focal</span>
+                  <h3 className="text-sm font-bold text-slate-800">Classic Focal Zones</h3>
+                  <p className="text-xs text-slate-400">Bilateral, symmetrical eccrine distribution</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {PRIMARY_ZONES.map((zone, idx) => {
+                    const isSelected = bodyAreas.includes(zone.id);
+                    const isLeftCol = idx % 2 === 0;
+                    const align = isLeftCol ? "left" : "right";
+                    const info = CLINICAL_KNOWLEDGE[zone.id];
+                    const theme = FLO_THEMES.emerald;
+
+                    return (
+                      <div key={zone.id} className="relative">
+                        {activeTooltipId === zone.id && info && (
+                          <MicroTooltip
+                            icon={info.icon}
+                            title={info.title}
+                            mechanism={info.mechanism}
+                            align={align}
+                            onDismiss={() => setActiveTooltipId(null)}
+                          />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            toggleArea(zone.id);
+                            triggerTooltip(zone.id);
+                          }}
+                          className={cn(
+                            "w-full min-h-[48px] py-2.5 px-3 rounded-2xl flex items-center justify-between gap-2 transition-all active:scale-95 text-left",
+                            isSelected ? theme.selected : theme.unselected
+                          )}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-base shrink-0">{zone.icon}</span>
+                            <span className="text-[11px] font-semibold leading-tight truncate">{zone.label}</span>
+                          </div>
+                          {isSelected && (
+                            <span className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${theme.badge}`}>
+                              <Check className="h-2.5 w-2.5 stroke-[3]" />
+                            </span>
+                          )}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* ── CARD 3: SECONDARY & TRUNCAL ZONES (HEAD & NECK ADDED) ───────── */}
+              <div className="w-full bg-white rounded-3xl p-5 shadow-xs border border-slate-100">
+                <div className="mb-3">
+                  <span className="text-amber-700 font-bold text-xs uppercase tracking-wider block">Secondary & Truncal</span>
+                  <h3 className="text-sm font-bold text-slate-800">Truncal & Generalized Zones</h3>
+                  <p className="text-xs text-slate-400">Systemic, endocrine, or compensatory sweating</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {TRUNCAL_ZONES.map((zone, idx) => {
+                    const isSelected = bodyAreas.includes(zone.id);
+                    const isLeftCol = idx % 2 === 0;
+                    const align = isLeftCol ? "left" : "right";
+                    const info = CLINICAL_KNOWLEDGE[zone.id];
+                    const theme = FLO_THEMES.amber;
+
+                    return (
+                      <div key={zone.id} className="relative">
+                        {activeTooltipId === zone.id && info && (
+                          <MicroTooltip
+                            icon={info.icon}
+                            title={info.title}
+                            mechanism={info.mechanism}
+                            align={align}
+                            onDismiss={() => setActiveTooltipId(null)}
+                          />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            toggleArea(zone.id);
+                            triggerTooltip(zone.id);
+                          }}
+                          className={cn(
+                            "w-full min-h-[48px] py-2.5 px-3 rounded-2xl flex items-center justify-between gap-2 transition-all active:scale-95 text-left",
+                            isSelected ? theme.selected : theme.unselected
+                          )}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-base shrink-0">{zone.icon}</span>
+                            <span className="text-[11px] font-semibold leading-tight truncate">{zone.label}</span>
+                          </div>
+                          {isSelected && (
+                            <span className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${theme.badge}`}>
+                              <Check className="h-2.5 w-2.5 stroke-[3]" />
+                            </span>
+                          )}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Custom Area Badges */}
+                {bodyAreas.filter(a => !PRIMARY_ZONES.some(p => p.id === a) && !TRUNCAL_ZONES.some(t => t.id === a)).length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2 pt-3 border-t border-slate-100">
+                    {bodyAreas
+                      .filter(a => !PRIMARY_ZONES.some(p => p.id === a) && !TRUNCAL_ZONES.some(t => t.id === a))
+                      .map(customArea => (
+                        <span
+                          key={customArea}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300"
+                        >
+                          📍 {customArea}
+                          <button
+                            type="button"
+                            onClick={() => toggleArea(customArea)}
+                            className="hover:text-amber-950"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                  </div>
+                )}
+
+                <div className="mt-3 pt-1">
+                  {!showCustomAreaInput ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowCustomAreaInput(true)}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 transition-colors border border-amber-200"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Add custom area
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={customAreaText}
+                        onChange={(e) => setCustomAreaText(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddCustomArea())}
+                        placeholder="e.g. Lower legs, Nape..."
+                        className="h-9 text-xs rounded-xl border-amber-300 w-48"
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddCustomArea}
+                        className="h-9 px-3 rounded-xl bg-amber-600 text-white text-xs font-semibold"
+                      >
+                        Add
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowCustomAreaInput(false); setCustomAreaText(""); }}
+                        className="text-xs text-slate-400 hover:text-slate-600"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ── CARD 4: ALL 4 CLINICAL TRIGGER PHASES (TREKKING ADDED) ──────── */}
+              <div className="w-full bg-white rounded-3xl p-5 shadow-xs border border-slate-100 space-y-6">
+                <div>
+                  <span className="text-violet-600 font-bold text-xs uppercase tracking-wider block">Etiology Correlation</span>
+                  <h3 className="text-sm font-bold text-slate-800">Suspected Triggers</h3>
+                  <p className="text-xs text-slate-400">Select all autonomic, thermal, and locomotive contributors</p>
+                </div>
+
+                {TRIGGER_GROUPS.map((group, gIdx) => {
+                  const theme = FLO_THEMES[group.colorKey];
+                  return (
+                    <div key={group.phase} className={cn("pt-4", gIdx !== 0 && "border-t border-slate-100")}>
+                      <div className="mb-2.5">
+                        <h4 className="text-xs font-bold text-slate-800">{group.phase}</h4>
+                        <p className="text-[11px] text-slate-400">{group.desc}</p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        {group.items.map((item, idx) => {
+                          const isSelected = triggers.some(t => t.value === item.id);
+                          const isLeftCol = idx % 2 === 0;
+                          const align = isLeftCol ? "left" : "right";
+                          const info = CLINICAL_KNOWLEDGE[item.id];
+
+                          return (
+                            <div key={item.id} className="relative">
+                              {activeTooltipId === item.id && info && (
+                                <MicroTooltip
+                                  icon={info.icon}
+                                  title={info.title}
+                                  mechanism={info.mechanism}
+                                  align={align}
+                                  onDismiss={() => setActiveTooltipId(null)}
+                                />
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  toggleTrigger(item);
+                                  triggerTooltip(item.id);
+                                }}
+                                className={cn(
+                                  "w-full min-h-[48px] py-2.5 px-3 rounded-2xl flex items-center justify-between gap-2 transition-all active:scale-95 text-left",
+                                  isSelected ? theme.selected : theme.unselected
+                                )}
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="text-base shrink-0">{item.icon}</span>
+                                  <span className="text-[11px] font-semibold leading-tight truncate">{item.label}</span>
+                                </div>
+                                {isSelected && (
+                                  <span className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${theme.badge}`}>
+                                    <Check className="h-2.5 w-2.5 stroke-[3]" />
+                                  </span>
+                                )}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Custom Trigger Badges */}
+                {triggers.filter(t => !TRIGGER_GROUPS.some(g => g.items.some(i => i.id === t.value))).length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2 pt-3 border-t border-slate-100">
+                    {triggers
+                      .filter(t => !TRIGGER_GROUPS.some(g => g.items.some(i => i.id === t.value)))
+                      .map(customTrig => (
+                        <span
+                          key={customTrig.value}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-violet-100 text-violet-900 border border-violet-300"
+                        >
+                          ⚡ {customTrig.label}
+                          <button
+                            type="button"
+                            onClick={() => toggleTrigger({ id: customTrig.value, label: customTrig.label, type: "custom" })}
+                            className="hover:text-violet-950"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                  </div>
+                )}
+
+                <div className="pt-2">
+                  {!showCustomTriggerInput ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowCustomTriggerInput(true)}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold text-violet-900 bg-violet-50 hover:bg-violet-100 transition-colors border border-violet-200"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Add custom trigger
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={customTriggerText}
+                        onChange={(e) => setCustomTriggerText(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddCustomTrigger())}
+                        placeholder="e.g. Public speech, Heated commute..."
+                        className="h-9 text-xs rounded-xl border-violet-300 w-48"
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddCustomTrigger}
+                        className="h-9 px-3 rounded-xl bg-violet-600 text-white text-xs font-semibold"
+                      >
+                        Add
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowCustomTriggerInput(false); setCustomTriggerText(""); }}
+                        className="text-xs text-slate-400 hover:text-slate-600"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ── CARD 5: CLINICAL NOTES ────────────────────────────────────── */}
+              <div className="w-full bg-white rounded-3xl p-5 shadow-xs border border-slate-100">
+                <h3 className="text-sm font-bold text-slate-800 mb-1">Qualitative Clinical Context</h3>
+                <p className="text-xs text-slate-400 mb-3">Optional patient notes regarding situational context, interventions, or onset speed</p>
+                <Textarea
+                  placeholder="Record immediate symptoms, skin response, or emotional state during onset..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="rounded-2xl border-slate-200 text-xs min-h-[90px] resize-none focus:border-indigo-400"
+                />
+              </div>
+            </>
+          ) : (
+            /* ── SPECIALIZED DRY DAY RECOVERY CARD ── */
+            <div className="w-full bg-white rounded-3xl p-5 shadow-xs border border-teal-100 space-y-4 animate-in fade-in duration-200">
+              <div>
+                <span className="text-teal-600 font-bold text-xs uppercase tracking-wider block">
+                  Therapeutic Success Tracking
+                </span>
+                <h3 className="text-sm font-bold text-slate-800">What Kept You Dry Today?</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Tap all treatments, environments, and routines that contributed to zero sweating today.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {[
+                  "🧴 Clinical Antiperspirant (Applied Last Night)",
+                  "💊 Oral Medication (e.g., Glycopyrrolate)",
+                  "⚡ Iontophoresis / In-Clinic Therapy",
+                  "❄️ Continuous AC / Personal Fan",
+                  "🧘 Low Stress / Restful Day",
+                  "👕 Breathable / Natural Fabrics",
+                  "🌿 Cool / Low-Humidity Climate"
+                ].map((factor) => {
+                  const isSelected = dryDayFactors.includes(factor);
+                  return (
+                    <button
+                      key={factor}
+                      type="button"
+                      onClick={() => toggleDryFactor(factor)}
+                      className={cn(
+                        "py-2 px-3 rounded-2xl text-xs font-semibold border transition-all text-left flex items-center gap-1.5 active:scale-95",
+                        isSelected
+                          ? "bg-teal-600 text-white border-teal-600 shadow-xs"
+                          : "bg-teal-50/60 text-teal-950 border-teal-200/70 hover:bg-teal-100/60"
+                      )}
+                    >
+                      <span>{factor}</span>
+                      {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="pt-2 border-t border-slate-100">
+                <Label htmlFor="dry-notes" className="text-xs font-bold text-slate-700 block mb-1">
+                  Notes & Environmental Context <span className="font-normal text-slate-400">— What worked?</span>
+                </Label>
+                <Textarea
+                  id="dry-notes"
+                  placeholder="e.g., Applied Qbrexza at 10 PM last night, kept desk fan on low, worked in an air-conditioned room all afternoon..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="rounded-2xl border-slate-200 text-xs min-h-[95px] resize-none focus:border-teal-400"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* ── ACTIONS BAR ─────────────────────────────────────────────────── */}
+          <div className="pt-2 pb-6 space-y-3">
+            <button
+              type="button"
+              onClick={() => handleSubmit()}
+              disabled={isSubmitting || (!isDryDay && severity === null)}
               className={cn(
-                "relative w-52 h-52 rounded-full flex flex-col items-center justify-center text-center p-5 shadow-xl cursor-pointer select-none transition-all duration-700",
-                isScanning
-                  ? "bg-gradient-to-tr from-teal-400 via-indigo-500 to-pink-500 shadow-pink-200/50"
-                  : "bg-gradient-to-tr from-teal-500 via-emerald-400 to-indigo-600 shadow-teal-100"
+                "w-full py-4 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 hover:opacity-95 text-white font-bold transition-all shadow-lg shadow-indigo-200 text-sm flex items-center justify-center gap-2",
+                isSubmitting && "opacity-75 cursor-not-allowed"
               )}
             >
-              <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center mb-2 backdrop-blur-sm shadow-sm">
-                <Sparkles className="h-4 w-4 text-white fill-white" />
-              </div>
-              <p className="text-xs font-bold text-white px-3 leading-snug transition-all duration-500">
-                {isScanning ? scanStepText : `Patterns Updated: ${analytics?.totalEpisodes || 0} episodes correlated`}
-              </p>
-              <span className="text-[9px] text-white/80 mt-1.5 font-medium">
-                {isScanning ? "Analyzing telemetry..." : "Tap to scan again"}
-              </span>
-            </div>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Storing Clinical Metrics...
+                </>
+              ) : (
+                <>
+                  💾 Record Episode
+                </>
+              )}
+            </button>
+            <p className="text-center text-[11px] font-semibold text-slate-400">
+              {episodesThisWeek} total episode{episodesThisWeek !== 1 ? "s" : ""} recorded in the past 7 days
+            </p>
           </div>
         </div>
 
-        {/* ── COMPACT CLINICAL METRIC CHIPS ─────────────────────────────────── */}
-        <div className="grid grid-cols-3 gap-2 mb-4">
-          <div className="py-2.5 px-2 rounded-2xl bg-white border border-slate-100 shadow-sm text-center h-18 flex flex-col justify-center">
-            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
-              Active HDSS
-            </span>
-            <span className="text-base font-black text-indigo-700 leading-none mb-1">
-              {analytics?.avgSeverity || "—"}
-            </span>
-            <span className="text-[9px] text-slate-400 font-medium">clinical grade</span>
-          </div>
-
-          <div className="py-2.5 px-2 rounded-2xl bg-white border border-slate-100 shadow-sm text-center h-18 flex flex-col justify-center">
-            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
-              Dry Streak
-            </span>
-            <span className="text-base font-black text-emerald-600 leading-none mb-1">
-              {dryStats.streak} {dryStats.streak === 1 ? "Day" : "Days"}
-            </span>
-            <span className="text-[9px] text-slate-400 font-medium">{dryStats.total} total logged</span>
-          </div>
-
-          <div className="py-2.5 px-2 rounded-2xl bg-white border border-slate-100 shadow-sm text-center h-18 flex flex-col justify-center">
-            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
-              Peak Window
-            </span>
-            <span className="text-base font-black text-amber-600 leading-none mb-1">
-              {analytics?.peakPercentage || 0}%
-            </span>
-            <span className="text-[9px] text-slate-400 font-medium">in peak window</span>
-          </div>
-        </div>
-
-        {/* ── 3 FLO-STYLE CLINICAL STORY CARDS ──────────────────────────────── */}
-        <div className="space-y-4">
-
-          {/* CARD 1: PRIMARY AUTONOMIC TRIGGER PHENOTYPE (ROSE/CORAL THEME) ─── */}
-          {primaryTrigger && (
-            <div className="rounded-3xl p-5 bg-rose-50/70 border border-rose-200/80 shadow-sm space-y-3.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl p-1.5 rounded-xl bg-white/80 shadow-xs">
-                    {triggerKnowledge.icon}
-                  </span>
-                  <div>
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-rose-700 block">
-                      Dominant Trigger Phenotype
-                    </span>
-                    <h3 className="text-sm font-bold text-rose-950">
-                      #{1} Driver: {primaryTrigger.name}
-                    </h3>
-                  </div>
-                </div>
-                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-200/60 text-rose-900">
-                  {primaryTrigger.percentage}% of episodes
+        {/* ── VOICE LOGGING FLOATING ASSISTANT ─────────────────────────────────── */}
+        <div className="fixed bottom-24 right-6 z-50 flex flex-col items-center gap-3">
+          {isListening && (
+            <div className="bg-slate-900/90 backdrop-blur-md border border-teal-500/40 rounded-2xl p-4 shadow-2xl mb-2 max-w-[220px] text-white">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-teal-300">
+                  {voiceUIStatus.label}
                 </span>
               </div>
-
-              {/* Full clinical explanation with plain-English brackets */}
-              <div className="bg-white/90 rounded-2xl p-3.5 border border-rose-100 text-xs text-rose-950 leading-relaxed">
-                <p>{triggerKnowledge.mechanism}</p>
-              </div>
-
-              {/* Integrated Treatment & Acute Relief Actions */}
-              <div className="space-y-2 pt-1">
-                <div className="p-3 rounded-2xl bg-white/70 border border-rose-200/60 flex items-start gap-2.5">
-                  <Shield className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="text-[10px] font-bold text-rose-900 uppercase block">
-                      Targeted Clinical Pathway
-                    </span>
-                    <p className="text-xs text-rose-950 leading-snug mt-0.5">
-                      {triggerKnowledge.medicalRoute}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-2xl bg-white/70 border border-rose-200/60 flex items-start gap-2.5">
-                  <Flame className="h-4 w-4 text-orange-600 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="text-[10px] font-bold text-orange-950 uppercase block">
-                      Acute Countermeasure
-                    </span>
-                    <p className="text-xs text-rose-950 leading-snug mt-0.5">
-                      {triggerKnowledge.acuteRelief}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Secondary Triggers Quick Strip */}
-              {analytics.topTriggers.length > 1 && (
-                <div className="pt-2 border-t border-rose-200/60">
-                  <span className="text-[10px] font-bold text-rose-800 uppercase tracking-wider block mb-2">
-                    Secondary Correlated Triggers (Tap to inspect)
-                  </span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {analytics.topTriggers.slice(1, 4).map((t, i) => (
-                      <button
-                        key={t.name}
-                        onClick={() => setSelectedTriggerModal({ ...t, rank: i + 2 })}
-                        className="py-1 px-2.5 rounded-full bg-white hover:bg-rose-100/60 border border-rose-200 text-rose-900 text-[11px] font-semibold flex items-center gap-1.5 transition-all active:scale-95"
-                      >
-                        <span>{t.name}</span>
-                        <span className="text-[10px] opacity-60">· {t.count}×</span>
-                        <ChevronRight className="h-3 w-3 text-rose-400" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
+              <p className="text-xs text-slate-300 italic">{voiceUIStatus.hint}</p>
+              <VoiceVisualizer volume={volume} isListening={voiceStatus === "LISTENING"} />
+              {transcript && (
+                <p className="text-[10px] text-teal-200 mt-2 line-clamp-2 border-t border-slate-700 pt-1">
+                  "{transcript}"
+                </p>
               )}
             </div>
           )}
 
-          {/* CARD 2: CIRCADIAN VULNERABILITY WINDOW (PURPLE/IRIS THEME) ──────── */}
-          {analytics?.peakWindow && (
-            <div className="rounded-3xl p-5 bg-purple-50/70 border border-purple-200/80 shadow-sm space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl p-1.5 rounded-xl bg-white/80 shadow-xs">
-                    ⏰
-                  </span>
-                  <div>
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-purple-700 block">
-                      Circadian Sympathetic Window
-                    </span>
-                    <h3 className="text-sm font-bold text-purple-950">
-                      {analytics.peakWindow.name}
-                    </h3>
-                  </div>
-                </div>
-                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-200/60 text-purple-900">
-                  {analytics.peakPercentage}% concentration
-                </span>
-              </div>
-
-              <div className="bg-white/90 rounded-2xl p-3.5 border border-purple-100 text-xs text-purple-950 leading-relaxed">
-                <p>
-                  {analytics.peakWindow.advice} Cortisol surges lower your hypothalamic sweating threshold, accelerating sudomotor outflow (nerve signaling to sweat glands) during early daily activities.
-                </p>
-              </div>
-
-              <div className="p-3 rounded-2xl bg-white/70 border border-purple-200/60 flex items-start gap-2.5">
-                <Clock className="h-4 w-4 text-purple-600 shrink-0 mt-0.5" />
-                <div>
-                  <span className="text-[10px] font-bold text-purple-900 uppercase block">
-                    Pre-Emptive Protocol Timing
-                  </span>
-                  <p className="text-xs text-purple-950 leading-snug mt-0.5">
-                    Apply oral or topical barrier treatments 60–90 minutes before this window commences. Pre-cooling arterial pulse points before morning departures halts anticipatory sweating reflexes.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* CARD 3: THERAPEUTIC TRAJECTORY & BARRIER RECOVERY (EMERALD THEME) ─── */}
-          <div className="rounded-3xl p-5 bg-emerald-50/70 border border-emerald-200/80 shadow-sm space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-xl p-1.5 rounded-xl bg-white/80 shadow-xs">
-                  {analytics?.isImproving ? "📉" : "🌿"}
-                </span>
-                <div>
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 block">
-                    Longitudinal Trajectory
-                  </span>
-                  <h3 className="text-sm font-bold text-emerald-950">
-                    {analytics?.isImproving
-                      ? `Severity Reduced by ${analytics.hdssDelta} HDSS Points`
-                      : "Stabilized Maintenance Pattern"}
-                  </h3>
-                </div>
-              </div>
-              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-200/60 text-emerald-900">
-                {dryStats.total} dry days recorded
-              </span>
-            </div>
-
-            <div className="bg-white/90 rounded-2xl p-3.5 border border-emerald-100 text-xs text-emerald-950 leading-relaxed">
-              <p>
-                {dryStats.streak >= 3
-                  ? `Your active ${dryStats.streak}-day dry streak confirms effective ductal suppression and stable basal sympathetic tone (baseline nervous system activity). Protect your acid mantle (protective surface skin barrier) with off-night ceramide moisturizers.`
-                  : "Tracking dry days alongside active episodes provides objective empirical evidence of treatment efficacy. Consistent logging isolates which treatments preserve your skin barrier best."}
-              </p>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-white/70 border border-emerald-200/60 flex items-start gap-2.5">
-              <HeartPulse className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-              <div>
-                <span className="text-[10px] font-bold text-emerald-900 uppercase block">
-                  Physician Consultation Benchmark
-                </span>
-                <p className="text-xs text-emerald-950 leading-snug mt-0.5">
-                  Bring this compiled trajectory report to your dermatologist or doctor. A verified history of {analytics?.totalEpisodes || 0} logs provides the empirical foundation needed to justify prescription topicals or specialized therapies.
-                </p>
-              </div>
-            </div>
-          </div>
-
-        </div>
-
-        {/* ── INTERACTIVE TRIGGER DETAIL MODAL ──────────────────────────────── */}
-        {selectedTriggerModal && (() => {
-          const detail = TRIGGER_CLINICAL_MAP[selectedTriggerModal.name] || DEFAULT_CLINICAL;
-          return (
-            <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-              <div className="w-full max-w-md bg-white rounded-3xl p-5 shadow-2xl border border-slate-100 relative animate-in zoom-in-95 duration-150">
-                <button
-                  onClick={() => setSelectedTriggerModal(null)}
-                  className="absolute top-4 right-4 p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-
-                <div className="flex items-center gap-2.5 mb-3 pr-8">
-                  <span className="text-2xl p-2 bg-rose-50 rounded-2xl">
-                    {detail.icon}
-                  </span>
-                  <div>
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-rose-600 block">
-                      Trigger Rank #{selectedTriggerModal.rank}
-                    </span>
-                    <h3 className="text-sm font-bold text-slate-900">
-                      {selectedTriggerModal.name}
-                    </h3>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 mb-3">
-                  <div className="p-2.5 bg-slate-50 rounded-xl text-center border border-slate-100">
-                    <span className="text-[9px] text-slate-400 font-bold uppercase block">Frequency</span>
-                    <span className="text-xs font-black text-slate-800">{selectedTriggerModal.count} episodes</span>
-                  </div>
-                  <div className="p-2.5 bg-slate-50 rounded-xl text-center border border-slate-100">
-                    <span className="text-[9px] text-slate-400 font-bold uppercase block">Avg Severity</span>
-                    <span className="text-xs font-black text-slate-800">HDSS {selectedTriggerModal.avgSeverity} / 4</span>
-                  </div>
-                </div>
-
-                <div className="space-y-2.5 text-xs">
-                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
-                    <h4 className="font-bold text-slate-800 text-[11px] mb-1">Clinical Mechanism</h4>
-                    <p className="text-slate-600 leading-snug">{detail.mechanism}</p>
-                  </div>
-
-                  <div className="p-3 bg-rose-50/80 rounded-2xl border border-rose-100">
-                    <h4 className="font-bold text-rose-900 text-[11px] mb-1">Targeted Medical Protocol</h4>
-                    <p className="text-rose-950 leading-snug">{detail.medicalRoute}</p>
-                  </div>
-
-                  <div className="p-3 bg-amber-50/80 rounded-2xl border border-amber-100">
-                    <h4 className="font-bold text-amber-900 text-[11px] mb-1">Acute Relief Action</h4>
-                    <p className="text-amber-950 leading-snug">{detail.acuteRelief}</p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setSelectedTriggerModal(null)}
-                  className="w-full mt-4 py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-md transition-colors"
-                >
-                  Done
-                </button>
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* ── HIDROALLY CLINICAL CHAT BANNER ─────────────────────────────────── */}
-        <div className="mt-5">
           <button
-            onClick={() => navigate("/hidro-ally")}
-            className="w-full bg-gradient-to-r from-teal-500 via-indigo-600 to-purple-600 rounded-3xl p-4 flex items-center gap-3.5 shadow-md text-left text-white transition-all active:scale-98"
+            type="button"
+            onClick={isListening ? stopListening : startListening}
+            className={cn(
+              "w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all active:scale-95 border-2 border-white/20",
+              isListening
+                ? "bg-red-500 text-white animate-pulse"
+                : "bg-gradient-to-tr from-indigo-600 to-teal-500 text-white shadow-indigo-500/30"
+            )}
           >
-            <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center text-xl shrink-0 backdrop-blur-sm">
-              🤖
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-xs text-white">
-                Discuss Patterns with HidroAlly Assistant
-              </p>
-              <p className="text-[11px] text-teal-100 leading-tight mt-0.5 truncate">
-                Ask specific questions about your {primaryTrigger?.name || "symptom"} triggers and morning window.
-              </p>
-            </div>
-            <ChevronRight className="h-4 w-4 text-white/70 shrink-0" />
+            {isListening ? <Square className="h-6 w-6 fill-current" /> : <Droplets className="h-7 w-7" />}
           </button>
         </div>
 
@@ -716,4 +1386,4 @@ const Insights = () => {
   );
 };
 
-export default Insights;
+export default LogEpisode;
