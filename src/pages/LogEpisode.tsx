@@ -64,10 +64,15 @@ const CLINICAL_KNOWLEDGE: Record<string, { title: string; mechanism: string; ico
     icon: "👋"
   },
 
-  // Truncal / Secondary Zones (Including Head & Neck)
-  head_neck: {
-    title: "Cervicocranial (Head & Neck)",
-    mechanism: "Dense cervical sympathetic innervation across the posterior scalp, nape, and lateral neck. Hallmark of secondary hyperhidrosis or systemic thermoregulatory compensation.",
+  // Truncal / Secondary Zones (Head & Neck Now Separated)
+  head: {
+    title: "Diffuse Cranial Perspiration (Head)",
+    mechanism: "Generalized sweating across the cranial vault. Often indicates systemic thermoregulatory compensation, endocrine shifts, or secondary sudomotor activity.",
+    icon: "👤"
+  },
+  neck: {
+    title: "Cervical & Nape Perspiration (Neck)",
+    mechanism: "Sympathetic outflow across lateral cervical dermatomes and the posterior nape. Strongly correlated with vasomotor instability and secondary hyperhidrosis.",
     icon: "🧣"
   },
   chest: {
@@ -190,7 +195,7 @@ const CLINICAL_KNOWLEDGE: Record<string, { title: string; mechanism: string; ico
     icon: "💢"
   },
 
-  // Phase 3: Physical, Dietary & Lifestyle (Including Trekking)
+  // Phase 3: Physical, Dietary & Lifestyle (Includes Trekking)
   trekking: {
     title: "Locomotive Exertion (Trekking)",
     mechanism: "Prolonged ambulation recruits major lower-extremity muscle groups, initiating metabolic heat production that commands active eccrine discharge.",
@@ -276,8 +281,10 @@ const PRIMARY_ZONES = [
   { id: "hands", label: "Hands", icon: "👋" },
 ];
 
+// Head and Neck are now distinct, separate zones
 const TRUNCAL_ZONES = [
-  { id: "head_neck", label: "Head & Neck", icon: "🧣" },
+  { id: "head", label: "Head", icon: "👤" },
+  { id: "neck", label: "Neck", icon: "🧣" },
   { id: "chest", label: "Chest", icon: "🫁" },
   { id: "back", label: "Back", icon: "🥋" },
   { id: "groin", label: "Groin", icon: "🩲" },
@@ -506,7 +513,7 @@ const LogEpisode = () => {
     };
   }, []);
 
-  // ── ACCURATE LIVE TIME SYNCHRONIZATION ───────────────────────────────────────
+  // Live Accurate Time Sync
   const syncLiveTime = useCallback(() => {
     const currentNow = new Date();
     setDate(currentNow);
@@ -720,7 +727,7 @@ const LogEpisode = () => {
     }
   }, [user, date, time, severity, bodyAreas, triggers, notes, isDryDay, dryDayFactors, episodes, navigate, toast, trackAction]);
 
-  // Voice logging
+  // Voice logging hook
   const {
     isListening,
     voiceStatus,
@@ -1010,7 +1017,7 @@ const LogEpisode = () => {
                 </div>
               </div>
 
-              {/* ── CARD 3: SECONDARY & TRUNCAL ZONES (HEAD & NECK ADDED) ───────── */}
+              {/* ── CARD 3: SECONDARY & TRUNCAL ZONES (HEAD & NECK SPLIT) ───────── */}
               <div className="w-full bg-white rounded-3xl p-5 shadow-xs border border-slate-100">
                 <div className="mb-3">
                   <span className="text-amber-700 font-bold text-xs uppercase tracking-wider block">Secondary & Truncal</span>
@@ -1101,7 +1108,7 @@ const LogEpisode = () => {
                         value={customAreaText}
                         onChange={(e) => setCustomAreaText(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddCustomArea())}
-                        placeholder="e.g. Lower legs, Nape..."
+                        placeholder="e.g. Lower legs, Flank..."
                         className="h-9 text-xs rounded-xl border-amber-300 w-48"
                         autoFocus
                       />
@@ -1124,7 +1131,7 @@ const LogEpisode = () => {
                 </div>
               </div>
 
-              {/* ── CARD 4: ALL 4 CLINICAL TRIGGER PHASES (TREKKING ADDED) ──────── */}
+              {/* ── CARD 4: ALL 4 CLINICAL TRIGGER PHASES (TREKKING INCLUDED) ─────── */}
               <div className="w-full bg-white rounded-3xl p-5 shadow-xs border border-slate-100 space-y-6">
                 <div>
                   <span className="text-violet-600 font-bold text-xs uppercase tracking-wider block">Etiology Correlation</span>
