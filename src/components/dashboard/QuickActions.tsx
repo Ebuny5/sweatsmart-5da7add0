@@ -366,10 +366,12 @@ const WarriorLaunchpad = () => {
 
       {/* ── HERO GREETING ───────────────────────────────────────────── */}
       <div className="px-6 pt-8 pb-16 rounded-b-[2.5rem] shadow-lg shadow-purple-200" style={{ backgroundColor: "#7c3aed" }}>
-        <h1 className="text-white text-2xl font-black tracking-tight leading-tight">
-          {greeting.text}, {firstName}!
-        </h1>
-        <p className="text-purple-100 text-xs mt-1">{today}</p>
+        <div className="flex flex-col items-end text-right">
+          <h1 className="text-white text-2xl font-black tracking-tight leading-tight">
+            {greeting.text}, {firstName}!
+          </h1>
+          <p className="text-purple-100 text-xs mt-1 font-medium">{today}</p>
+        </div>
 
         {/* ── STATS CARDS ──────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-2 mt-5">
