@@ -832,18 +832,18 @@ const LogEpisode = () => {
       <div className="min-h-screen bg-slate-50/70 pb-28">
 
         {/* ── TOP HERO HEADER (TIGHTENED & EXECUTIVE STYLING) ─────────────────── */}
-        <div className="w-full bg-gradient-to-b from-slate-900 via-indigo-950 to-slate-900 text-white pt-4 pb-6 px-5 rounded-b-[2.2rem] shadow-xl mb-4">
+        <div className="w-full bg-gradient-to-b from-slate-900 via-indigo-950 to-slate-900 text-white pt-2 pb-5 px-4 rounded-b-[2.2rem] shadow-xl mb-4">
           <div className="max-w-xl mx-auto">
             <div className="flex items-start justify-between">
-              <div>
-                <span className="inline-block text-[11px] font-black uppercase tracking-[0.24em] text-teal-300 bg-teal-950/70 px-2.5 py-1 rounded-lg border border-teal-500/30 shadow-xs">
+              <div className="flex flex-col items-start text-left">
+                <span className="inline-block text-[11px] font-black uppercase tracking-[0.24em] text-teal-300 bg-teal-950/70 px-2.5 py-0.5 rounded-lg border border-teal-500/30 shadow-xs">
                   ✦ Clinical Suite
                 </span>
-                <h1 className="text-[12px] font-bold tracking-wider text-slate-300 uppercase mt-1 pl-0.5">
+                <h1 className="text-[12px] font-bold tracking-wider text-slate-300 uppercase mt-0.5 pl-0.5">
                   Log Episode
                 </h1>
               </div>
-              <div className="text-right pt-0.5">
+              <div className="flex flex-col items-end text-right">
                 <p className="text-xs font-bold text-slate-200">{format(selectedTimestampDate, "EEEE, MMM d")}</p>
                 <p className="text-[10px] text-teal-400 font-mono font-medium">{format(selectedTimestampDate, "h:mm a")}</p>
               </div>
