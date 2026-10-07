@@ -149,9 +149,9 @@ serve(async (req) => {
       return json({ error: 'missing_continent', message: 'We could not detect your continent. Try the Country view.' }, 400);
 
     const cacheKey =
-      scope === 'state'   ? `v5:state:${wantedState}:${wantedCountry}` :
-      scope === 'country' ? `v5:country:${wantedCountry || country.toLowerCase()}:x-${wantedState}` :
-                            `v5:continent:${wantedContinent}:x-${wantedCountry || country.toLowerCase()}`;
+      scope === 'state'   ? `v6:state:${wantedState}:${wantedCountry}` :
+      scope === 'country' ? `v6:country:${wantedCountry || country.toLowerCase()}:x-${wantedState}` :
+                            `v6:continent:${wantedContinent}:x-${wantedCountry || country.toLowerCase()}`;
 
     const { data: cached } = await supabase
       .from('radar_cache').select('*').eq('cache_key', cacheKey).eq('scope', scope).maybeSingle();
@@ -261,11 +261,9 @@ serve(async (req) => {
       console.warn('TIER 2 skipped — GEOAPIFY_API_KEY not configured');
     }
 
-    // We need to recalculate curated, facilityOnly, external after Geoapify adds
-    const curated      = physical.filter(d => d.tier === 'curated');
-
-    const facilityOnly = physical.filter(d => d.tier === 'facility');
-    const external     = physical.filter(d => d.tier !== 'curated' && d.tier !== 'facility');
+    const curated = physical.filter(d => d.tier === 'curated').sort((a,b) => (a.distanceMeters ?? 99999) - (b.distanceMeters ?? 99999));
+    const facilityOnly = physical.filter(d => d.tier === 'facility').sort((a,b) => (a.distanceMeters ?? 99999) - (b.distanceMeters ?? 99999));
+    const external = physical.filter(d => d.tier === 'external').sort((a,b) => (a.distanceMeters ?? 99999) - (b.distanceMeters ?? 99999));
 
     // ════════════════════════════════════════════════════════════════
     // Telehealth bridge — global, never mixed with the physical list
@@ -280,8 +278,47 @@ serve(async (req) => {
       ...normalise(r, lat, lng), isTelehealth: true, tier: 'telehealth' as const, distance: null, distanceMeters: null,
     }));
 
-    // Strict nearest-first expansion within the scope, telehealth last.
-    const allDoctors = [...physical, ...telehealthDoctors];
+    let allDoctors = [...curated, ...facilityOnly, ...external, ...telehealthDoctors];
+
+    if (scope === 'country') {
+      const outsideStateCurated = allDoctors
+        .filter(d => d.tier !== 'telehealth' && d.state !== state && d.tier === 'curated')
+        .sort(() => Math.random() - 0.5);
+      const outsideStateFacility = allDoctors
+        .filter(d => d.tier !== 'telehealth' && d.state !== state && d.tier === 'facility')
+        .sort(() => Math.random() - 0.5);
+      const insideStateCurated = allDoctors
+        .filter(d => d.tier !== 'telehealth' && d.state === state && d.tier === 'curated')
+        .sort((a, b) => (a.distanceMeters ?? 99999) - (b.distanceMeters ?? 99999));
+      const insideStateFacility = allDoctors
+        .filter(d => d.tier !== 'telehealth' && d.state === state && d.tier === 'facility')
+        .sort((a, b) => (a.distanceMeters ?? 99999) - (b.distanceMeters ?? 99999));
+      const telehealth = allDoctors.filter(d => d.tier === 'telehealth');
+      allDoctors = [...outsideStateCurated, ...outsideStateFacility, ...insideStateCurated, ...insideStateFacility, ...telehealth];
+    }
+
+    if (scope === 'continent') {
+      const outsideCountryCurated = allDoctors
+        .filter(d => d.tier !== 'telehealth' && d.country !== country && d.tier === 'curated')
+        .sort(() => Math.random() - 0.5);
+      const outsideCountryFacility = allDoctors
+        .filter(d => d.tier !== 'telehealth' && d.country !== country && d.tier === 'facility')
+        .sort(() => Math.random() - 0.5);
+      const insideCountryOutsideStateCurated = allDoctors
+        .filter(d => d.tier !== 'telehealth' && d.country === country && d.state !== state && d.tier === 'curated')
+        .sort(() => Math.random() - 0.5);
+      const insideCountryOutsideStateFacility = allDoctors
+        .filter(d => d.tier !== 'telehealth' && d.country === country && d.state !== state && d.tier === 'facility')
+        .sort(() => Math.random() - 0.5);
+      const insideStateCurated = allDoctors
+        .filter(d => d.tier !== 'telehealth' && d.state === state && d.tier === 'curated')
+        .sort((a, b) => (a.distanceMeters ?? 99999) - (b.distanceMeters ?? 99999));
+      const insideStateFacility = allDoctors
+        .filter(d => d.tier !== 'telehealth' && d.state === state && d.tier === 'facility')
+        .sort((a, b) => (a.distanceMeters ?? 99999) - (b.distanceMeters ?? 99999));
+      const telehealth = allDoctors.filter(d => d.tier === 'telehealth');
+      allDoctors = [...outsideCountryCurated, ...outsideCountryFacility, ...insideCountryOutsideStateCurated, ...insideCountryOutsideStateFacility, ...insideStateCurated, ...insideStateFacility, ...telehealth];
+    }
 
     const physicalCount = physical.length;
 
