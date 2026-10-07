@@ -91,7 +91,7 @@ const AIGeneratedInsights: React.FC<AIInsightsProps> = ({ insights }) => {
 
   const handleCopyInsights = async () => {
     const insightsText = `
-SWEATSMART AI-GENERATED INSIGHTS
+HIDROALLY AI-GENERATED INSIGHTS
 =================================
 
 CLINICAL ANALYSIS
