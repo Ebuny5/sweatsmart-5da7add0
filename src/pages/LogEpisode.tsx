@@ -579,7 +579,7 @@ const LogEpisode = () => {
       if (exists) {
         return prev.filter(t => t.value !== item.id);
       } else {
-        return [...prev, { type: item.type as any, value: item.id, label: item.label }];
+        return [...prev, { type: item.type as any, value: item.id, label: item.label } as unknown as Trigger];
       }
     });
   };
@@ -602,7 +602,7 @@ const LogEpisode = () => {
   const handleAddCustomTrigger = () => {
     const trimmed = customTriggerText.trim();
     if (trimmed && !triggers.some(t => t.value === trimmed)) {
-      setTriggers(prev => [...prev, { type: "custom" as any, value: trimmed, label: trimmed }]);
+      setTriggers(prev => [...prev, { type: "custom" as any, value: trimmed, label: trimmed } as unknown as Trigger]);
       setCustomTriggerText("");
       setShowCustomTriggerInput(false);
     }
@@ -715,7 +715,7 @@ const LogEpisode = () => {
           finalNotes,
           undefined,
           isDryDay,
-          fullEpisodesList
+          fullEpisodesList as any
         );
 
         setAiInsights(insights);
