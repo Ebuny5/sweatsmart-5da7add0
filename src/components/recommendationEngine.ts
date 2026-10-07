@@ -4,18 +4,17 @@
  * Intellectual Property of HidroAlly Therapeutics.
  *
  * Core Clinical Guardrails:
- *   1. Precise Anatomical Isolation: Multi-site episodes are classified accurately
- *      without collapsing into single-region diagnoses.
- *   2. Zero Redundant Warnings: Regional treatments are strictly isolated.
- *   3. Idiopathic Integrity: "No Identifiable Trigger" evaluates spontaneous
- *      hypothalamic basal discharge; never claims triggers are "clearly identified."
- *   4. Zero Em-Dashes: Clean clinical punctuation used throughout.
- *   5. Full Knowledge Base Integration (Ch. 7-11: Vasodilation-edema, Paresthesia,
- *      Plantar gait risks, Aquagenic keratoderma, and Secondary screening).
+ *   1. Strict Anatomical Isolation: Analyzes ONLY the exact logged body parts.
+ *      Never invents unselected regions (e.g. "Head" remains "head", not "face and scalp").
+ *   2. Dynamic Creativity & Phrase Rotation: Seed-based variations ensure identical
+ *      logs yield fresh, creative English explanations every single time.
+ *   3. Essential Medical Terms with Bracket Explanations: Key terms (e.g. eccrine glands,
+ *      hypothalamus) are retained and accompanied by plain-English bracket explanations.
+ *   4. Clear Pattern Classification: Classifies as Primary Focal Hyperhidrosis or
+ *      Secondary / Generalized Trigger Response based strictly on logged inputs.
+ *   5. Zero Em-Dashes & Clean Punctuation throughout.
  * =============================================================================
  */
-
-// ─── Interfaces & Types ──────────────────────────────────────────────────────
 
 export interface TriggerInput {
   type?: string;
@@ -38,7 +37,7 @@ export interface EpisodeInput {
   episodeCount?: number;
   userName?: string;
   isDryDay?: boolean;
-  episodesList?: any[]; // Full history passed from DB or client
+  episodesList?: any[];
 }
 
 export interface EpisodeInsights {
@@ -56,162 +55,106 @@ export interface EpisodeInsights {
   };
 }
 
-// ─── Notes Intelligence Layer ─────────────────────────────────────────────────
+// ─── Helpers & Utilities ──────────────────────────────────────────────────────
 
-interface NotesIntelligence {
-  wasCooking: boolean;
-  wasExercising: boolean;
-  wasAtWork: boolean;
-  wasInPublic: boolean;
-  wasSleeping: boolean;
-  wasOutdoors: boolean;
-  poorVentilation: boolean;
-  wasInHeat: boolean;
-  wasWearingHeavyClothing: boolean;
-
-  // Clinical extensions from Knowledge Base
-  mentionsTightness: boolean;     // Ch.7 Vasodilation-edema
-  mentionsSwelling: boolean;      // Ch.7
-  mentionsTingling: boolean;      // Ch.8 Secondary paresthesia
-  mentionsNumbness: boolean;      // Ch.8
-  mentionsSlipping: boolean;      // Ch.9 Plantar gait / fall risk
-  mentionsPain: boolean;
-  mentionsSkinWrinkling: boolean; // Ch.10 Aquagenic keratoderma
-  mentionsDizziness: boolean;     // Ch.11 Dysautonomia / secondary screening
-  mentionsNightSweats: boolean;
-
-  // Emotional tone
-  expressesEmbarrassment: boolean;
-  expressesFrustration: boolean;
-  expressesAnxiety: boolean;
-  expressesHope: boolean;
-  raw: string;
+function pick<T>(arr: T[], seed: number): T {
+  if (arr.length === 0) return "" as any;
+  if (arr.length === 1) return arr[0];
+  return arr[Math.abs(seed) % arr.length];
 }
 
-function parseNotes(notes?: string): NotesIntelligence {
-  const n = (notes || "").toLowerCase();
-
-  return {
-    wasCooking: /cook|peel|fry|boil|bake|stove|oven|kitchen|pot|fire|yam|plantain|rice|soup|prep|prepare food/.test(n),
-    wasExercising: /gym|run|jog|sport|workout|exercise|walk|training|field|football|play|swim/.test(n),
-    wasAtWork: /office|meeting|presentation|work|boss|colleague|interview|deadline|desk|client|zoom|call/.test(n),
-    wasInPublic: /party|church|event|wedding|ceremony|restaurant|gathering|crowd|market|mall|shop|supermarket|outside with people/.test(n),
-    wasSleeping: /sleep|woke|midnight|bed|night|nap|rest/.test(n),
-    wasOutdoors: /outside|sun|outdoor|street|road|open air|garden|field|market|heat outside/.test(n),
-    poorVentilation: /no ventilat|no air|no fan|no window|stuffy|airless|closed room|no ac|suffocating|hot room|not ventilated|poorly ventilated/.test(n),
-    wasInHeat: /hot|heat|warm|scorching|blazing|humid|sweaty environment/.test(n),
-    wasWearingHeavyClothing: /tight|thick|uniform|suit|heavy cloth|long sleeve|layered|polyester|synthetic|jeans/.test(n),
-
-    mentionsTightness: /tight|tighten|pressure in|pressure on|constrict|sausage|ring tight|can.t bend/.test(n),
-    mentionsSwelling: /swell|puffy|puff|bloat|bigger|enlarg|swell up|swollen/.test(n),
-    mentionsTingling: /tingle|tingling|pins and needles|prickling|electric|zap/.test(n),
-    mentionsNumbness: /numb|numbness|can.t feel|lost feeling|no sensation|dead/.test(n),
-    mentionsSlipping: /slip|slippery|fell|fall|wet floor|tile|bathroom/.test(n),
-    mentionsPain: /pain|hurt|ache|sore|burning|throb/.test(n),
-    mentionsSkinWrinkling: /wrinkl|pruny|prune|raisin|skin wrinkl/.test(n),
-    mentionsDizziness: /dizzy|dizziness|lightheaded|faint|blackout|pass out|syncope/.test(n),
-    mentionsNightSweats: /night sweat|woke up sweating|soaked|drenched|bedsheet|pillow wet/.test(n),
-
-    expressesEmbarrassment: /embarrass|ashamed|humiliat|mortified|shame|awkward/.test(n),
-    expressesFrustration: /frustrat|fed up|tired of|sick of|can.t take|had enough|awful|horrible/.test(n),
-    expressesAnxiety: /anxious|scared|worried|dread|panic|nervous about/.test(n),
-    expressesHope: /hope|better|improv|progress|working|helped/.test(n),
-    raw: notes || "",
-  };
-}
-
-// ─── Anatomical Classification & Normalization ───────────────────────────────
+// ─── Anatomical Normalization (Strict Isolation) ──────────────────────────────
 
 interface AnatomicalProfile {
-  isCraniofacial: boolean;
-  isAxillary: boolean;
-  isPalmar: boolean;
-  isPlantar: boolean;
-  isTruncal: boolean;
-  isSystemic: boolean;
-  isMultifocal: boolean;
-  clinicalZones: string[];
+  rawAreas: string[];
   cleanDisplayList: string;
+  isCraniofacial: boolean; // head, face, scalp
+  isAxillary: boolean;     // underarms, armpits
+  isPalmar: boolean;       // hands, palms
+  isPlantar: boolean;      // feet, soles
+  isTruncal: boolean;      // back, chest, abdomen
+  isGroin: boolean;
+  isGeneralized: boolean;
+  isMultiSite: boolean;
 }
 
 function normalizeAnatomy(bodyAreas: string[]): AnatomicalProfile {
-  const rawList = (bodyAreas || []).map(a => String(a).toLowerCase().trim().replace(/_/g, " "));
+  const rawList = (bodyAreas || []).map(a => String(a).trim().toLowerCase().replace(/_/g, " "));
 
-  const hasFace = rawList.some(a => a === 'face' || a === 'facial');
-  const hasScalp = rawList.some(a => a === 'scalp' || a === 'cranial');
-  const isCraniofacial = rawList.some(a => 
-    a.includes("face") || a.includes("scalp") || a.includes("forehead") || a.includes("head") || a.includes("hairline")
-  );
-  const isAxillary = rawList.some(a => 
-    a.includes("armpit") || a.includes("underarm") || a.includes("axill")
-  );
-  const isPalmar = rawList.some(a => 
-    a.includes("palm") || a.includes("hand") || a.includes("finger")
-  );
-  const isPlantar = rawList.some(a => 
-    a.includes("feet") || a.includes("foot") || a.includes("sole") || a.includes("toe")
-  );
-  const isTruncal = rawList.some(a => 
-    a.includes("chest") || a.includes("back") || a.includes("trunk") || a.includes("abdomen") || a.includes("thigh")
-  );
-  const hasGroin = rawList.some(a => a.includes("groin"));
-  const isSystemic = rawList.some(a => 
-    a.includes("entire body") || a.includes("whole body") || a.includes("generalized")
-  );
-
-  const clinicalZones: string[] = [];
-
-  if (isCraniofacial) {
-    if (hasFace && hasScalp) {
-      clinicalZones.push("craniofacial region (both face and scalp)");
-    } else if (hasFace) {
-      clinicalZones.push("craniofacial region (specifically your face)");
-    } else if (hasScalp) {
-      clinicalZones.push("cranial region (specifically your scalp)");
-    } else {
-      clinicalZones.push("craniofacial region (both face and scalp)");
-    }
-  }
-
-  if (isAxillary) clinicalZones.push("axillary vaults (underarms)");
-  if (isPalmar) clinicalZones.push("palmar surfaces (palms and hands)");
-  if (isPlantar) clinicalZones.push("plantar surfaces (feet and soles)");
-  if (isTruncal) clinicalZones.push("truncal dermatomes (chest and back)");
-  if (hasGroin) clinicalZones.push("inguinal folds (groin)");
-  if (isSystemic) clinicalZones.push("generalized systemic distribution");
+  const formattedParts: string[] = [];
+  let isCraniofacial = false;
+  let isAxillary = false;
+  let isPalmar = false;
+  let isPlantar = false;
+  let isTruncal = false;
+  let isGroin = false;
+  let isGeneralized = false;
 
   for (const raw of rawList) {
-    if (!isCraniofacial && !isAxillary && !isPalmar && !isPlantar && !isTruncal && !isSystemic) {
-      clinicalZones.push(`${raw} region`);
+    if (raw.includes("entire") || raw.includes("whole") || raw.includes("generalized")) {
+      formattedParts.push("entire body");
+      isGeneralized = true;
+    } else if (raw.includes("head")) {
+      formattedParts.push("head");
+      isCraniofacial = true;
+    } else if (raw.includes("face") || raw.includes("facial")) {
+      formattedParts.push("face");
+      isCraniofacial = true;
+    } else if (raw.includes("scalp")) {
+      formattedParts.push("scalp");
+      isCraniofacial = true;
+    } else if (raw.includes("armpit") || raw.includes("underarm") || raw.includes("axill")) {
+      formattedParts.push("underarms");
+      isAxillary = true;
+    } else if (raw.includes("palm") || raw.includes("hand")) {
+      formattedParts.push("palms");
+      isPalmar = true;
+    } else if (raw.includes("feet") || raw.includes("foot") || raw.includes("sole")) {
+      formattedParts.push("feet");
+      isPlantar = true;
+    } else if (raw.includes("back")) {
+      formattedParts.push("back");
+      isTruncal = true;
+    } else if (raw.includes("chest")) {
+      formattedParts.push("chest");
+      isTruncal = true;
+    } else if (raw.includes("groin")) {
+      formattedParts.push("groin");
+      isGroin = true;
+    } else {
+      formattedParts.push(raw);
     }
   }
 
-  const focalCount = (isCraniofacial ? 1 : 0) + (isAxillary ? 1 : 0) + (isPalmar ? 1 : 0) + (isPlantar ? 1 : 0);
-  const isMultifocal = focalCount >= 2 || (focalCount >= 1 && isTruncal);
+  // Deduplicate formatted parts preserving exact order logged
+  const uniqueParts = Array.from(new Set(formattedParts));
 
-  let cleanDisplayList = "affected areas";
-  if (clinicalZones.length === 1) {
-    cleanDisplayList = clinicalZones[0];
-  } else if (clinicalZones.length === 2) {
-    cleanDisplayList = `${clinicalZones[0]} and ${clinicalZones[1]}`;
-  } else if (clinicalZones.length > 2) {
-    cleanDisplayList = `${clinicalZones.slice(0, -1).join(", ")}, and ${clinicalZones[clinicalZones.length - 1]}`;
+  let cleanDisplayList = "affected area";
+  if (uniqueParts.length === 1) {
+    cleanDisplayList = uniqueParts[0];
+  } else if (uniqueParts.length === 2) {
+    cleanDisplayList = `${uniqueParts[0]} and ${uniqueParts[1]}`;
+  } else if (uniqueParts.length > 2) {
+    cleanDisplayList = `${uniqueParts.slice(0, -1).join(", ")}, and ${uniqueParts[uniqueParts.length - 1]}`;
   }
 
+  const isMultiSite = uniqueParts.length > 1 || isGeneralized;
+
   return {
+    rawAreas: uniqueParts,
+    cleanDisplayList,
     isCraniofacial,
     isAxillary,
     isPalmar,
     isPlantar,
     isTruncal,
-    isSystemic,
-    isMultifocal,
-    clinicalZones,
-    cleanDisplayList,
+    isGroin,
+    isGeneralized,
+    isMultiSite,
   };
 }
 
-// ─── Trigger Pathology & Classification ──────────────────────────────────────
+// ─── Trigger Classification ───────────────────────────────────────────────────
 
 interface TriggerProfile {
   isIdiopathic: boolean;
@@ -221,7 +164,7 @@ interface TriggerProfile {
   isPhysical: boolean;
   isPharmacological: boolean;
   hasRedFlags: boolean;
-  identifiedLabels: string[];
+  cleanTriggerList: string;
 }
 
 function evaluateTriggers(triggers: Array<TriggerInput | string>): TriggerProfile {
@@ -230,41 +173,46 @@ function evaluateTriggers(triggers: Array<TriggerInput | string>): TriggerProfil
     return `${t.value || ""} ${t.label || ""} ${t.type || ""}`.toLowerCase().trim();
   });
 
-  const isIdiopathic = triggerTokens.length === 0 || triggerTokens.some(t => 
-    t.includes("no identifiable") || t.includes("none") || t.includes("spontaneous") || t.includes("unknown")
+  const isIdiopathic = triggerTokens.length === 0 || triggerTokens.some(t =>
+    t.includes("no clear") || t.includes("no iden") || t.includes("none") || t.includes("spontaneous") || t.includes("unknown")
   );
 
-  const isEnvironmental = triggerTokens.some(t => 
-    t.includes("temp") || t.includes("humid") || t.includes("sun") || t.includes("ventilat") || t.includes("fabric") || t.includes("crowded")
+  const isEnvironmental = triggerTokens.some(t =>
+    t.includes("temp") || t.includes("heat") || t.includes("humid") || t.includes("sun") || t.includes("weather") || t.includes("warm")
   );
 
-  const isAdrenergic = triggerTokens.some(t => 
-    t.includes("stress") || t.includes("anxi") || t.includes("anticipat") || t.includes("embarrass") || t.includes("nervous") || t.includes("public") || t.includes("social") || t.includes("pressure") || t.includes("exam")
+  const isAdrenergic = triggerTokens.some(t =>
+    t.includes("stress") || t.includes("anxi") || t.includes("embarrass") || t.includes("nervous") || t.includes("public") || t.includes("social") || t.includes("work")
   );
 
-  const isGustatory = triggerTokens.some(t => 
-    t.includes("spicy") || t.includes("caffeine") || t.includes("alcohol") || t.includes("hot drink") || t.includes("gustatory") || t.includes("energy drink")
+  const isGustatory = triggerTokens.some(t =>
+    t.includes("spicy") || t.includes("caffeine") || t.includes("alcohol") || t.includes("food") || t.includes("drink")
   );
 
-  const isPhysical = triggerTokens.some(t => 
-    t.includes("exercise") || t.includes("poor sleep") || t.includes("clothing")
+  const isPhysical = triggerTokens.some(t =>
+    t.includes("exercise") || t.includes("workout") || t.includes("walk") || t.includes("exertion") || t.includes("clothing")
   );
 
-  const isPharmacological = triggerTokens.some(t => 
-    t.includes("ssri") || t.includes("antidepress") || t.includes("opioid") || t.includes("nsaid") || t.includes("blood pressure") || t.includes("insulin") || t.includes("medication")
+  const isPharmacological = triggerTokens.some(t =>
+    t.includes("medication") || t.includes("ssri") || t.includes("drug") || t.includes("prescription")
   );
 
-  const hasRedFlags = triggerTokens.some(t => 
-    t.includes("night sweat") || t.includes("fever") || t.includes("illness") || t.includes("hypoglycemia") || isPharmacological
+  const hasRedFlags = triggerTokens.some(t =>
+    t.includes("night sweat") || t.includes("fever") || t.includes("illness") || isPharmacological
   );
 
-  const identifiedLabels: string[] = [];
-  if (!isIdiopathic) {
-    if (isEnvironmental) identifiedLabels.push("environmental thermal load");
-    if (isAdrenergic) identifiedLabels.push("sympathoadrenal arousal (your body's involuntary 'fight-or-flight' stress reaction)");
-    if (isGustatory) identifiedLabels.push("gustatory sweating (perspiration provoked by eating, tasting, or digesting specific foods)");
-    if (isPhysical) identifiedLabels.push("metabolic exertion");
-    if (isPharmacological) identifiedLabels.push("pharmacological agents");
+  const labels: string[] = [];
+  if (isEnvironmental) labels.push("ambient heat and temperature increases");
+  if (isAdrenergic) labels.push("emotional stress and nervous system activation");
+  if (isGustatory) labels.push("dietary or gustatory triggers");
+  if (isPhysical) labels.push("physical exertion");
+  if (isPharmacological) labels.push("medication or pharmacological factors");
+
+  let cleanTriggerList = "idiopathic factors (spontaneous autonomic activity without an identifiable external trigger)";
+  if (!isIdiopathic && labels.length > 0) {
+    if (labels.length === 1) cleanTriggerList = labels[0];
+    else if (labels.length === 2) cleanTriggerList = `${labels[0]} and ${labels[1]}`;
+    else cleanTriggerList = `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
   }
 
   return {
@@ -275,7 +223,7 @@ function evaluateTriggers(triggers: Array<TriggerInput | string>): TriggerProfil
     isPhysical,
     isPharmacological,
     hasRedFlags,
-    identifiedLabels,
+    cleanTriggerList,
   };
 }
 
@@ -284,213 +232,158 @@ function evaluateTriggers(triggers: Array<TriggerInput | string>): TriggerProfil
 interface SeverityProfile {
   score: number;
   label: string;
-  clinicalImpact: string;
 }
 
 function evaluateSeverity(severity: number): SeverityProfile {
   const score = Math.min(Math.max(Number(severity) || 2, 1), 4);
   if (score === 4) {
-    return {
-      score,
-      label: "HDSS 4 (intolerable sweating that constantly interferes with daily activities)",
-      clinicalImpact: "places this episode in the highest clinical tier where baseline conservative topicals are insufficient and procedural specialist intervention is warranted.",
-    };
+    return { score, label: "HDSS 4 (intolerable sweating that constantly interferes with daily activities)" };
   }
   if (score === 3) {
-    return {
-      score,
-      label: "HDSS 3 (barely tolerable sweating that frequently disrupts daily activities)",
-      clinicalImpact: "crosses the objective clinical threshold where functional disruption is significant and progression to prescription medical pathways is justified.",
-    };
+    return { score, label: "HDSS 3 (barely tolerable sweating that frequently disrupts daily activities)" };
   }
   if (score === 2) {
-    return {
-      score,
-      label: "HDSS 2 (tolerable sweating that occasionally interferes with daily activities)",
-      clinicalImpact: "represents moderate autonomic activation that can typically be controlled with targeted first-line topical protocols.",
-    };
+    return { score, label: "HDSS 2 (tolerable sweating that occasionally interferes with daily activities)" };
   }
-  return {
-    score,
-    label: "HDSS 1 (sweating is never noticeable and does not interfere with daily routine)",
-    clinicalImpact: "indicates stable autonomic baseline control.",
-  };
+  return { score, label: "HDSS 1 (sweating is never noticeable and does not interfere with daily activities)" };
 }
 
-function pick<T>(arr: T[], seed: number): T {
-  if (arr.length === 1) return arr[0];
-  return arr[Math.abs(seed) % arr.length];
-}
-
-
-function getLongitudinalTrend(episodesList?: any[]): string {
-  if (!episodesList || episodesList.length < 3) return "";
-
-  const recent = episodesList
-    .filter(e => !e.is_dry_day && typeof e.severity === 'number')
-    .slice(0, 5);
-
-  if (recent.length < 3) return "";
-
-  const avgRecent = recent.reduce((acc, curr) => acc + curr.severity, 0) / recent.length;
-  if (avgRecent >= 3.2) {
-    return " Longitudinal evaluation across your recent history indicates sustained high-output autonomic activation, reinforcing the clinical justification for prescription intervention.";
-  } else if (avgRecent <= 1.8) {
-    return " Longitudinal evaluation confirms your baseline severity is trending toward stability compared to earlier episodes.";
-  }
-  return "";
-}
-
-// ─── CLINICAL ANALYSIS COMPOSITION ────────────────────────────────────────────
+// ─── CLINICAL ANALYSIS BUILDER ────────────────────────────────────────────────
 
 function buildClinicalAnalysis(
   anatomy: AnatomicalProfile,
   triggers: TriggerProfile,
   severity: SeverityProfile,
-  ni: NotesIntelligence,
-  climate: ClimateInput | undefined,
-  seed: number,
-  episodesList?: any[]
+  notes: string | undefined,
+  seed: number
 ): string {
-  // 1 & 2. Dynamic Opening Analysis (Diagnosis & Mechanism)
-  let triggerList = "idiopathic factors (spontaneous autonomic activity without an identifiable external trigger)";
-  if (!triggers.isIdiopathic && triggers.identifiedLabels.length > 0) {
-    triggerList = triggers.identifiedLabels.join(", ");
+  // 1. Pattern Classification
+  const isPrimaryFocal = !anatomy.isGeneralized && !triggers.isPharmacological && !triggers.hasRedFlags && !anatomy.isGroin;
+  let patternText = "";
+
+  if (isPrimaryFocal) {
+    const primaryOptions = [
+      `Anatomical & Pattern Classification: Primary Focal Hyperhidrosis (excessive localized sweating without an underlying disease). This episode presents as localized sweating restricted to your ${anatomy.cleanDisplayList}, triggered by ${triggers.cleanTriggerList}.`,
+      `Anatomical & Pattern Classification: Primary Focal Hyperhidrosis. Your logged symptoms show localized eccrine gland (your body's primary sweat gland) activation specifically in your ${anatomy.cleanDisplayList} following ${triggers.cleanTriggerList}.`,
+      `Anatomical & Pattern Classification: Primary Focal Hyperhidrosis pattern. Perspiration in this session was confined directly to your ${anatomy.cleanDisplayList} in response to ${triggers.cleanTriggerList}.`
+    ];
+    patternText = pick(primaryOptions, seed);
+  } else {
+    const secondaryOptions = [
+      `Anatomical & Pattern Classification: Secondary or Distributed Autonomic Response. Sweating recorded across your ${anatomy.cleanDisplayList} involves multiple anatomical zones or unprovoked activation triggers, suggesting a broader autonomic reflex.`,
+      `Anatomical & Pattern Classification: Generalized / Secondary Autonomic Pattern. Your log indicates perspiration spanning your ${anatomy.cleanDisplayList}, prompted by ${triggers.cleanTriggerList}.`,
+      `Anatomical & Pattern Classification: Multi-Zone Autonomic Response. The combination of symptoms across your ${anatomy.cleanDisplayList} fits a distributed autonomic trigger pattern.`
+    ];
+    patternText = pick(secondaryOptions, seed + 1);
   }
 
-  const openingOptions = [
-    `This episode presents as hyperhidrosis localized to the ${anatomy.cleanDisplayList}, with sweat responses primarily activated by ${triggerList}.`,
-    `Your logged symptoms highlight concentrated perspiration across your ${anatomy.cleanDisplayList}. The primary drivers recorded include ${triggerList}.`,
-    `Clinical tracking for this session indicates an acute flare-up focused on your ${anatomy.cleanDisplayList}, prompted by ${triggerList}.`
+  // 2. Episode Mechanism (Plain English + Bracket Explanations)
+  let mechanismText = "";
+  const mechOptions1 = [
+    `When ${triggers.isIdiopathic ? "spontaneous signals occurred" : triggers.cleanTriggerList + " occurred"}, your hypothalamus (your brain's internal thermostat) signaled the eccrine glands (your body's primary sweat glands) in your ${anatomy.cleanDisplayList} to secrete moisture for cooling.`,
+    `In response to ${triggers.cleanTriggerList}, your autonomic nervous system (the involuntary network controlling heart rate and sweating) sent quick nerve impulses to the sweat glands in your ${anatomy.cleanDisplayList}.`,
+    `As ${triggers.cleanTriggerList} registered, the sympathetic nervous system (your body's automatic reaction pathway) activated the localized sweat glands in your ${anatomy.cleanDisplayList}.`
   ];
 
-  // Combine Diagnosis and Mechanism into the dynamic opening
-  let diagnosisLine = pick(openingOptions, seed);
-  let mechanismLine = ""; // Handled dynamically in the opening above
+  const mechOptions2 = [
+    `Due to heightened nerve sensitivity in these specific areas, your glands produced a disproportionate sweat response relative to the actual cooling required, resulting in an ${severity.label} flare-up.`,
+    `Because the local nerve endings in your ${anatomy.cleanDisplayList} are hypersensitive, they over-responded to the signal, causing a elevated ${severity.label} episode.`,
+    `Heightened localized nerve responses caused your sweat glands to over-secrete moisture, leading to an ${severity.label} level of discomfort.`
+  ];
 
-  // 3. Severity Sentence
-  let severitySentence = `Your documented severity rating of ${severity.label} ${severity.clinicalImpact}`;
-  if (severity.score === 3) {
-    const sev3Options = [
-      "Documenting an HDSS 3 rating reflects barely tolerable sweating that frequently disrupts daily routines, justifying an escalation to targeted prescription therapies.",
-      "At an HDSS 3 severity level, the functional interference with everyday tasks is significant, representing a clinical benchmark where clinical-grade medical interventions are warranted.",
-      "Your severity score of HDSS 3 demonstrates substantial daily disruption, confirming that conventional over-the-counter options are likely insufficient and formal medical pathways are indicated."
-    ];
-    severitySentence = pick(sev3Options, seed);
-  }
+  mechanismText = `Episode Mechanism: ${pick(mechOptions1, seed + 2)} ${pick(mechOptions2, seed + 3)}`;
 
-  // 4. Notes Context & Knowledge Base (Ch. 7-11)
-  const contextNotes: string[] = [];
-
-  // Ch.7 Vasodilation-edema
-  if ((anatomy.isPalmar || anatomy.isPlantar) && (ni.mentionsTightness || ni.mentionsSwelling)) {
-    contextNotes.push("The tightness or swelling described in your extremities reflects hyperhidrosis-induced vasodilation-edema: postganglionic cholinergic discharge simultaneously dilates local microvasculature, increasing interstitial fluid filtration faster than lymphatic drainage can clear it.");
-  }
-  // Ch.8 Secondary paresthesia
-  if ((anatomy.isPalmar || anatomy.isPlantar) && (ni.mentionsTingling || ni.mentionsNumbness)) {
-    contextNotes.push("The tingling or numbness you noted in your digits points to secondary compression paresthesia: transient fluid accumulation within tight fascial compartments temporarily impedes sensory conduction along peripheral digital nerves.");
-  }
-  // Ch.9 Plantar fall risk
-  if (anatomy.isPlantar || ni.mentionsSlipping) {
-    contextNotes.push("Plantar moisture significantly alters gait kinematics and footwear friction mechanics, introducing a documented occupational slip hazard that requires specialized non-slip tread support.");
-  }
-  // Ch.10 Aquagenic keratoderma
-  if (anatomy.isPalmar && ni.mentionsSkinWrinkling) {
-    contextNotes.push("Rapid epidermal wrinkling upon perspiration contact is characteristic of aquagenic keratoderma, driven by altered sodium concentration within the stratum corneum.");
-  }
-  // Environmental context from notes
-  if (ni.wasCooking && ni.poorVentilation) {
-    contextNotes.push("Cooking in a restricted, unventilated space generated a compounded thermal microclimate: radiant stove heat and metabolic exertion elevated core temperature while still air prevented evaporative cooling.");
-  } else if (ni.poorVentilation) {
-    contextNotes.push("Restricted ambient airflow prevented sweat evaporation, depriving the body of the cutaneous temperature reduction signal and sustaining the sweating cycle.");
-  } else if (ni.raw.trim().length > 0 && contextNotes.length === 0) {
-    contextNotes.push(`Patient contextual log: "${ni.raw.trim()}". Capturing situational parameters provides objective longitudinal evidence of how external variables intersect with your sweating threshold.`);
-  }
-
-  const contextSentence = contextNotes.length > 0 ? ` ${contextNotes.join(" ")}` : "";
-
-  // 5. Clinical Closing Guidance
-  let closingGuidance = "";
-  if (triggers.isIdiopathic) {
-    closingGuidance = " Spontaneous episodes confirm that hyperhidrosis is an intrinsic autonomic condition. Tracking unprovoked episodes alongside dry days establishes the objective baseline required to evaluate therapeutic response.";
-  } else {
-    closingGuidance = " Documenting the correlation between specific stimuli and subsequent flare-ups provides the empirical foundation needed to optimize pre-cooling strategies before the sweating threshold is breached.";
+  // Notes context if present
+  let notesText = "";
+  if (notes && notes.trim().length > 0) {
+    notesText = ` Contextual Note: "${notes.trim()}". Documenting these exact situational factors helps clarify how external triggers interact with your sweating threshold.`;
   }
 
   const chatCTA = "\n\nIf you need a more clinical or in-depth evaluation of this episode, our HidroAlly clinical assistant is ready in the chat.";
 
-  const longitudinalTrend = getLongitudinalTrend(episodesList);
-  return `${diagnosisLine} ${mechanismLine} ${severitySentence}${contextSentence}${closingGuidance}${longitudinalTrend}${chatCTA}`;
+  return `${patternText}\n\n${mechanismText}${notesText}${chatCTA}`;
 }
 
-// ─── IMMEDIATE RELIEF STRATEGIES (STRICTLY ISOLATED) ──────────────────────────
+// ─── IMMEDIATE RELIEF STRATEGIES ──────────────────────────────────────────────
 
 function buildImmediateRelief(
   anatomy: AnatomicalProfile,
-  triggers: TriggerProfile
+  triggers: TriggerProfile,
+  seed: number
 ): string[] {
-  const actions: string[] = [];
+  const strategies: string[] = [];
 
   if (anatomy.isCraniofacial) {
-    actions.push(
-      "Targeted Craniofacial Thermal Reset: Compress the frontal hairline, temporal arteries, and forehead firmly using a cold, damp cloth for 60 to 90 seconds. Facial skin features a concentrated vascular and craniofacial thermoreceptive network (temperature-sensing nerve endings in your face and head); localized conduction cooling rapidly dampens retrograde sudomotor signaling (feedback messages sent to the brain's internal thermostat) to the hypothalamus."
-    );
+    const headRelief = [
+      "Targeted Thermal Cooling: Apply a cold, damp cloth firmly to your forehead, temples, or hairline for 60 to 90 seconds. Conducting cooling directly across the head rapidly lowers local skin temperature and calms nerve signals sent to your sweat glands.",
+      "Forehead & hairline cooling: Place a cold compress on your forehead and temporal pulse points for one minute. This cools local surface blood vessels and slows down the brain's sweating commands to your head."
+    ];
+    strategies.push(pick(headRelief, seed));
   }
 
   if (anatomy.isAxillary) {
-    actions.push(
-      "Axillary Microclimate Evacuation: Position an absorbent cool pack directly into the axillary vaults for two minutes, followed by an immediate change into an aerated, dry natural or technical layer to eliminate localized humidity pockets."
-    );
+    const armpitRelief = [
+      "Underarm Ventilation & Airflow: Place an absorbent cool cloth or ice pack wrapped in paper towel under your arms for 2 minutes, then move to a ventilated area with a fan to encourage rapid evaporation.",
+      "Underarm Cool Reset: Hold a cool pack under your underarms for 90 seconds to reduce local skin temperature and eliminate trapped heat in your clothing."
+    ];
+    strategies.push(pick(armpitRelief, seed + 1));
   }
 
   if (anatomy.isPalmar || anatomy.isPlantar) {
-    actions.push(
-      "Extremity Vasculature Heat Sinking: Hold your wrists and palms under cold running tap water for three to four minutes. Conducting thermal dissipation through the radial and ulnar vasculature rapidly lowers the systemic perception of core temperature."
-    );
+    const handFeetRelief = [
+      "Vasculature Heat Sink: Run cool tap water over your wrists, palms, or feet for 2 to 3 minutes. Heat dissipation through your extremity blood vessels quickly communicates a cooling signal to your entire body.",
+      "Cool Water Reset: Dip your hands or feet into cool water for 2 minutes. This lowers local skin temperature and reduces autonomic nerve firing in your extremity sweat glands."
+    ];
+    strategies.push(pick(handFeetRelief, seed + 2));
   }
 
-  if (anatomy.isTruncal || actions.length < 2) {
-    actions.push(
-      "Autonomic Sympathetic Downregulation: Sit in a well-ventilated space and perform five minutes of paced diaphragmatic breathing (four-second nasal inhalation, six-second oral exhalation). Paced respiration stimulates vagal tone (calming nerve activity from your body's rest-and-digest system), curbing acute cholinergic outflow (the chemical messenger acetylcholine commanding your sweat glands to open)."
-    );
+  if (anatomy.isTruncal || strategies.length < 2) {
+    const generalRelief = [
+      "Autonomic Calming Breathing: Sit in a ventilated room and practice 5 minutes of paced diaphragmatic breathing (inhale through your nose for 4 seconds, exhale slowly through your mouth for 6 seconds). Slow breathing stimulates vagal tone (calming nerve activity from your body's rest-and-digest system) to curb sweating signals.",
+      "Paced Respiration: Take slow, deep belly breaths in a cool area. Deep exhalations activate your parasympathetic nervous system (your body's natural relaxation response) to quiet hyperactive sweat signals."
+    ];
+    strategies.push(pick(generalRelief, seed + 3));
   }
 
-  return actions.slice(0, 3);
+  return strategies.slice(0, 3);
 }
 
-// ─── TREATMENT RECOMMENDATIONS (ZERO REPETITIVE CONTRAINDICATIONS) ───────────
+// ─── TREATMENT RECOMMENDATIONS ────────────────────────────────────────────────
 
 function buildTreatments(
   anatomy: AnatomicalProfile,
-  severity: SeverityProfile
+  severity: SeverityProfile,
+  seed: number
 ): string[] {
   const treatments: string[] = [];
 
-  // Craniofacial: Strict exclusion of Aluminum Chloride
   if (anatomy.isCraniofacial) {
     treatments.push(
-      "Craniofacial Receptor Antagonism: Delicate facial skin does not tolerate metallic salt antiperspirants. The evidence-based pathway utilizes prescription 2.4% topical Glycopyrronium wipes (Qbrexza) to competitively inhibit cutaneous muscarinic receptors (the microscopic docking sites on sweat glands that receive activation signals) without causing epidermal barrier breakdown, or intradermal botulinum toxin microinjections along the frontal hairline for 4 to 6 months of symptom cessation."
+      "Facial & Head Topical Options: Delicate skin on the head and face requires gentler care. Evidence-based pathways include prescription topical Glycopyrronium wipes (Qbrexza) to block muscarinic receptors (microscopic docking sites on sweat glands that receive nerve signals), or consulting a dermatologist regarding intradermal botulinum toxin microinjections along the hairline."
     );
   }
 
-  // Axillary: Isolated to Underarms
   if (anatomy.isAxillary) {
     treatments.push(
-      "Axillary Ductal Occlusion (20% Aluminum Chloride Hexahydrate): Apply a clinical-strength 15% to 20% formulation in absolute ethanol strictly to bone-dry axillary vaults at bedtime. Leave overnight while sweat glands remain in a basal state, washing off upon waking. Maintain nightly applications for 14 consecutive days before transitioning to a twice-weekly maintenance protocol."
+      "Clinical Antiperspirant Therapy: Apply a clinical-strength 15% to 20% Aluminum Chloride formulation strictly to dry underarm skin at bedtime. Leaving it on overnight allows ductal plugs (temporary seals in sweat pores) to form while sweat glands are resting."
     );
   }
 
-  // Palmoplantar
   if (anatomy.isPalmar || anatomy.isPlantar) {
     treatments.push(
-      "Extremity Direct Current Iontophoresis: Conduct 20-minute sessions using tap-water iontophoresis (15 to 20 mA direct current) 3 to 4 times weekly until eudrosis is established. For topical therapy, apply high-potency aluminum chloride under thin occlusive cotton gloves or socks overnight."
+      "Iontophoresis & Occlusive Antiperspirants: Tap-water iontophoresis (a medical device that uses mild electrical currents through water to temporarily block sweat pores) is a proven option for hands and feet. High-potency antiperspirants applied overnight under cotton gloves or socks also offer targeted control."
     );
   }
 
-  // Systemic / Multifocal Escalation
-  if ((anatomy.isMultifocal || severity.score >= 3) && treatments.length < 3) {
+  if (anatomy.isTruncal || (treatments.length < 2 && severity.score >= 3)) {
     treatments.push(
-      "Systemic Anticholinergic Pharmacotherapy: When multiple anatomical zones exhibit concurrent hyperhidrosis, systemic muscarinic antagonists (such as oral Glycopyrrolate 1 mg to 2 mg once or twice daily on an empty stomach) suppress generalized eccrine firing under medical supervision."
+      "Systemic Oral Pharmacotherapy: When sweating affects larger or multiple body areas, oral anticholinergics (such as Glycopyrrolate 1 mg to 2 mg taken under medical supervision) can reduce generalized eccrine gland firing."
+    );
+  }
+
+  if (treatments.length === 0) {
+    treatments.push(
+      "Targeted Clinical Antiperspirants: Use clinical-strength topical antiperspirants formulated specifically for your affected body area, applied nightly to completely dry skin."
     );
   }
 
@@ -501,38 +394,39 @@ function buildTreatments(
 
 function buildLifestyle(
   anatomy: AnatomicalProfile,
-  triggers: TriggerProfile
+  triggers: TriggerProfile,
+  seed: number
 ): string[] {
   const mods: string[] = [];
 
-  if (anatomy.isAxillary || anatomy.isTruncal) {
+  if (anatomy.isTruncal || anatomy.isAxillary) {
     mods.push(
-      "Strategic Fabric Architecture: Prioritize hydrophobic micro-polyester weaves or high-grade merino wool for base layers. These materials channel moisture across an expanded surface area to encourage continuous phase-change evaporation, preventing damp fabric from trapping heat against the skin."
+      "Moisture-Wicking Fabrics: Choose breathable base layers such as merino wool or technical micro-polyester blends. These fabrics pull moisture away from your skin, encouraging evaporation and preventing damp clothing from trapping heat."
     );
   }
 
   if (triggers.isEnvironmental) {
     mods.push(
-      "Microclimate Engineering: In enclosed or poorly ventilated environments, sweat accumulation becomes self-reinforcing. Position a personal forced-air fan directly across your primary workspace to maintain continuous air velocity across exposed dermal surfaces."
+      "Personal Microclimate Management: In warm or enclosed spaces, maintain air movement with a personal desk fan or portable cooling fan. Continuous air circulation aids sweat evaporation and keeps your skin surface cool."
     );
   }
 
-  if (triggers.isGustatory || triggers.isAdrenergic) {
+  if (triggers.isAdrenergic || triggers.isGustatory) {
     mods.push(
-      "Autonomic Stimulant Management: Eliminate dietary sympathomimetics (concentrated caffeine, energy drinks, and alcohol) and capsaicin on high-demand days. These compounds lower the activation threshold of postganglionic sympathetic fibers."
+      "Stimulant Reduction: Limit dietary triggers like caffeine, alcohol, energy drinks, and hot spicy foods during high-stress days. These compounds lower the activation threshold of your nervous system."
     );
   }
 
   if (mods.length < 3) {
     mods.push(
-      "Longitudinal Baseline Documentation: Continue logging both symptomatic flare-ups and asymptomatic dry days. Documenting the duration and frequency of unprovoked episodes over a 4 to 6 week period provides objective empirical data during specialist clinical reviews."
+      "Longitudinal Symptom Logging: Continue recording flare-ups and dry days in HidroAlly. Tracking your logs over a 4-week window provides objective data for your specialist or dermatologist reviews."
     );
   }
 
   return mods.slice(0, 3);
 }
 
-// ─── MEDICAL ATTENTION & REFERRAL ─────────────────────────────────────────────
+// ─── MEDICAL ATTENTION ────────────────────────────────────────────────────────
 
 function buildMedical(
   anatomy: AnatomicalProfile,
@@ -540,23 +434,22 @@ function buildMedical(
   severity: SeverityProfile,
   seed: number
 ): string {
-  if (triggers.hasRedFlags || anatomy.isSystemic) {
-    return "Comprehensive Secondary Screening Recommended: The occurrence of generalized diaphoresis (profuse, non-exertional sweating), nocturnal sweating, or potential medication-induced diaphoresis (profuse, non-exertional sweating) warrants a formal medical workup. Consult a physician to evaluate thyroid hormones, glycemic regulation, and pharmacological side effects.";
+  if (triggers.hasRedFlags || anatomy.isGeneralized) {
+    return "Secondary Screening Guidance: Generalized sweating across the entire body, unexplained night sweats, or sweating linked to new medications warrants a medical evaluation. Consult your healthcare provider to check thyroid levels, metabolic health, and prescription side effects.";
   }
 
   if (severity.score >= 3) {
-    const closingOptions = [
-      "Your episode markers follow an identifiable pattern without acute red flags. If first-line topical options fail to provide relief after 4 weeks of consistent nightly application, consult a healthcare provider for prescription topicals.",
-      "While this episode is consistent with primary hyperhidrosis, persistent daily disruption warrants professional review. Schedule a consultation with a dermatologist or GP if over-the-counter antiperspirants have plateaued.",
-      "The logged symptoms reflect chronic localized hyperhidrosis rather than an emergent issue. Bringing this HidroAlly longitudinal report to your physician will provide the empirical baseline needed for prescription therapies."
+    const medical3 = [
+      "Your episode log shows significant daily disruption (HDSS 3). If over-the-counter antiperspirants have stopped providing relief, schedule a consultation with a GP or dermatologist to discuss prescription options.",
+      "Because sweating frequently interferes with your routine, presenting this HidroAlly log to a healthcare provider can help tailor a prescription treatment plan suited to your specific body areas."
     ];
-    return pick(closingOptions, seed);
+    return pick(medical3, seed);
   }
 
-  return "Standard Longitudinal Monitoring: No acute clinical red flags are present in this record. Continue monitoring episode frequency. If symptoms accelerate or begin interfering with daily functioning, schedule a clinical consultation.";
+  return "Routine Longitudinal Tracking: Your logged episode shows an identifiable pattern without acute red flags. Continue tracking symptoms in HidroAlly. If sweating accelerates or starts disrupting your routine, share your logs with a doctor.";
 }
 
-// ─── DRY DAY PROTOCOL & METRICS ───────────────────────────────────────────────
+// ─── DRY DAY PROTOCOL ─────────────────────────────────────────────────────────
 
 function buildDryDayProtocol(
   userName: string | undefined,
@@ -586,46 +479,36 @@ function buildDryDayProtocol(
   let immediateRelief: string[] = [];
 
   if (currentStreak >= 3) {
-    header = `Sustained Clinical Remission: ${currentStreak} Consecutive Dry Days`;
-    clinicalAnalysis = "Consecutive asymptomatic days confirm effective intraductal eccrine occlusion (physical plugging of the sweat pores) and stabilized basal sympathetic tone (the baseline resting activity of your involuntary nervous system). Your current clinical protocol is successfully counteracting hypothalamic sudomotor outflow (the nerve signals that command your sweat glands to release sweat). Whether achieved through clinical antiperspirants, prescription therapy, oral anticholinergics (medications that block sweating signals), or climate management, this session reflects effective therapeutic control.";
+    header = `Sustained Remission: ${currentStreak} Consecutive Dry Days`;
+    clinicalAnalysis = "Consecutive dry days confirm effective pore occlusion (temporary plugging of sweat glands) and stabilized baseline nervous system activity. Your current routine is successfully maintaining quiet sweat glands. Whether through antiperspirants, treatments, or climate management, this reflects good symptom control.";
     immediateRelief = [
-      "Maintenance Protocol Titration: If you have maintained four or more consecutive dry days, discuss tapering topical application to a 2 to 3 night weekly maintenance schedule to protect skin barrier integrity.",
-      "Epidermal Barrier Recovery (Skin Mantle Care): On nights when you do not apply active treatments, apply a ceramide-rich, non-comedogenic moisturizer (a gentle lotion that does not clog pores) to your treated zones. This repairs your acid mantle (the delicate, acidic protective film on your skin's surface) and prevents irritation or flaking.",
-      "Documenting Therapeutic Response: Consecutive dry days provide objective longitudinal evidence of treatment success for your clinical records."
-    ];
-  } else if (dryDaysLast7 >= 3) {
-    const percentage = Math.round((dryDaysLast7 / 7) * 100);
-    header = `Partial Autonomic Control: ${dryDaysLast7} of Last 7 Days Dry (${percentage}%)`;
-    clinicalAnalysis = "Your pattern demonstrates intermittent therapeutic responsiveness. Your treatment is successfully occluding sweat ducts on moderate-demand days, but may be overwhelmed during environmental or emotional surges.";
-    immediateRelief = [
-      "Audit Skin Dryness Before Application: Ensure the skin surface is bone-dry before applying nocturnal topicals, as moisture causes active formulations to hydrolyze and irritate rather than penetrate.",
-      "Correlate Flare Conditions: Check previous logs to identify which specific environmental or stress factors breached your sweat threshold on wet days.",
-      "Consult on Formulation Strength: If partial control persists after four weeks of consistent application, consult your physician about increasing topical concentration."
+      "Maintenance Schedule Titration: If you have maintained four or more dry days, discuss tapering active topical application to a 2 to 3 night weekly maintenance routine to protect your skin barrier.",
+      "Skin Barrier Protection: On non-treatment nights, apply a gentle moisturizer to treated areas to repair your acid mantle (the natural protective oil film on your skin surface).",
+      "Document Treatment Success: Keeping track of consecutive dry days gives your doctor clear evidence that your management plan is working."
     ];
   } else {
-    header = "Dry Baseline Reset: 1 Asymptomatic Day Documented";
-    clinicalAnalysis = "Today demonstrates that your eccrine sweat glands are capable of achieving quiescence under current physiological conditions. This asymptomatic baseline indicates that your sympathovagal tone (calming nerve activity from your body's rest-and-digest system) remained below your sweating threshold.";
+    header = "Dry Baseline Reset: 1 Asymptomatic Day Logged";
+    clinicalAnalysis = "Today demonstrates that your eccrine glands (your body's primary sweat glands) remained quiet under current conditions. Your nervous system stayed safely below your sweating threshold today.";
     immediateRelief = [
-      "Maintain Protocol Adherence: Intermittent dry days require consistent adherence tonight. Prematurely skipping applications allows forming ductal plugs to dissolve.",
-      "Hydration Equilibrium: Continue consistent oral hydration to support internal thermoregulation (your body's internal temperature balancing system) even in the absence of visible perspiration.",
-      "Epidermal Barrier Recovery (Skin Mantle Care): Use non-irritating, gentle moisturizers during non-sweating windows to keep the epidermal barrier intact and protect your acid mantle (the delicate, acidic protective film on your skin's surface)."
+      "Maintain Consistent Routine: Continue your current skincare and treatment routine tonight so temporary pore seals remain intact.",
+      "Stay Hydrated: Keep drinking water regularly to support your body's natural temperature regulation.",
+      "Skin Barrier Recovery: Apply gentle, non-irritating lotion to treated zones during dry periods to preserve your skin barrier."
     ];
   }
 
   const greeting = userName ? `Hi ${userName}, this is HidroAlly` : "Hi, this is HidroAlly";
 
   return {
-    emotionalOpener: `${greeting}. Great job tracking an asymptomatic day. Here is your clinical maintenance guidance.`,
+    emotionalOpener: `${greeting}. Great job tracking an asymptomatic day! Here is your maintenance guidance.`,
     clinicalAnalysis,
     immediateRelief,
     treatmentOptions: [
-      "Preserve Treatment Adherence: Do not abruptly abandon your regimen. Rebound diaphoresis (sudden, heavy return of sweating) frequently occurs when clinical topicals or iontophoresis regimens are stopped completely rather than gradually tapered into a maintenance schedule."
+      "Maintain Treatment Consistency: Avoid stopping treatments suddenly. Tapering gradually into a maintenance routine prevents sudden rebound sweating."
     ],
     lifestyleModifications: [
-      "Audit & Replicate Your Environment: Take mental note of where you spent your day: your indoor temperature, air circulation (fans or air conditioning), clothing fabrics, and hydration levels. Replicating this microclimate (the layer of air directly surrounding your skin) on stressful or warm days will help prevent future flare-ups.",
-      "Monitor for Compensatory Sweating: Check whether your body redirected heat dissipation to non-target zones (such as your lower back, chest, or thighs). Documenting whether other areas stayed dry helps confirm balanced full-body thermoregulation (your body's internal temperature balancing system)."
+      "Note Successful Conditions: Pay attention to your environment today (indoor temperature, clothing choices, stress levels) and replicate these conditions on warmer days."
     ],
-    medicalAttention: "No active flare-up or clinical red flags detected today. Continue recording dry days alongside flare-ups to demonstrate treatment efficacy during your next clinical appointment.",
+    medicalAttention: "No active flare-up or red flags logged today. Keep logging dry days alongside flare-ups to demonstrate progress at your next doctor visit.",
     cta: "If you need a more clinical or in-depth evaluation of this episode, our HidroAlly clinical assistant is ready in the chat.",
     isDryDay: true,
     dryDayMetrics: {
@@ -652,7 +535,7 @@ export function generateEpisodeInsights(input: EpisodeInput): EpisodeInsights & 
     episodesList,
   } = input;
 
-  const seed = (episodeCount * 13 + Math.floor(Date.now() / 60000)) % 101;
+  const seed = (episodeCount * 31 + Math.floor(Date.now() / 60000)) % 101;
   const greeting = userName ? `Hi ${userName}, this is HidroAlly` : "Hi, this is HidroAlly";
   const cta = "If you need a more clinical or in-depth evaluation of this episode, our HidroAlly clinical assistant is ready in the chat.";
 
@@ -662,20 +545,20 @@ export function generateEpisodeInsights(input: EpisodeInput): EpisodeInsights & 
 
   if (!bodyAreas || bodyAreas.length === 0) {
     return {
-      emotionalOpener: `${greeting}. This episode was logged without selecting affected body areas. Selecting specific regions next time unlocks customized anatomical guidance.`,
-      clinicalAnalysis: "No anatomical zones were recorded for this entry. Without specific localized data, an anatomically precise clinical analysis cannot be assembled. Recording affected regions ensures targeted recommendations.",
+      emotionalOpener: `${greeting}. You logged this episode without selecting body areas. Selecting specific regions next time unlocks tailored guidance.`,
+      clinicalAnalysis: "No body areas were selected for this entry. Please select specific body parts during your next log so HidroAlly can provide precise anatomical analysis.",
       immediateRelief: [
-        "Extremity Vasculature Cooling: Hold wrists under cool running water for three to four minutes to communicate a whole-body cooling signal to your autonomic nervous system.",
-        "Convective Ventilation: Move to a well-ventilated space with direct fan airflow to support natural cutaneous evaporation.",
-        "Diaphragmatic Breathing: Perform three cycles of deep diaphragmatic breathing (inhale four seconds, exhale six seconds) to downregulate sympathetic tone."
+        "Cool Water Wrist Rinse: Run cool water over your wrists for 2 minutes to send a fast whole-body cooling signal through your bloodstream.",
+        "Air Circulation: Move near a fan or open window to encourage natural evaporation.",
+        "Deep Respiration: Take 5 slow, deep belly breaths to calm your nervous system."
       ],
       treatmentOptions: [
-        "Record affected areas in future logs to receive targeted first-line and prescription treatment pathways."
+        "Select your specific affected body parts in future logs to receive targeted treatment options."
       ],
       lifestyleModifications: [
-        "Ensure future logs include both body areas and triggers to build an actionable clinical baseline."
+        "Include both body areas and triggers in your next log to build a helpful history."
       ],
-      medicalAttention: "No acute red flags identified. Record detailed symptom data during future episodes.",
+      medicalAttention: "No acute red flags identified. Include body parts in future logs for detailed guidance.",
       cta,
     };
   }
@@ -683,13 +566,12 @@ export function generateEpisodeInsights(input: EpisodeInput): EpisodeInsights & 
   const anatomy = normalizeAnatomy(bodyAreas);
   const triggerProfile = evaluateTriggers(triggers);
   const severityProfile = evaluateSeverity(severity);
-  const ni = parseNotes(notes);
 
   return {
-    clinicalAnalysis: buildClinicalAnalysis(anatomy, triggerProfile, severityProfile, ni, climate, seed, episodesList),
-    immediateRelief: buildImmediateRelief(anatomy, triggerProfile),
-    treatmentOptions: buildTreatments(anatomy, severityProfile),
-    lifestyleModifications: buildLifestyle(anatomy, triggerProfile),
+    clinicalAnalysis: buildClinicalAnalysis(anatomy, triggerProfile, severityProfile, notes, seed),
+    immediateRelief: buildImmediateRelief(anatomy, triggerProfile, seed),
+    treatmentOptions: buildTreatments(anatomy, severityProfile, seed),
+    lifestyleModifications: buildLifestyle(anatomy, triggerProfile, seed),
     medicalAttention: buildMedical(anatomy, triggerProfile, severityProfile, seed),
     emotionalOpener: `${greeting}, your personal hyperhidrosis clinical guide. Here is your evidence-based analysis for this logged episode.`,
     cta,
@@ -701,7 +583,7 @@ export function generateFallbackInsights(
   bodyAreas: string[],
   triggers: Array<TriggerInput | string>,
   notes?: string,
-  climate?: any, // Deprecated / Ignored
+  climate?: any,
   isDryDay?: boolean,
   episodes?: Array<{ is_dry_day?: boolean; datetime?: string; severity?: number }>
 ): EpisodeInsights & { emotionalOpener: string; cta: string } {
