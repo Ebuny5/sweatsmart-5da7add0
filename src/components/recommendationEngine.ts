@@ -68,6 +68,9 @@ function pick<T>(arr: T[], seed: number): T {
 interface AnatomicalProfile {
   rawAreas: string[];
   cleanDisplayList: string;
+  hasHead: boolean;
+  hasFace: boolean;
+  hasScalp: boolean;
   isCraniofacial: boolean; // head, face, scalp
   isAxillary: boolean;     // underarms, armpits
   isPalmar: boolean;       // hands, palms
@@ -82,7 +85,9 @@ function normalizeAnatomy(bodyAreas: string[]): AnatomicalProfile {
   const rawList = (bodyAreas || []).map(a => String(a).trim().toLowerCase().replace(/_/g, " "));
 
   const formattedParts: string[] = [];
-  let isCraniofacial = false;
+  let hasHead = false;
+  let hasFace = false;
+  let hasScalp = false;
   let isAxillary = false;
   let isPalmar = false;
   let isPlantar = false;
@@ -96,13 +101,13 @@ function normalizeAnatomy(bodyAreas: string[]): AnatomicalProfile {
       isGeneralized = true;
     } else if (raw.includes("head")) {
       formattedParts.push("head");
-      isCraniofacial = true;
+      hasHead = true;
     } else if (raw.includes("face") || raw.includes("facial")) {
       formattedParts.push("face");
-      isCraniofacial = true;
+      hasFace = true;
     } else if (raw.includes("scalp")) {
       formattedParts.push("scalp");
-      isCraniofacial = true;
+      hasScalp = true;
     } else if (raw.includes("armpit") || raw.includes("underarm") || raw.includes("axill")) {
       formattedParts.push("underarms");
       isAxillary = true;
@@ -138,11 +143,15 @@ function normalizeAnatomy(bodyAreas: string[]): AnatomicalProfile {
     cleanDisplayList = `${uniqueParts.slice(0, -1).join(", ")}, and ${uniqueParts[uniqueParts.length - 1]}`;
   }
 
+  const isCraniofacial = hasHead || hasFace || hasScalp;
   const isMultiSite = uniqueParts.length > 1 || isGeneralized;
 
   return {
     rawAreas: uniqueParts,
     cleanDisplayList,
+    hasHead,
+    hasFace,
+    hasScalp,
     isCraniofacial,
     isAxillary,
     isPalmar,
@@ -357,9 +366,18 @@ function buildTreatments(
 ): string[] {
   const treatments: string[] = [];
 
-  if (anatomy.isCraniofacial) {
+  // Strict Anatomical Isolation for Craniofacial vs Head vs Face
+  if (anatomy.hasHead && anatomy.hasFace) {
     treatments.push(
       "Facial & Head Topical Options: Delicate skin on the head and face requires gentler care. Evidence-based pathways include prescription topical Glycopyrronium wipes (Qbrexza) to block muscarinic receptors (microscopic docking sites on sweat glands that receive nerve signals), or consulting a dermatologist regarding intradermal botulinum toxin microinjections along the hairline."
+    );
+  } else if (anatomy.hasHead || anatomy.hasScalp) {
+    treatments.push(
+      "Scalp & Hairline Options: Hair-bearing scalp regions require specialized low-viscosity solutions designed to navigate hair density without residue, targeting local eccrine gland activity on the scalp. Micro-application pathways or intradermal botulinum toxin along frontal and temporal hairline boundaries provide targeted symptom management."
+    );
+  } else if (anatomy.hasFace) {
+    treatments.push(
+      "Facial Surface Options: Delicate facial skin requires low-concentration topical wipes or gels formulated specifically for periorbital and forehead sensitivity to block muscarinic receptors on local sweat glands without irritation."
     );
   }
 
@@ -426,7 +444,7 @@ function buildLifestyle(
   return mods.slice(0, 3);
 }
 
-// ─── MEDICAL ATTENTION ────────────────────────────────────────────────────────
+// ─── MEDICAL ATTENTION / CARE & SPECIALIST SCHEDULING ────────────────────────
 
 function buildMedical(
   anatomy: AnatomicalProfile,
@@ -439,14 +457,10 @@ function buildMedical(
   }
 
   if (severity.score >= 3) {
-    const medical3 = [
-      "Your episode log shows significant daily disruption (HDSS 3). If over-the-counter antiperspirants have stopped providing relief, schedule a consultation with a GP or dermatologist to discuss prescription options.",
-      "Because sweating frequently interferes with your routine, presenting this HidroAlly log to a healthcare provider can help tailor a prescription treatment plan suited to your specific body areas."
-    ];
-    return pick(medical3, seed);
+    return "Because this episode score indicates active disruption to your routine, you can view your care options or let us know when you are ready to connect with our team for a partner dermatologist consultation.";
   }
 
-  return "Routine Longitudinal Tracking: Your logged episode shows an identifiable pattern without acute red flags. Continue tracking symptoms in HidroAlly. If sweating accelerates or starts disrupting your routine, share your logs with a doctor.";
+  return "Routine Longitudinal Tracking: Your logged episode shows an identifiable pattern without acute red flags. Continue tracking symptoms in HidroAlly. If sweating accelerates or starts disrupting your routine, you can connect with our team for a partner dermatologist consultation.";
 }
 
 // ─── DRY DAY PROTOCOL ─────────────────────────────────────────────────────────

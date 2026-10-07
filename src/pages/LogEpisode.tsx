@@ -11,6 +11,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import AIGeneratedInsights from "@/components/episode/AIGeneratedInsights";
+import EpisodeProcessingView from "@/components/episode/EpisodeProcessingView";
 import { SeverityLevel, BodyArea, Trigger } from "@/types";
 import {
   CalendarIcon, Clock, Loader2, LayoutDashboard, History,
@@ -776,11 +777,7 @@ const LogEpisode = () => {
         <div className="min-h-screen bg-slate-900/95 py-8 px-4 text-white">
           <div className="max-w-xl mx-auto space-y-4">
             {isLoadingInsights ? (
-              <div className="w-full bg-slate-800/90 rounded-3xl p-8 border border-slate-700/50 flex flex-col items-center gap-4 text-center">
-                <Loader2 className="h-8 w-8 animate-spin text-teal-400" />
-                <p className="font-semibold text-slate-100">Synthesizing Clinical Insights...</p>
-                <p className="text-xs text-slate-400">Cross-referencing hyperhidrosis guidelines and your historical patterns.</p>
-              </div>
+              <EpisodeProcessingView onComplete={() => setIsLoadingInsights(false)} />
             ) : aiInsights ? (
               <AIGeneratedInsights insights={aiInsights} />
             ) : (
