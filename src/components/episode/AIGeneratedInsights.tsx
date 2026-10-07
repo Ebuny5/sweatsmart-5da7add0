@@ -84,7 +84,7 @@ const AIGeneratedInsights: React.FC<AIInsightsProps> = ({ insights }) => {
     listify('Immediate relief strategies', insights.immediateRelief),
     listify('Treatment recommendations', insights.treatmentOptions),
     listify('Lifestyle modifications', insights.lifestyleModifications),
-    `When to seek medical attention. ${insights.medicalAttention}`,
+    `HidroAlly care & specialist scheduling. ${insights.medicalAttention}`,
   ].filter(Boolean).join(' ');
 
 
@@ -106,7 +106,7 @@ ${insights.treatmentOptions.map((item, i) => `${i + 1}. ${item}`).join('\n\n')}
 LIFESTYLE MODIFICATIONS
 ${insights.lifestyleModifications.map((item, i) => `${i + 1}. ${item}`).join('\n\n')}
 
-WHEN TO SEEK MEDICAL ATTENTION
+HIDROALLY CARE & SPECIALIST SCHEDULING
 ${insights.medicalAttention}
 
 ---
@@ -175,7 +175,7 @@ Always consult with a healthcare provider for personalized medical advice.
       addSection(insights.isDryDay ? 'Barrier Care & Skin Protocol' : 'Immediate Relief Strategies', insights.immediateRelief);
       addSection('Treatment Recommendations', insights.treatmentOptions);
       addSection(insights.isDryDay ? 'Environmental & Routine Replication' : 'Lifestyle Modifications', insights.lifestyleModifications);
-      addSection('When to Seek Medical Attention', insights.medicalAttention);
+      addSection('HidroAlly Care & Specialist Scheduling', insights.medicalAttention);
 
       doc.save('HidroAlly Analysis & Reccomendation.pdf');
       toast({ title: 'PDF downloaded', description: 'Your AI insights have been saved as a PDF.' });
@@ -389,18 +389,18 @@ Always consult with a healthcare provider for personalized medical advice.
         </CardContent>
       </Card>
 
-      {/* When to seek help */}
+      {/* HidroAlly Care & Specialist Scheduling */}
       <Card className="border-l-4 border-l-red-500">
         <CardHeader>
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center space-x-2">
               <AlertCircle className="h-5 w-5 text-red-600" />
-              <CardTitle>When to Seek Medical Attention</CardTitle>
+              <CardTitle>HidroAlly Care & Specialist Scheduling</CardTitle>
             </div>
             <ListenButton
-              text={`When to seek medical attention. ${insights.medicalAttention}`}
+              text={`HidroAlly care & specialist scheduling. ${insights.medicalAttention}`}
               sectionKey="medical"
-              label="when to seek medical attention"
+              label="HidroAlly care & specialist scheduling"
             />
           </div>
         </CardHeader>
