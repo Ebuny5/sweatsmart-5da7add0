@@ -7,6 +7,7 @@ import { climateAlertService } from '@/services/ClimateAlertService';
 import { audioAlertPlayer, type AlertKind } from '@/utils/audioAlertPlayer';
 import { attachNativeTapHandler } from '@/services/NativeNotificationBridge';
 import { useAuth } from '@/contexts/AuthContext';
+import { webPushService } from '@/services/WebPushService';
 
 type InAppNotificationDetail = {
   title: string;
@@ -61,6 +62,8 @@ const NotificationListener = () => {
     return () => {
       loggingReminderService.cleanup();
       climateAlertService.cleanup();
+      clearInterval(syncInterval);
+      document.removeEventListener('visibilitychange', onVisible);
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.removeEventListener('message', handleSWMessage);
       }
