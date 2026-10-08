@@ -17,7 +17,6 @@ interface Episode {
 interface GeneratedInsights {
   clinicalAnalysis: string;
   immediateRelief: string[];
-  treatmentOptions: string[];
   lifestyleModifications: string[];
   medicalAttention: string;
   emotionalSupport?: string;
@@ -35,7 +34,6 @@ class EpisodeInsightGenerator {
     return {
       clinicalAnalysis: this.buildClinicalAnalysis(episode),
       immediateRelief: this.buildReliefStrategies(episode),
-      treatmentOptions: this.buildTreatmentRecommendations(episode),
       lifestyleModifications: this.buildLifestyleModifications(episode),
       medicalAttention: this.buildMedicalAttention(episode),
       emotionalSupport: mentalHealth.detected ? this.generateEmpathyResponse(mentalHealth.themes) : undefined,
@@ -213,35 +211,6 @@ class EpisodeInsightGenerator {
     }
 
     return strategies;
-  }
-
-  private buildTreatmentRecommendations(ep: Episode): string[] {
-    const sev = ep.severityLevel;
-    const areas = ep.bodyAreas.map(lower);
-    const recs: string[] = [];
-
-    if (sev >= 3) {
-      recs.push(
-        `Time for a Specialist: Since your sweating is significantly interfering with your life (Prescription Threshold Reached), it's worth seeing a dermatologist. They can offer prescription wipes (like **Qbrexza**), specialized gels (like **Sofdra**), or even **Botox** injections. These medical options work by 'blocking the acetylcholine signal'—the chemical messenger that tells your glands to sweat.`
-      );
-      if (areas.some(a => a.includes('arm') || a.includes('under'))) {
-        recs.push(
-          `Permanent Options: For underarms, miraDry is a permanent solution that uses thermal energy to eliminate sweat glands. Since glands don't grow back, it's a one-time treatment for many warriors.`
-        );
-      }
-      recs.push(
-        `Iontophoresis (Water Treatment): This is highly effective for hands and feet, using a gentle electrical current in water to 'quiet' the sweat glands. It works for about 80-90% of people who try it.`
-      );
-    } else {
-      recs.push(
-        `Clinical-Strength Antiperspirants: First-line treatments for HDSS 1-2 include **Aluminium Chloride 20%** (like Certain Dri). Apply to completely dry skin right before bed to allow the formula to block the sweat ducts while the glands are least active.`
-      );
-      recs.push(
-        `Behavioral Resets: Focus on the **4-7-8 breathing** technique to calm the nervous system signal before it reaches the glands.`
-      );
-    }
-
-    return recs;
   }
 
   private buildLifestyleModifications(ep: Episode): string[] {

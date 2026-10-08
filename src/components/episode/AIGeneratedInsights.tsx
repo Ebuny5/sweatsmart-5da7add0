@@ -21,7 +21,7 @@ interface AIInsightsProps {
   insights: {
     clinicalAnalysis: string;
     immediateRelief: string[];
-    treatmentOptions: string[];
+    treatmentOptions?: string[];
     lifestyleModifications: string[];
     medicalAttention: string;
     emotionalOpener?: string;
@@ -82,7 +82,6 @@ const AIGeneratedInsights: React.FC<AIInsightsProps> = ({ insights }) => {
     insights.emotionalSupport,
     `Clinical analysis. ${insights.clinicalAnalysis}`,
     listify('Immediate relief strategies', insights.immediateRelief),
-    listify('Treatment recommendations', insights.treatmentOptions),
     listify('Lifestyle modifications', insights.lifestyleModifications),
     `HidroAlly care & specialist scheduling. ${insights.medicalAttention}`,
   ].filter(Boolean).join(' ');
@@ -99,9 +98,6 @@ ${insights.clinicalAnalysis}
 
 IMMEDIATE RELIEF STRATEGIES
 ${insights.immediateRelief.map((item, i) => `${i + 1}. ${item}`).join('\n\n')}
-
-TREATMENT RECOMMENDATIONS
-${insights.treatmentOptions.map((item, i) => `${i + 1}. ${item}`).join('\n\n')}
 
 LIFESTYLE MODIFICATIONS
 ${insights.lifestyleModifications.map((item, i) => `${i + 1}. ${item}`).join('\n\n')}
@@ -173,7 +169,6 @@ Always consult with a healthcare provider for personalized medical advice.
 
       addSection('Clinical Analysis', insights.clinicalAnalysis);
       addSection(insights.isDryDay ? 'Barrier Care & Skin Protocol' : 'Immediate Relief Strategies', insights.immediateRelief);
-      addSection('Treatment Recommendations', insights.treatmentOptions);
       addSection(insights.isDryDay ? 'Environmental & Routine Replication' : 'Lifestyle Modifications', insights.lifestyleModifications);
       addSection('HidroAlly Care & Specialist Scheduling', insights.medicalAttention);
 
@@ -333,34 +328,6 @@ Always consult with a healthcare provider for personalized medical advice.
 
       {!insights.isDryDay && (
       <>
-      {/* Treatment Options */}
-      <Card className="border-l-4 border-l-purple-500">
-        <CardHeader>
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center space-x-2">
-              <Activity className="h-5 w-5 text-purple-600" />
-              <CardTitle>Treatment Recommendations</CardTitle>
-            </div>
-            <ListenButton
-              text={listify('Treatment recommendations', insights.treatmentOptions)}
-              sectionKey="treatment"
-              label="treatment recommendations"
-            />
-          </div>
-          <CardDescription>Based on your episode severity and pattern</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-3">
-            {insights.treatmentOptions.map((option, index) => (
-              <li key={index} className="flex gap-3">
-                <span className="text-primary mt-1 flex-shrink-0">•</span>
-                <span className="text-muted-foreground">{option}</span>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
-
       {/* Lifestyle Modifications */}
       <Card className="border-l-4 border-l-orange-500">
         <CardHeader>
