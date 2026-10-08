@@ -43,7 +43,6 @@ export interface EpisodeInput {
 export interface EpisodeInsights {
   clinicalAnalysis: string;
   immediateRelief: string[];
-  treatmentOptions: string[];
   lifestyleModifications: string[];
   medicalAttention: string;
   isDryDay?: boolean;
@@ -357,57 +356,6 @@ function buildImmediateRelief(
   return strategies.slice(0, 3);
 }
 
-// ─── TREATMENT RECOMMENDATIONS ────────────────────────────────────────────────
-
-function buildTreatments(
-  anatomy: AnatomicalProfile,
-  severity: SeverityProfile,
-  seed: number
-): string[] {
-  const treatments: string[] = [];
-
-  // Strict Anatomical Isolation for Craniofacial vs Head vs Face
-  if (anatomy.hasHead && anatomy.hasFace) {
-    treatments.push(
-      "Facial & Head Topical Options: Delicate skin on the head and face requires gentler care. Evidence-based pathways include prescription topical Glycopyrronium wipes (Qbrexza) to block muscarinic receptors (microscopic docking sites on sweat glands that receive nerve signals), or consulting a dermatologist regarding intradermal botulinum toxin microinjections along the hairline."
-    );
-  } else if (anatomy.hasHead || anatomy.hasScalp) {
-    treatments.push(
-      "Scalp & Hairline Options: Hair-bearing scalp regions require specialized low-viscosity solutions designed to navigate hair density without residue, targeting local eccrine gland activity on the scalp. Micro-application pathways or intradermal botulinum toxin along frontal and temporal hairline boundaries provide targeted symptom management."
-    );
-  } else if (anatomy.hasFace) {
-    treatments.push(
-      "Facial Surface Options: Delicate facial skin requires low-concentration topical wipes or gels formulated specifically for periorbital and forehead sensitivity to block muscarinic receptors on local sweat glands without irritation."
-    );
-  }
-
-  if (anatomy.isAxillary) {
-    treatments.push(
-      "Clinical Antiperspirant Therapy: Apply a clinical-strength 15% to 20% Aluminum Chloride formulation strictly to dry underarm skin at bedtime. Leaving it on overnight allows ductal plugs (temporary seals in sweat pores) to form while sweat glands are resting."
-    );
-  }
-
-  if (anatomy.isPalmar || anatomy.isPlantar) {
-    treatments.push(
-      "Iontophoresis & Occlusive Antiperspirants: Tap-water iontophoresis (a medical device that uses mild electrical currents through water to temporarily block sweat pores) is a proven option for hands and feet. High-potency antiperspirants applied overnight under cotton gloves or socks also offer targeted control."
-    );
-  }
-
-  if (anatomy.isTruncal || (treatments.length < 2 && severity.score >= 3)) {
-    treatments.push(
-      "Systemic Oral Pharmacotherapy: When sweating affects larger or multiple body areas, oral anticholinergics (such as Glycopyrrolate 1 mg to 2 mg taken under medical supervision) can reduce generalized eccrine gland firing."
-    );
-  }
-
-  if (treatments.length === 0) {
-    treatments.push(
-      "Targeted Clinical Antiperspirants: Use clinical-strength topical antiperspirants formulated specifically for your affected body area, applied nightly to completely dry skin."
-    );
-  }
-
-  return treatments.slice(0, 3);
-}
-
 // ─── LIFESTYLE MODIFICATIONS ──────────────────────────────────────────────────
 
 function buildLifestyle(
@@ -516,9 +464,6 @@ function buildDryDayProtocol(
     emotionalOpener: `${greeting}. Great job tracking an asymptomatic day! Here is your maintenance guidance.`,
     clinicalAnalysis,
     immediateRelief,
-    treatmentOptions: [
-      "Maintain Treatment Consistency: Avoid stopping treatments suddenly. Tapering gradually into a maintenance routine prevents sudden rebound sweating."
-    ],
     lifestyleModifications: [
       "Note Successful Conditions: Pay attention to your environment today (indoor temperature, clothing choices, stress levels) and replicate these conditions on warmer days."
     ],
@@ -566,9 +511,6 @@ export function generateEpisodeInsights(input: EpisodeInput): EpisodeInsights & 
         "Air Circulation: Move near a fan or open window to encourage natural evaporation.",
         "Deep Respiration: Take 5 slow, deep belly breaths to calm your nervous system."
       ],
-      treatmentOptions: [
-        "Select your specific affected body parts in future logs to receive targeted treatment options."
-      ],
       lifestyleModifications: [
         "Include both body areas and triggers in your next log to build a helpful history."
       ],
@@ -584,7 +526,6 @@ export function generateEpisodeInsights(input: EpisodeInput): EpisodeInsights & 
   return {
     clinicalAnalysis: buildClinicalAnalysis(anatomy, triggerProfile, severityProfile, notes, seed),
     immediateRelief: buildImmediateRelief(anatomy, triggerProfile, seed),
-    treatmentOptions: buildTreatments(anatomy, severityProfile, seed),
     lifestyleModifications: buildLifestyle(anatomy, triggerProfile, seed),
     medicalAttention: buildMedical(anatomy, triggerProfile, severityProfile, seed),
     emotionalOpener: `${greeting}, your personal hyperhidrosis clinical guide. Here is your evidence-based analysis for this logged episode.`,
