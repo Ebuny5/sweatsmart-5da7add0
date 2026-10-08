@@ -1022,7 +1022,8 @@ const HidroAllyLanding = () => {
     }
 
     .footer-company-link {
-      color: #9d4edf;
+      color: #b07cf0;
+      font-weight: 600;
       text-decoration: underline;
       text-underline-offset: 3px;
       transition: color 0.2s ease, opacity 0.2s ease;
@@ -1030,9 +1031,10 @@ const HidroAllyLanding = () => {
 
     .footer-company-link:hover,
     .footer-company-link:focus-visible {
-      color: #c084fc;
-      opacity: 0.95;
+      color: #d5b3ff;
+      opacity: 0.98;
     }
+
 
 
     .footer-links {
