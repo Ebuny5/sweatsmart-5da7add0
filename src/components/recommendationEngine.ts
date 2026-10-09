@@ -209,18 +209,27 @@ function evaluateTriggers(triggers: Array<TriggerInput | string>): TriggerProfil
     t.includes("night sweat") || t.includes("fever") || t.includes("illness") || isPharmacological
   );
 
-  const labels: string[] = [];
-  if (isEnvironmental) labels.push("ambient heat and temperature increases");
-  if (isAdrenergic) labels.push("emotional stress and nervous system activation");
-  if (isGustatory) labels.push("dietary or gustatory triggers");
-  if (isPhysical) labels.push("physical exertion");
-  if (isPharmacological) labels.push("medication or pharmacological factors");
+  // ZERO-SYNONYM RULE: Collect exact verbatim trigger strings provided by the user
+  const rawLabels: string[] = [];
+  (triggers || []).forEach(t => {
+    let str = "";
+    if (typeof t === "string") {
+      str = t.trim();
+    } else if (t) {
+      str = (t.label || t.value || "").trim();
+    }
+    if (str && !str.toLowerCase().includes("no clear") && !str.toLowerCase().includes("no iden") && !str.toLowerCase().includes("none") && !str.toLowerCase().includes("spontaneous")) {
+      rawLabels.push(str);
+    }
+  });
+
+  const uniqueRawLabels = Array.from(new Set(rawLabels));
 
   let cleanTriggerList = "idiopathic factors (spontaneous autonomic activity without an identifiable external trigger)";
-  if (!isIdiopathic && labels.length > 0) {
-    if (labels.length === 1) cleanTriggerList = labels[0];
-    else if (labels.length === 2) cleanTriggerList = `${labels[0]} and ${labels[1]}`;
-    else cleanTriggerList = `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
+  if (!isIdiopathic && uniqueRawLabels.length > 0) {
+    if (uniqueRawLabels.length === 1) cleanTriggerList = uniqueRawLabels[0];
+    else if (uniqueRawLabels.length === 2) cleanTriggerList = `${uniqueRawLabels[0]} and ${uniqueRawLabels[1]}`;
+    else cleanTriggerList = `${uniqueRawLabels.slice(0, -1).join(", ")}, and ${uniqueRawLabels[uniqueRawLabels.length - 1]}`;
   }
 
   return {
