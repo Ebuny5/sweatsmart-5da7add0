@@ -186,11 +186,12 @@ function evaluateTriggers(triggers: Array<TriggerInput | string>): TriggerProfil
   );
 
   const isEnvironmental = triggerTokens.some(t =>
-    t.includes("temp") || t.includes("heat") || t.includes("humid") || t.includes("sun") || t.includes("weather") || t.includes("warm")
+    (t.includes("temp") || t.includes("heat") || t.includes("humid") || t.includes("sun") || t.includes("weather") || t.includes("warm")) &&
+    !t.includes("crowd")
   );
 
   const isAdrenergic = triggerTokens.some(t =>
-    t.includes("stress") || t.includes("anxi") || t.includes("embarrass") || t.includes("nervous") || t.includes("public") || t.includes("social") || t.includes("work")
+    t.includes("stress") || t.includes("anxi") || t.includes("embarrass") || t.includes("nervous") || t.includes("public") || t.includes("social") || t.includes("work") || t.includes("crowd")
   );
 
   const isGustatory = triggerTokens.some(t =>
@@ -211,7 +212,16 @@ function evaluateTriggers(triggers: Array<TriggerInput | string>): TriggerProfil
 
   const labels: string[] = [];
   if (isEnvironmental) labels.push("ambient heat and temperature increases");
-  if (isAdrenergic) labels.push("emotional stress and nervous system activation");
+  if (isAdrenergic) {
+    const hasCrowded = triggerTokens.some(t => t.includes("crowd"));
+    if (hasCrowded && triggerTokens.some(t => t.includes("stress") || t.includes("anxi") || t.includes("nervous") || t.includes("public") || t.includes("social"))) {
+      labels.push("crowded environments and emotional or nervous system strain");
+    } else if (hasCrowded) {
+      labels.push("crowded environments and sensory density");
+    } else {
+      labels.push("emotional stress and nervous system activation");
+    }
+  }
   if (isGustatory) labels.push("dietary or gustatory triggers");
   if (isPhysical) labels.push("physical exertion");
   if (isPharmacological) labels.push("medication or pharmacological factors");
