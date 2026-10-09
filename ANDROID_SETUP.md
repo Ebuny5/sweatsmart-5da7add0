@@ -32,3 +32,35 @@ For the current setup, regenerate the Android package with:
 - Host name / web link: `www.hidroally.space` (or `hidroally.space`)
 - Package ID: `guru.sweatsmart.twa`
 - SHA-256 fingerprint matching Play Console → App integrity → App signing key certificate
+
+## 3. Resolving "Item Not Found" in Closed Testing
+
+If testers encounter "Item not found" when trying to install or update the app on Google Play:
+
+1. **Verify Tester Eligibility**:
+   - Go to **Google Play Console** -> **Testing** -> **Closed testing**.
+   - Select your active track and open the **Testers** tab.
+   - Confirm that the tester's Google account email address is included in the email list.
+
+2. **Send the Web Opt-in URL**:
+   - On the same **Testers** tab in Play Console, scroll down to **How testers join your test**.
+   - Copy the **Web Opt-in Link** (e.g., `https://play.google.com/apps/testing/guru.sweatsmart.twa`).
+   - Send this link to your testers.
+
+3. **Opt-in Procedure**:
+   - Testers **must** open the Web Opt-in link in a browser, sign in with their registered Google account, and click **"Become a Tester"** or **"Accept Invitation"**.
+   - After opting in, they can click the **"download it on Google Play"** link on that page. Opening Google Play Store without opting in first will result in the "Item not found" error screen.
+
+## 4. Removing Legacy Domain (`sweatsmart.guru`) & Re-verifying Deep Links
+
+To clean up failed domain checks in Google Play Console:
+
+1. **Remove `sweatsmart.guru`**:
+   - Open **Google Play Console** -> **Grow** / **Deep links**.
+   - Under the **Domains** section, locate `sweatsmart.guru`.
+   - Click the options menu or arrow next to `sweatsmart.guru` and select **Delete / Remove domain**.
+   - Save changes.
+
+2. **Re-check `hidroally.space` & `www.hidroally.space`**:
+   - Both `https://hidroally.space/.well-known/assetlinks.json` and `https://www.hidroally.space/.well-known/assetlinks.json` are served directly with JSON content headers and no redirects.
+   - In **Google Play Console** -> **Deep links** -> **Domains**, click **Re-check domain checks** for `hidroally.space`.
