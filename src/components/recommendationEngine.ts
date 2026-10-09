@@ -298,14 +298,14 @@ function buildClinicalAnalysis(
   // 2. Episode Mechanism (Plain English + Bracket Explanations)
   let mechanismText = "";
   const mechOptions1 = [
-    `When ${triggers.isIdiopathic ? "spontaneous signals occurred" : triggers.cleanTriggerList + " occurred"}, your hypothalamus (your brain's internal thermostat) signaled the eccrine glands (your body's primary sweat glands) in your ${anatomy.cleanDisplayList} to secrete moisture for cooling.`,
-    `In response to ${triggers.cleanTriggerList}, your autonomic nervous system (the involuntary network controlling heart rate and sweating) sent quick nerve impulses to the sweat glands in your ${anatomy.cleanDisplayList}.`,
-    `As ${triggers.cleanTriggerList} registered, the sympathetic nervous system (your body's automatic reaction pathway) activated the localized sweat glands in your ${anatomy.cleanDisplayList}.`
+    `When ${triggers.isIdiopathic ? "spontaneous nerve signals occurred" : triggers.cleanTriggerList + " occurred"}, your sympathetic nervous system (your body's involuntary reaction circuit) rapidly signaled the eccrine glands (your body's primary sweat glands) in your ${anatomy.cleanDisplayList}.`,
+    `In response to ${triggers.cleanTriggerList}, your autonomic nervous system sent rapid sudomotor nerve impulses directly to the eccrine sweat glands in your ${anatomy.cleanDisplayList}.`,
+    `As ${triggers.cleanTriggerList} registered, sympathetic nerve pathways instantly activated the localized eccrine sweat glands across your ${anatomy.cleanDisplayList}.`
   ];
 
   const mechOptions2 = [
-    `Due to heightened nerve sensitivity in these specific areas, your glands produced a disproportionate sweat response relative to the actual cooling required, resulting in an ${severity.label} flare-up.`,
-    `Because the local nerve endings in your ${anatomy.cleanDisplayList} are hypersensitive, they over-responded to the signal, causing a elevated ${severity.label} episode.`,
+    `Due to heightened nerve sensitivity in these specific areas, your glands produced a disproportionate sweat response, resulting in an ${severity.label} flare-up.`,
+    `Because the local sudomotor nerve endings in your ${anatomy.cleanDisplayList} are hypersensitive, they over-responded to the signal, causing an elevated ${severity.label} episode.`,
     `Heightened localized nerve responses caused your sweat glands to over-secrete moisture, leading to an ${severity.label} level of discomfort.`
   ];
 
