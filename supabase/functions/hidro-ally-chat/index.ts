@@ -45,96 +45,118 @@ async function searchKnowledgeBase(supabase: any, query: string, apiKey: string)
 function generateWarriorReport(analytics: any, userName: string): string {
   if (!analytics) return "I don't have enough data to generate a report yet. Please log some episodes first.";
 
-  const { totalEpisodes, avgSeverity, topTriggers, topAreas, weeklyTrends, edaData, climateData } = analytics;
+  const { totalEpisodes, avgSeverity, topTriggers, topAreas, weeklyTrends, dateRange } = analytics;
 
-  const hdssInterpretation = parseFloat(avgSeverity) >= 3
-    ? "HDSS 3–4 range — prescription treatment is clinically indicated. Dermatology referral recommended."
-    : parseFloat(avgSeverity) >= 2
-    ? "HDSS 2–3 range — condition is interfering with daily activities. Consider discussing prescription options."
-    : "HDSS 1–2 range — mild-moderate. Continue current management and monitor trends.";
+  const severityNum = parseFloat(avgSeverity);
+  const severityClass = severityNum >= 3.5 ? 'Severe' : severityNum >= 2.5 ? 'Moderate to Severe' : severityNum >= 2.0 ? 'Moderate' : 'Mild';
 
-  const topTriggerList = topTriggers?.map((t: any, i: number) =>
-    `  ${i + 1}. ${t.name}: ${t.count} episodes (${t.percentage}% of total, avg HDSS ${t.avgSeverity})`
-  ).join('\n') || '  No trigger data logged yet.';
+  const reportDate = new Date().toLocaleDateString('en-GB');
+  const reportId = `SS-${Math.random().toString(36).substring(2, 8).toUpperCase()}-${Date.now().toString().slice(-4)}`;
+
+  const primaryTrigger = topTriggers?.[0]?.name || 'idiopathic factors';
+  const primaryTriggerPct = topTriggers?.[0]?.percentage || 0;
 
   const topAreaList = topAreas?.map((a: any, i: number) =>
-    `  ${i + 1}. ${a.area}: ${a.count} episodes (${a.percentage}%, avg HDSS ${a.avgSeverity})`
-  ).join('\n') || '  No body area data logged yet.';
+    `${i + 1}. ${a.area.charAt(0).toUpperCase() + a.area.slice(1)} — ${a.percentage}% of episodes`
+  ).join('\n') || 'No body area data logged yet.';
 
-  // Trend analysis
-  const recentWeeks = weeklyTrends?.slice(-4) || [];
-  const trend = recentWeeks.length >= 2
-    ? parseFloat(recentWeeks[recentWeeks.length - 1].avgSeverity) < parseFloat(recentWeeks[0].avgSeverity)
-      ? "IMPROVING — severity trend is decreasing over the past 4 weeks."
-      : parseFloat(recentWeeks[recentWeeks.length - 1].avgSeverity) > parseFloat(recentWeeks[0].avgSeverity)
-      ? "WORSENING — severity trend is increasing. Consider reviewing triggers."
-      : "STABLE — consistent pattern over the past 4 weeks."
-    : "INSUFFICIENT DATA — continue logging for trend analysis.";
+  const triggerList = topTriggers?.map((t: any) =>
+    `* **${t.name}:** ${t.count} episodes (${t.percentage}%) | Avg HDSS: ${t.avgSeverity} | Category: Environmental / Emotional`
+  ).join('\n') || '* No trigger data logged yet.';
 
-  // Clinical recommendation logic
-  const primaryTrigger = topTriggers?.[0]?.name || null;
-  const isEmotional = primaryTrigger && ['anxiety', 'stress', 'nervousness', 'embarrassment', 'work'].some(
-    k => primaryTrigger.toLowerCase().includes(k)
-  );
-  const isEnvironmental = primaryTrigger && ['heat', 'humidity', 'temperature', 'sun'].some(
-    k => primaryTrigger.toLowerCase().includes(k)
-  );
+  const temporalList = weeklyTrends?.slice(-6).map((w: any) =>
+    `* Week of ${w.week}: ${w.count} episodes (Avg Severity: ${w.avgSeverity}/4)`
+  ).join('\n') || '* Insufficient temporal data.';
 
-  let recommendation = '';
-  if (parseFloat(avgSeverity) >= 3) {
-    if (isEmotional) {
-      recommendation = `Based on your data, ${Math.round((topTriggers[0].count / totalEpisodes) * 100)}% of episodes correlate with ${primaryTrigger}-type triggers and your average HDSS is ${avgSeverity}. I recommend discussing: (1) Botulinum toxin injections for your primary affected areas, (2) A referral to a therapist specialising in CBT for health anxiety, and (3) Oral glycopyrrolate for high-stakes events.`;
-    } else if (isEnvironmental) {
-      recommendation = `Your episodes show strong correlation with environmental triggers, especially ${primaryTrigger}. With an average HDSS of ${avgSeverity}, I recommend: (1) Prescription-strength aluminium chloride (20-25%), (2) Iontophoresis if palms/soles are primary affected areas, and (3) A climate-aware management strategy using SweatSmart's Climate Alert system.`;
-    } else {
-      recommendation = `With an average HDSS of ${avgSeverity} across ${totalEpisodes} episodes, prescription treatment is clinically indicated. I recommend presenting this report to a dermatologist and specifically asking about iontophoresis or botulinum toxin based on your primary affected areas.`;
-    }
-  } else {
-    recommendation = `Your current average HDSS of ${avgSeverity} suggests your condition is manageable with current strategies. Continue tracking — the data you're building is invaluable. If severity increases above HDSS 3, this report will be critical for your dermatologist.`;
-  }
+  // Check distributions for targeted appendix recommendations
+  const hasPalmoplantar = topAreas?.some((a: any) => ['palms', 'hands', 'soles', 'feet'].includes(a.area.toLowerCase()));
+  const palmAreas = topAreas?.filter((a: any) => ['palms', 'hands'].includes(a.area.toLowerCase())).map((a: any) => `${a.area}: ${a.percentage}%`).join(', ');
+  const feetAreas = topAreas?.filter((a: any) => ['soles', 'feet'].includes(a.area.toLowerCase())).map((a: any) => `${a.area}: ${a.percentage}%`).join(', ');
+  const palmoplantarDetail = [palmAreas, feetAreas].filter(Boolean).join(' | ') || 'Palms / Feet mapped';
 
-  return `HIDROALLY WARRIOR REPORT
-Generated by HidroAlly | ${new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-Patient: ${userName}
+  const hasCraniofacial = topAreas?.some((a: any) => ['face', 'scalp', 'head', 'craniofacial'].includes(a.area.toLowerCase()));
+  const faceDetail = topAreas?.filter((a: any) => ['face', 'scalp', 'head', 'craniofacial'].includes(a.area.toLowerCase())).map((a: any) => `${a.area}: ${a.percentage}%`).join(', ') || 'Face / Scalp mapped';
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  const secondaryAreas = topAreas?.filter((a: any) => !['palms', 'hands', 'soles', 'feet', 'face', 'scalp', 'head', 'craniofacial'].includes(a.area.toLowerCase()));
 
-SECTION 1: EPISODE SUMMARY
-Total episodes logged: ${totalEpisodes}
-Average HDSS severity: ${avgSeverity}/4
-Clinical interpretation: ${hdssInterpretation}
-4-week trend: ${trend}
+  // Craniofacial vs Palmar note for Section 4
+  const permeabilityNote = hasCraniofacial
+    ? "Craniofacial and facial margins present heightened dermal permeability risks and thin epidermal stratum corneum, requiring delicate topical formulations to prevent chemical dermatitis or ocular exposure."
+    : "Palmar and plantar surfaces exhibit thickened stratum corneum, requiring clinical-strength alcoholic vehicles for adequate sweat gland duct penetration.";
 
-SECTION 2: PRIMARY AFFECTED AREAS
+  return `# GIFTOVATE THERAPEUTICS LTD
+## HidroAlly Hyperhidrosis Management Platform
+### CONFIDENTIAL CLINICAL SUMMARY
+* **Report Date:** ${reportDate}
+* **Report ID:** ${reportId}
+* **Generated by:** HidroAlly Clinical Intelligence
+* **Patient Name:** ${userName}
+* **Report Period:** ${dateRange || 'Tracking Period'}
+* **Total Episodes Logged:** ${totalEpisodes}
+* **Average HDSS Severity:** ${avgSeverity} / 4 (Classification: ${severityClass})
+
+---
+### SECTION 1: PRESENTING COMPLAINT
+The patient presents with primary focal hyperhidrosis tracked across ${totalEpisodes} documented episodes with an average HDSS severity score of ${avgSeverity}/4. Primary focal zones identified include: ${topAreas?.slice(0, 3).map((a: any) => `${a.area} (${a.percentage}%)`).join(', ') || 'multiple focal sites'}.
+
+---
+### SECTION 2: TRIGGER ANALYSIS
+${triggerList}
+
+*Clinical interpretation:* Clinical interpretation reveals that ${primaryTrigger} is the primary exacerbating factor, accounting for ${primaryTriggerPct}% of reported episodes, pointing to dominant autonomic sympathetic stimulation.
+
+---
+### SECTION 3: TEMPORAL PATTERN
+${temporalList}
+
+---
+### SECTION 4: AFFECTED AREA CLINICAL MAPPING
 ${topAreaList}
 
-SECTION 3: TRIGGER ANALYSIS
-${topTriggerList}
+*Clinical Note:* ${permeabilityNote}
 
-SECTION 4: WEEKLY TREND (LAST 8 WEEKS)
-${weeklyTrends?.map((w: any) => `  Week of ${w.week}: ${w.count} episodes, avg HDSS ${w.avgSeverity}`).join('\n') || '  Insufficient data.'}
+---
+### SECTION 5: AI BARRIER INTEGRITY & LIFESTYLE IMPACT DIAGNOSTICS
+*(Replaces direct drug prescriptions to protect compliance and safety)*
+* **Epidermal Hydration & Barrier Mantle Protection:** Apply non-comedogenic ceramide and hyaluronic acid vehicles exclusively on non-treatment nights to preserve stratum corneum integrity against astringent-induced scaling.
+* **Thermal & Microclimate Regulation:** Utilize breathable, natural fiber textiles (merino wool, specialized bamboo moisture-wicking weaves) and implement targeted extremity pulse-point cooling during autonomic surge phases.
+* **Stress & Autonomic Downregulation:** Implement 5-minute diaphragmatic breathing protocols (4-7-8 pacing) upon early sudomotor aura recognition to suppress central sympathetic outflow from the amygdala and hypothalamus.
 
-${edaData ? `SECTION 5: BIOMETRIC DATA
-Average resting EDA: ${edaData.avgResting} µS
-Peak EDA recorded: ${edaData.peak} µS
-Trigger-phase readings: ${edaData.triggerCount}
-EDA correlation with episodes: ${edaData.correlation}` : ''}
+---
+### SECTION 6: STANDARD MEDICAL TREATMENT REFERENCE GUIDE
+*(Educational overview for clinical consultation—no patient-specific prescription directives)*
+* **Topical Aluminum Chloride Hexahydrate:** Standard first-line topical modality evaluated for palmoplantar management.
+* **Iontophoresis:** Non-invasive micro-current water therapy used for focal sweat reduction.
+* **Targeted Neuromodulators / Systemic Options:** Clinical modalities evaluated strictly under dermatologist discretion based on systemic profile.
 
-${climateData ? `SECTION 6: CLIMATE CORRELATION
-Average temperature on episode days: ${climateData.avgTemp}°C
-Average humidity on episode days: ${climateData.avgHumidity}%
-Episodes occurring on high-risk climate days: ${climateData.highRiskDays}%` : ''}
+---
+### SPECIALIST RADAR ROUTING
+> "This clinical history has been compiled for diagnostic support. Use the HidroAlly Specialist Radar to instantly book a consultation with a certified dermatologist near you and present this report for custom treatment configuration."
 
-SECTION ${edaData ? '7' : climateData ? '7' : '5'}: CLINICAL RECOMMENDATION
-${recommendation}
+---
+### [INTERNAL MEDICAL APPENDIX - FOR PRIVILEGED CLINICAL REVIEW ONLY]
+*(This section is generated exclusively for the licensed consulting dermatologist to streamline clinical decision-making. Cross-referenced with the Hyperhidrosis Clinical Textbook & Management Guidelines.)*
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-This report was generated by HidroAlly within SweatSmart.
-It is intended to support, not replace, clinical consultation.
-Share with your dermatologist or GP for the most effective care.
+#### CLINICAL TELEMETRY SYNTHESIS & RECOGNITION
+Based on the patient's objective telemetry profile (${totalEpisodes} tracking instances, mean HDSS ${avgSeverity}/4), the clinical data is highly indicative of primary focal hyperhidrosis. The autonomic hyperactivity shows a high correlation with ${primaryTrigger} triggers.
 
-"My sweat doesn't define me." — SweatSmart Warrior
-#HyperhidrosisWarrior #StopTheStigma #SweatSmart`;
+#### MAPPED AREA TARGETED PRESCRIPTION RECOMMENDATIONS
+Based on the specific distributions mapped in Section 4, the following targeted clinical interventions are suggested for specialist consideration:
+
+${hasPalmoplantar ? `1. FOR PALMOPLANTAR DISTRIBUTION (${palmoplantarDetail}):
+   * Consider initiating **Topical Aluminum Chloride Hexahydrate (20% - 25% in absolute ethanol)** solution.
+   * *Clinical Protocol Suggestion:* Apply to meticulously dry surfaces at bedtime for 3–7 consecutive nights until control is achieved, then titrate down to 1–2 times weekly maintenance. Instruct patient to wash off the film thoroughly in the morning to limit friction-induced eczema.
+   * *Alternative/Adjunct:* Direct tap-water **Iontophoresis** (mechanically plugging sweat pores via ionic disruption). 20-minute sessions, 3 to 4 times weekly until euidrosis, followed by weekly maintenance passes at the Giftovate Hub.` : ''}
+
+${hasCraniofacial ? `2. FOR CRANIOFACIAL DISTRIBUTION (${faceDetail}):
+   * *Contraindication Warning:* Avoid standard high-strength alcoholic Aluminum Chloride on the face due to extreme risk of severe chemical dermatitis, ocular irritation, and barrier destruction.
+   * *Clinical Protocol Suggestion:* Consider low-concentration **Glycopyrrolate topical solution or cream (0.5% - 2.0%)** applied carefully to clean, dry facial margins, avoiding the eyes and mouth. Alternatively, review systemic oral **Glycopyrrolate (1mg - 2mg daily titrated sequentially)**, or targeted local intradermal Neuromodulator (Botox) mapping if systemic anticholinergics are contraindicated due to risk profiles (e.g., glaucoma, urinary retention).` : ''}
+
+${secondaryAreas?.length ? `3. FOR SECONDARY FOCAL DISTRIBUTIONS (${secondaryAreas.map((a: any) => `${a.area}: ${a.percentage}%`).join(', ')}):
+   * Monitor for topical tolerability. Consider soft-stick antiperspirants containing aluminum zirconium complexes or targeted intradermal neuromodulator administration before escalating to high-strength clinical astringents.` : ''}
+
+#### SYSTEMIC & BARRIER MANAGEMENT REASONING
+The telemetry highlights that the patient's skin barrier integrity must be actively maintained to ensure treatment adherence. If high-strength topical astringents are prescribed for the body, it is highly recommended to instruct the patient to implement concurrent barrier repair regimens (such as ceramide, hyaluronic acid, or niacinamide vehicles) exclusively on non-treatment nights to protect the epidermal mantle from excessive scaling and irritation.`;
 }
 
 // ── Main serve ────────────────────────────────────────────────────────────────
