@@ -790,65 +790,200 @@ const HidroAlly = () => {
       });
       y += 10;
 
-      // ── SECTION 5: CLINICAL RECOMMENDATIONS ─────────────────────────────────
+      // ── SECTION 5: AI BARRIER INTEGRITY & LIFESTYLE IMPACT DIAGNOSTICS ──────
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(11);
-      doc.text('SECTION 5: CLINICAL RECOMMENDATIONS', margin, y);
+      doc.text('SECTION 5: AI BARRIER INTEGRITY & LIFESTYLE IMPACT DIAGNOSTICS', margin, y);
+      y += 5;
+
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(8);
+      doc.setTextColor(100, 100, 100);
+      doc.text('(Replaces direct drug prescriptions to protect compliance and safety)', margin, y);
       y += 6;
 
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-
-      let recText = "Based on the primary affected areas, first-line management with clinical-strength aluminium chloride (20-25%) is recommended for nocturnal application. ";
-      if (avg >= 3.0) {
-        recText += "Given the severity scores frequently reach the HDSS 3-4 range, second-line interventions such as Iontophoresis or Botulinum Toxin A injections are clinically indicated to reduce the acetylcholine signal at the gland site. ";
-      }
-      if (avg >= 3.5) {
-        recText += "Due to the severe impact on daily activities, an urgent dermatology referral is recommended for multi-modal treatment evaluation, including potential oral anticholinergics or microwave thermolysis.";
-      }
-
-      const recLines = doc.splitTextToSize(recText, contentWidth);
-      doc.text(recLines, margin, y);
-      y += (recLines.length * 5) + 15;
-
-      // ── SECTION 6: TREATMENT LADDER ─────────────────────────────────────────
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.text('SECTION 6: TREATMENT LADDER', margin, y);
-      y += 8;
-
       doc.setFontSize(9);
-      doc.text('Step', margin, y);
-      doc.text('Treatment', margin + 20, y);
-      doc.text('Evidence', margin + 90, y);
-      doc.text('Relevant For Patient', margin + 130, y);
-      y += 2;
-      addHorizontalRule(y);
-      y += 6;
+      doc.setTextColor(0, 0, 0);
 
-      const ladder = [
-        { step: 1, name: 'Aluminium Chloride (20-25%)', evidence: 'Level A', relevant: 'Yes' },
-        { step: 2, name: 'Iontophoresis', evidence: 'Level A', relevant: dashboardAnalytics.topAreas.some((a: any) => ['palms', 'hands', 'soles', 'feet'].includes(a.area.toLowerCase())) ? 'Yes' : 'No' },
-        { step: 3, name: 'Botulinum Toxin A', evidence: 'Level A', relevant: avg >= 3 ? 'Yes' : 'Consider' },
-        { step: 4, name: 'Oral Anticholinergics', evidence: 'Level B', relevant: avg >= 3 ? 'Yes' : 'No' },
-        { step: 5, name: 'Microwave Thermolysis', evidence: 'Level A', relevant: dashboardAnalytics.topAreas.some((a: any) => ['underarms'].includes(a.area.toLowerCase())) ? 'Yes' : 'No' },
+      const diagnostics = [
+        "• Epidermal Hydration & Barrier Protection: Apply ceramide and hyaluronic acid vehicles exclusively on non-treatment nights to preserve stratum corneum barrier mantle.",
+        "• Thermal & Microclimate Regulation: Utilize breathable merino or specialized bamboo weaves; implement extremity pulse-point cooling during autonomic surge phases.",
+        "• Stress & Autonomic Downregulation: Implement 5-minute diaphragmatic breathing protocols (4-7-8 pacing) upon sudomotor aura recognition to downregulate central sympathetic tone."
       ];
 
-      doc.setFont('helvetica', 'normal');
-      ladder.forEach(item => {
-        doc.text(item.step.toString(), margin, y);
-        doc.text(item.name, margin + 20, y);
-        doc.text(item.evidence, margin + 90, y);
-        doc.text(item.relevant, margin + 130, y);
-        y += 7;
+      diagnostics.forEach(diag => {
+        const lines = doc.splitTextToSize(diag, contentWidth);
+        doc.text(lines, margin, y);
+        y += (lines.length * 4.5) + 3;
       });
+      y += 5;
+
+      // ── SECTION 6: STANDARD MEDICAL TREATMENT REFERENCE GUIDE ───────────────
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text('SECTION 6: STANDARD MEDICAL TREATMENT REFERENCE GUIDE', margin, y);
+      y += 5;
+
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(8);
+      doc.setTextColor(100, 100, 100);
+      doc.text('(Educational overview for clinical consultation—no patient-specific prescription directives)', margin, y);
+      y += 6;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(0, 0, 0);
+
+      const refGuides = [
+        "• Topical Aluminum Chloride Hexahydrate: Standard first-line topical modality evaluated for palmoplantar management.",
+        "• Iontophoresis: Non-invasive micro-current water therapy used for focal sweat reduction.",
+        "• Targeted Neuromodulators / Systemic Options: Clinical modalities evaluated strictly under dermatologist discretion based on systemic profile."
+      ];
+
+      refGuides.forEach(guide => {
+        const lines = doc.splitTextToSize(guide, contentWidth);
+        doc.text(lines, margin, y);
+        y += (lines.length * 4.5) + 3;
+      });
+      y += 6;
+
+      // ── SPECIALIST RADAR ROUTING ─────────────────────────────────────────────
+      doc.setFillColor(240, 253, 250); // Light Teal
+      doc.rect(margin, y, contentWidth, 18, 'F');
+      doc.setDrawColor(20, 184, 166);
+      doc.rect(margin, y, contentWidth, 18, 'S');
+
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(8.5);
+      doc.setTextColor(15, 118, 110);
+      const radarText = '"This clinical history has been compiled for diagnostic support. Use the HidroAlly Specialist Radar to instantly book a consultation with a certified dermatologist near you and present this report for custom treatment configuration."';
+      const radarLines = doc.splitTextToSize(radarText, contentWidth - 10);
+      doc.text(radarLines, margin + 5, y + 6);
 
       addFooter(2);
+
+      // ── PAGE 3: INTERNAL MEDICAL APPENDIX ────────────────────────────────────
+      doc.addPage();
+      addHeader(3);
+      y = 40;
+
+      // Appendix Title Header Box
+      doc.setFillColor(243, 244, 246); // Neutral Grey Box
+      doc.rect(margin, y, contentWidth, 16, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(31, 41, 55);
+      doc.text('[INTERNAL MEDICAL APPENDIX - FOR PRIVILEGED CLINICAL REVIEW ONLY]', margin + 5, y + 6);
+
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(7.5);
+      doc.setTextColor(107, 114, 128);
+      doc.text('(Exclusively for the licensed consulting dermatologist. Cross-referenced with Hyperhidrosis Guidelines.)', margin + 5, y + 12);
+      y += 22;
+
+      // Telemetry Synthesis
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(0, 0, 0);
+      doc.text('CLINICAL TELEMETRY SYNTHESIS & RECOGNITION', margin, y);
+      y += 5;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      const primaryTrig = dashboardAnalytics.topTriggers[0]?.name || 'idiopathic factors';
+      const synthText = `Based on the patient's objective telemetry profile (${dashboardAnalytics.totalEpisodes} tracking instances, mean HDSS ${dashboardAnalytics.avgSeverity}/4), the clinical data is highly indicative of primary focal hyperhidrosis. The autonomic hyperactivity shows a high correlation with ${primaryTrig} triggers.`;
+      const synthLines = doc.splitTextToSize(synthText, contentWidth);
+      doc.text(synthLines, margin, y);
+      y += (synthLines.length * 4.5) + 8;
+
+      // Targeted Prescription Recommendations
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.text('MAPPED AREA TARGETED PRESCRIPTION RECOMMENDATIONS', margin, y);
+      y += 5;
+
+      const hasPalms = dashboardAnalytics.topAreas.some((a: any) => ['palms', 'hands', 'soles', 'feet'].includes(a.area.toLowerCase()));
+      const hasFace = dashboardAnalytics.topAreas.some((a: any) => ['face', 'forehead', 'cheeks'].includes(a.area.toLowerCase()));
+      const hasScalp = dashboardAnalytics.topAreas.some((a: any) => ['scalp', 'head'].includes(a.area.toLowerCase()));
+
+      if (hasPalms) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.text('1. FOR PALMOPLANTAR DISTRIBUTION:', margin, y);
+        y += 4.5;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.5);
+        const palmRecs = [
+          "• Consider initiating Topical Aluminum Chloride Hexahydrate (20% - 25% in absolute ethanol) solution.",
+          "  Clinical Protocol: Apply to dry surfaces at bedtime for 3–7 consecutive nights until control is achieved, then titrate down to 1–2 times weekly maintenance. Wash off in morning to limit friction-induced eczema.",
+          "• Alternative/Adjunct: Tap-water Iontophoresis (20-minute sessions, 3-4 times weekly until euidrosis, followed by weekly maintenance passes at Giftovate Hub)."
+        ];
+        palmRecs.forEach(pr => {
+          const prLines = doc.splitTextToSize(pr, contentWidth);
+          doc.text(prLines, margin, y);
+          y += (prLines.length * 4) + 2;
+        });
+        y += 3;
+      }
+
+      if (hasFace) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.text('2. FOR CRANIOFACIAL FACIAL DISTRIBUTION:', margin, y);
+        y += 4.5;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.5);
+        const faceRecs = [
+          "• Contraindication Warning: Do not use standard high-strength alcoholic Aluminum Chloride or heavy scalp lotions on the face due to extreme risk of severe chemical dermatitis and facial skin mantle destruction.",
+          "• Clinical Protocol: Consider low-concentration Glycopyrrolate topical cream or gel (0.5% - 2.0%) applied carefully to clean, dry facial margins (forehead/upper lip), avoiding eyes and mouth."
+        ];
+        faceRecs.forEach(fr => {
+          const frLines = doc.splitTextToSize(fr, contentWidth);
+          doc.text(frLines, margin, y);
+          y += (frLines.length * 4) + 2;
+        });
+        y += 3;
+      }
+
+      if (hasScalp) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.text('3. FOR CRANIOFACIAL SCALP DISTRIBUTION:', margin, y);
+        y += 4.5;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.5);
+        const scalpRecs = [
+          "• Clinical Protocol: Since this is hair-bearing skin, avoid heavy creams or ointments which cause follicular occlusion. Consider a targeted topical pump spray solution (e.g., Odaban) applied directly to scalp partings at bedtime, or evaluate systemic oral anticholinergics if both face and scalp require concurrent global control."
+        ];
+        scalpRecs.forEach(sr => {
+          const srLines = doc.splitTextToSize(sr, contentWidth);
+          doc.text(srLines, margin, y);
+          y += (srLines.length * 4) + 2;
+        });
+        y += 3;
+      }
+
+      // Barrier Management Reasoning
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.text('SYSTEMIC & BARRIER MANAGEMENT REASONING', margin, y);
+      y += 5;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      const barrierText = "The telemetry highlights that the patient's skin barrier integrity must be actively maintained to ensure treatment adherence. If high-strength topical astringents are prescribed for the body, it is highly recommended to instruct the patient to implement concurrent barrier repair regimens (such as ceramide, hyaluronic acid, or niacinamide vehicles) exclusively on non-treatment nights to protect the epidermal mantle from excessive scaling and irritation.";
+      const barrierLines = doc.splitTextToSize(barrierText, contentWidth);
+      doc.text(barrierLines, margin, y);
+
+      addFooter(3);
 
       // Save PDF
       const filename = `HidroAlly_Clinical_Report_${userName.replace(/\s+/g, '_')}_${format(new Date(), 'yyyyMMdd')}.pdf`;
       doc.save(filename);
-      toast.success('Clinical Warrior Report downloaded');
+      toast.success('Clinical Warrior Report downloaded', {
+        description: 'Includes Sections 1–6 (Patient Review) and Page 3 Privileged Doctor Appendix for your dermatologist.'
+      });
 
     } catch (error) {
       console.error('PDF error:', error);

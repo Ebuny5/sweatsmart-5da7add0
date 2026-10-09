@@ -210,27 +210,27 @@ function evaluateTriggers(triggers: Array<TriggerInput | string>): TriggerProfil
     t.includes("night sweat") || t.includes("fever") || t.includes("illness") || isPharmacological
   );
 
-  const labels: string[] = [];
-  if (isEnvironmental) labels.push("ambient heat and temperature increases");
-  if (isAdrenergic) {
-    const hasCrowded = triggerTokens.some(t => t.includes("crowd"));
-    if (hasCrowded && triggerTokens.some(t => t.includes("stress") || t.includes("anxi") || t.includes("nervous") || t.includes("public") || t.includes("social"))) {
-      labels.push("crowded environments and emotional or nervous system strain");
-    } else if (hasCrowded) {
-      labels.push("crowded environments and sensory density");
-    } else {
-      labels.push("emotional stress and nervous system activation");
+  // ZERO-SYNONYM RULE: Collect exact verbatim trigger strings provided by the user
+  const rawLabels: string[] = [];
+  (triggers || []).forEach(t => {
+    let str = "";
+    if (typeof t === "string") {
+      str = t.trim();
+    } else if (t) {
+      str = (t.label || t.value || "").trim();
     }
-  }
-  if (isGustatory) labels.push("dietary or gustatory triggers");
-  if (isPhysical) labels.push("physical exertion");
-  if (isPharmacological) labels.push("medication or pharmacological factors");
+    if (str && !str.toLowerCase().includes("no clear") && !str.toLowerCase().includes("no iden") && !str.toLowerCase().includes("none") && !str.toLowerCase().includes("spontaneous")) {
+      rawLabels.push(str);
+    }
+  });
+
+  const uniqueRawLabels = Array.from(new Set(rawLabels));
 
   let cleanTriggerList = "idiopathic factors (spontaneous autonomic activity without an identifiable external trigger)";
-  if (!isIdiopathic && labels.length > 0) {
-    if (labels.length === 1) cleanTriggerList = labels[0];
-    else if (labels.length === 2) cleanTriggerList = `${labels[0]} and ${labels[1]}`;
-    else cleanTriggerList = `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
+  if (!isIdiopathic && uniqueRawLabels.length > 0) {
+    if (uniqueRawLabels.length === 1) cleanTriggerList = uniqueRawLabels[0];
+    else if (uniqueRawLabels.length === 2) cleanTriggerList = `${uniqueRawLabels[0]} and ${uniqueRawLabels[1]}`;
+    else cleanTriggerList = `${uniqueRawLabels.slice(0, -1).join(", ")}, and ${uniqueRawLabels[uniqueRawLabels.length - 1]}`;
   }
 
   return {
@@ -331,36 +331,45 @@ function buildImmediateRelief(
 ): string[] {
   const strategies: string[] = [];
 
-  if (anatomy.isCraniofacial) {
-    const headRelief = [
-      "Targeted Thermal Cooling: Apply a cold, damp cloth firmly to your forehead, temples, or hairline for 60 to 90 seconds. Conducting cooling directly across the head rapidly lowers local skin temperature and calms nerve signals sent to your sweat glands.",
-      "Forehead & hairline cooling: Place a cold compress on your forehead and temporal pulse points for one minute. This cools local surface blood vessels and slows down the brain's sweating commands to your head."
+  // 1. FOR SITUATIONAL / SOCIAL / ANTICIPATORY TRIGGERS
+  if (triggers.isAdrenergic) {
+    const socialRelief = [
+      "Discrete Pulse-Point Cooling: Hold a chilled beverage, cold water bottle, or cool wet towel firmly against your radial wrist or neck pulse point for 30 to 60 seconds. This rapidly lowers blood temperature reaching local thermoreceptors without attracting attention in crowded or social settings.",
+      "Tactical Slow-Exhalation Respiration: Perform 3 to 5 cycles of extended exhalation breathing (inhale for 4 seconds, exhale slowly for 6 seconds). Extending your exhalation stimulates vagal tone (activating your parasympathetic rest-and-digest response) to immediately blunt the acute adrenal spike causing sudden sweating.",
+      "Sensory Grounding & Extremity Cooling: Press the soles of your feet firmly into the cold floor or press your palms against a cool surface while taking slow exhalations. Reanchoring your sensory focus interrupts hyperactive sympathetic signaling to your sweat glands."
     ];
-    strategies.push(pick(headRelief, seed));
+    strategies.push(pick(socialRelief, seed));
   }
 
-  if (anatomy.isAxillary) {
-    const armpitRelief = [
-      "Underarm Ventilation & Airflow: Place an absorbent cool cloth or ice pack wrapped in paper towel under your arms for 2 minutes, then move to a ventilated area with a fan to encourage rapid evaporation.",
-      "Underarm Cool Reset: Hold a cool pack under your underarms for 90 seconds to reduce local skin temperature and eliminate trapped heat in your clothing."
+  // 2. FOR THERMAL / AMBIENT TRIGGERS
+  if (triggers.isEnvironmental) {
+    const thermalRelief = [
+      "Local Skin-Temperature Reduction: Step into an air-conditioned room or in front of an active airflow fan and apply a damp cool cloth directly across your exposed skin. Rapid evaporative cooling communicates an immediate temperature drop to your hypothalamus (your brain's thermostat).",
+      "Hydration & Heat Sink Reset: Sip cold ice-water steadily for 2 minutes. Lowering internal oral and core vascular temperature suppresses central thermoregulatory sweat drives."
     ];
-    strategies.push(pick(armpitRelief, seed + 1));
+    strategies.push(pick(thermalRelief, seed + 1));
   }
 
-  if (anatomy.isPalmar || anatomy.isPlantar) {
-    const handFeetRelief = [
-      "Vasculature Heat Sink: Run cool tap water over your wrists, palms, or feet for 2 to 3 minutes. Heat dissipation through your extremity blood vessels quickly communicates a cooling signal to your entire body.",
-      "Cool Water Reset: Dip your hands or feet into cool water for 2 minutes. This lowers local skin temperature and reduces autonomic nerve firing in your extremity sweat glands."
-    ];
-    strategies.push(pick(handFeetRelief, seed + 2));
+  // 3. ANATOMY-SPECIFIC RELIEF (Complementary)
+  if (anatomy.isCraniofacial && !strategies.some(s => s.toLowerCase().includes("forehead"))) {
+    strategies.push(
+      "Targeted Facial Cooling: Press a clean, cool damp paper towel against your hairline, forehead, or temples for 60 seconds to cool local cutaneous nerve junctions without compromising skin integrity."
+    );
+  } else if (anatomy.isAxillary && !strategies.some(s => s.toLowerCase().includes("underarm"))) {
+    strategies.push(
+      "Underarm Microclimate Reset: Step into a ventilated space or bathroom stall to allow air circulation under your arms, dabbing excess moisture with a tissue to stop trapped thermal buildup."
+    );
+  } else if ((anatomy.isPalmar || anatomy.isPlantar) && !strategies.some(s => s.toLowerCase().includes("wrist") || s.toLowerCase().includes("feet"))) {
+    strategies.push(
+      "Extremity Heat Sink: Dip your palms or feet into cool tap water or wipe with a cool towel for 90 seconds to reduce local autonomic nerve firing across volar skin surfaces."
+    );
   }
 
-  if (anatomy.isTruncal || strategies.length < 2) {
-    const generalRelief = [
-      "Autonomic Calming Breathing: Sit in a ventilated room and practice 5 minutes of paced diaphragmatic breathing (inhale through your nose for 4 seconds, exhale slowly through your mouth for 6 seconds). Slow breathing stimulates vagal tone (calming nerve activity from your body's rest-and-digest system) to curb sweating signals.",
-      "Paced Respiration: Take slow, deep belly breaths in a cool area. Deep exhalations activate your parasympathetic nervous system (your body's natural relaxation response) to quiet hyperactive sweat signals."
-    ];
-    strategies.push(pick(generalRelief, seed + 3));
+  // Default / General Fallback
+  if (strategies.length < 2) {
+    strategies.push(
+      "Autonomic Downregulation: Take 5 slow diaphragmatic belly breaths in a ventilated area to calm sympathetic nerve signals driving sudomotor activity."
+    );
   }
 
   return strategies.slice(0, 3);
@@ -375,25 +384,41 @@ function buildLifestyle(
 ): string[] {
   const mods: string[] = [];
 
-  if (anatomy.isTruncal || anatomy.isAxillary) {
-    mods.push(
-      "Moisture-Wicking Fabrics: Choose breathable base layers such as merino wool or technical micro-polyester blends. These fabrics pull moisture away from your skin, encouraging evaporation and preventing damp clothing from trapping heat."
-    );
+  // 1. FOR SITUATIONAL / SOCIAL / ANTICIPATORY TRIGGERS
+  if (triggers.isAdrenergic) {
+    const socialLifestyle = [
+      "Street-Smart Positioning & Early Arrival: When attending events in crowded or enclosed spaces, arrive 10 minutes early to position yourself near open doorways, air conditioning vents, or aisle seats. Securing proximity to fresh airflow prevents thermal entrapment and reduces anticipatory anxiety.",
+      "Portable Airflow & Micro-Cooling Gear: Carry a compact, whisper-quiet handheld fan or cooling towel in your bag. Having immediate access to personal airflow in packed venues provides psychological security and active microclimate control."
+    ];
+    mods.push(pick(socialLifestyle, seed));
   }
 
+  // 2. FOR THERMAL / AMBIENT TRIGGERS
   if (triggers.isEnvironmental) {
+    const thermalLifestyle = [
+      "Microclimate & Fabric Optimization: Wear lightweight, loose-fitting garments made from natural breathable fibers (like linen, merino wool, or bamboo blends) to maximize natural convective cooling and prevent ambient heat retention.",
+      "Pre-Emptive Climate Planning: Check daily humidity and temperature forecasts in HidroAlly before leaving home to plan shaded routes and schedule outdoor activity during cooler morning or evening windows."
+    ];
+    mods.push(pick(thermalLifestyle, seed + 1));
+  }
+
+  // 3. FOR GUSTATORY / DIETARY TRIGGERS
+  if (triggers.isGustatory) {
     mods.push(
-      "Personal Microclimate Management: In warm or enclosed spaces, maintain air movement with a personal desk fan or portable cooling fan. Continuous air circulation aids sweat evaporation and keeps your skin surface cool."
+      "Stimulant & Dietary Modulation: Limit dietary vasodilators (such as caffeine, alcohol, and capsaicin-rich spicy foods) during high-stakes days, as these compounds lower the firing threshold of your sympathetic nervous system."
     );
   }
 
-  if (triggers.isAdrenergic || triggers.isGustatory) {
-    mods.push(
-      "Stimulant Reduction: Limit dietary triggers like caffeine, alcohol, energy drinks, and hot spicy foods during high-stress days. These compounds lower the activation threshold of your nervous system."
-    );
+  // 4. ANATOMICAL / GENERAL LIFESTYLE
+  if (anatomy.isTruncal || anatomy.isAxillary) {
+    if (!mods.some(m => m.toLowerCase().includes("fabric"))) {
+      mods.push(
+        "Breathable Layering: Utilize moisture-wicking base layers to draw sweat away from the skin surface, preventing damp clothing from creating friction or trapping body heat."
+      );
+    }
   }
 
-  if (mods.length < 3) {
+  if (mods.length < 2) {
     mods.push(
       "Longitudinal Symptom Logging: Continue recording flare-ups and dry days in HidroAlly. Tracking your logs over a 4-week window provides objective data for your specialist or dermatologist reviews."
     );

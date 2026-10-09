@@ -34,6 +34,53 @@ serve(async (req) => {
       return (t.label || t.value || '').trim();
     }).filter(Boolean);
 
+    // ── RAG Knowledge Base Query (Author's Hyperhidrosis Manual Corpus) ───────
+    let kbContext = '';
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY') || Deno.env.get('OPENAI_API_KEY');
+
+    if (LOVABLE_API_KEY && !dryDay) {
+      try {
+        const queryText = `Hyperhidrosis episode analysis for triggers: ${formattedTriggersForSQL.join(', ')}. Anatomical areas: ${Array.isArray(bodyAreas) ? bodyAreas.join(', ') : ''}. Severity: HDSS ${severity}. ${notes || ''}`;
+
+        // 1. Generate query embedding
+        const embedRes = await fetch('https://ai.gateway.lovable.dev/v1/embeddings', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'openai/text-embedding-3-small',
+            input: queryText,
+          }),
+        });
+
+        if (embedRes.ok) {
+          const embedData = await embedRes.json();
+          const queryEmbedding = embedData?.data?.[0]?.embedding;
+
+          if (queryEmbedding) {
+            // 2. Query knowledge_base vector table via search_knowledge_base RPC
+            const { data: kbData, error: kbError } = await supabase.rpc('search_knowledge_base', {
+              query_embedding: queryEmbedding,
+              match_count: 5,
+              filter_category: null,
+            });
+
+            if (!kbError && kbData?.length) {
+              kbContext = kbData
+                .filter((item: any) => item.similarity > 0.60)
+                .map((item: any) => item.content)
+                .join('\n\n');
+              console.log('Retrieved', kbData.length, 'chunks from Hyperhidrosis Book Knowledge Base');
+            }
+          }
+        }
+      } catch (ragErr) {
+        console.error('RAG Knowledge Base lookup failed:', ragErr);
+      }
+    }
+
     // Primary Path: Execute deterministic SQL stored procedure
     try {
       const { data, error } = await supabase.rpc('get_clinical_episode_insights', {
@@ -47,7 +94,14 @@ serve(async (req) => {
       if (error) throw error;
       if (!data) throw new Error('SQL RPC returned no records');
 
-      return new Response(JSON.stringify({ insights: data, source: 'sql' }), {
+      // Attach retrieved knowledge base context metadata
+      const enrichedData = {
+        ...data,
+        knowledgeBaseContext: kbContext || null,
+        ragVerified: Boolean(kbContext),
+      };
+
+      return new Response(JSON.stringify({ insights: enrichedData, source: 'sql' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
 
