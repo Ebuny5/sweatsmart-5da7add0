@@ -141,6 +141,9 @@
                 <data android:scheme="https"
                     android:host="www.hidroally.space"
                 />
+                <data android:scheme="https"
+                    android:host="hidroally.space"
+                />
             </intent-filter>
         </activity>
 
