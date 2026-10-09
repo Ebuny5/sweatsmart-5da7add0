@@ -74,14 +74,17 @@ function generateWarriorReport(analytics: any, userName: string): string {
   const feetAreas = topAreas?.filter((a: any) => ['soles', 'feet'].includes(a.area.toLowerCase())).map((a: any) => `${a.area}: ${a.percentage}%`).join(', ');
   const palmoplantarDetail = [palmAreas, feetAreas].filter(Boolean).join(' | ') || 'Palms / Feet mapped';
 
-  const hasCraniofacial = topAreas?.some((a: any) => ['face', 'scalp', 'head', 'craniofacial'].includes(a.area.toLowerCase()));
-  const faceDetail = topAreas?.filter((a: any) => ['face', 'scalp', 'head', 'craniofacial'].includes(a.area.toLowerCase())).map((a: any) => `${a.area}: ${a.percentage}%`).join(', ') || 'Face / Scalp mapped';
+  const hasFace = topAreas?.some((a: any) => ['face', 'forehead', 'cheeks'].includes(a.area.toLowerCase()));
+  const faceDetail = topAreas?.filter((a: any) => ['face', 'forehead', 'cheeks'].includes(a.area.toLowerCase())).map((a: any) => `${a.area}: ${a.percentage}%`).join(', ') || 'Face mapped';
 
-  const secondaryAreas = topAreas?.filter((a: any) => !['palms', 'hands', 'soles', 'feet', 'face', 'scalp', 'head', 'craniofacial'].includes(a.area.toLowerCase()));
+  const hasScalp = topAreas?.some((a: any) => ['scalp', 'head'].includes(a.area.toLowerCase()));
+  const scalpDetail = topAreas?.filter((a: any) => ['scalp', 'head'].includes(a.area.toLowerCase())).map((a: any) => `${a.area}: ${a.percentage}%`).join(', ') || 'Scalp mapped';
+
+  const secondaryAreas = topAreas?.filter((a: any) => !['palms', 'hands', 'soles', 'feet', 'face', 'forehead', 'cheeks', 'scalp', 'head'].includes(a.area.toLowerCase()));
 
   // Craniofacial vs Palmar note for Section 4
-  const permeabilityNote = hasCraniofacial
-    ? "Craniofacial and facial margins present heightened dermal permeability risks and thin epidermal stratum corneum, requiring delicate topical formulations to prevent chemical dermatitis or ocular exposure."
+  const permeabilityNote = (hasFace || hasScalp)
+    ? "Craniofacial facial margins present heightened dermal permeability risks and thin epidermal stratum corneum requiring non-greasy gels or systemic care, whereas hair-bearing scalp surfaces require liquid or spray solutions to penetrate hair follicles without folliculitis."
     : "Palmar and plantar surfaces exhibit thickened stratum corneum, requiring clinical-strength alcoholic vehicles for adequate sweat gland duct penetration.";
 
   return `# GIFTOVATE THERAPEUTICS LTD
@@ -148,9 +151,12 @@ ${hasPalmoplantar ? `1. FOR PALMOPLANTAR DISTRIBUTION (${palmoplantarDetail}):
    * *Clinical Protocol Suggestion:* Apply to meticulously dry surfaces at bedtime for 3–7 consecutive nights until control is achieved, then titrate down to 1–2 times weekly maintenance. Instruct patient to wash off the film thoroughly in the morning to limit friction-induced eczema.
    * *Alternative/Adjunct:* Direct tap-water **Iontophoresis** (mechanically plugging sweat pores via ionic disruption). 20-minute sessions, 3 to 4 times weekly until euidrosis, followed by weekly maintenance passes at the Giftovate Hub.` : ''}
 
-${hasCraniofacial ? `2. FOR CRANIOFACIAL DISTRIBUTION (${faceDetail}):
-   * *Contraindication Warning:* Avoid standard high-strength alcoholic Aluminum Chloride on the face due to extreme risk of severe chemical dermatitis, ocular irritation, and barrier destruction.
-   * *Clinical Protocol Suggestion:* Consider low-concentration **Glycopyrrolate topical solution or cream (0.5% - 2.0%)** applied carefully to clean, dry facial margins, avoiding the eyes and mouth. Alternatively, review systemic oral **Glycopyrrolate (1mg - 2mg daily titrated sequentially)**, or targeted local intradermal Neuromodulator (Botox) mapping if systemic anticholinergics are contraindicated due to risk profiles (e.g., glaucoma, urinary retention).` : ''}
+${hasFace ? `2. FOR CRANIOFACIAL FACIAL DISTRIBUTION (${faceDetail}):
+   * *Contraindication Warning:* Do not use standard high-strength alcoholic Aluminum Chloride or heavy scalp lotions on the face due to extreme risk of severe chemical dermatitis and facial skin mantle destruction.
+   * *Clinical Protocol Suggestion:* Consider low-concentration **Glycopyrrolate topical cream or gel (0.5% - 2.0%)** applied carefully to clean, dry facial margins (forehead/upper lip), avoiding eyes and mouth.` : ''}
+
+${hasScalp ? `3. FOR CRANIOFACIAL SCALP DISTRIBUTION (${scalpDetail}):
+   * *Clinical Protocol Suggestion:* Since this is hair-bearing skin, avoid heavy creams or ointments which cause follicular occlusion. Consider a targeted topical pump spray solution (e.g., Odaban) applied directly to the scalp partings at bedtime, or evaluate systemic oral anticholinergics if both face and scalp require concurrent global control.` : ''}
 
 ${secondaryAreas?.length ? `3. FOR SECONDARY FOCAL DISTRIBUTIONS (${secondaryAreas.map((a: any) => `${a.area}: ${a.percentage}%`).join(', ')}):
    * Monitor for topical tolerability. Consider soft-stick antiperspirants containing aluminum zirconium complexes or targeted intradermal neuromodulator administration before escalating to high-strength clinical astringents.` : ''}

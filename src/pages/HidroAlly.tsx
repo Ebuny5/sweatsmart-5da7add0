@@ -904,7 +904,8 @@ const HidroAlly = () => {
       y += 5;
 
       const hasPalms = dashboardAnalytics.topAreas.some((a: any) => ['palms', 'hands', 'soles', 'feet'].includes(a.area.toLowerCase()));
-      const hasFace = dashboardAnalytics.topAreas.some((a: any) => ['face', 'scalp', 'head', 'craniofacial'].includes(a.area.toLowerCase()));
+      const hasFace = dashboardAnalytics.topAreas.some((a: any) => ['face', 'forehead', 'cheeks'].includes(a.area.toLowerCase()));
+      const hasScalp = dashboardAnalytics.topAreas.some((a: any) => ['scalp', 'head'].includes(a.area.toLowerCase()));
 
       if (hasPalms) {
         doc.setFont('helvetica', 'bold');
@@ -929,18 +930,36 @@ const HidroAlly = () => {
       if (hasFace) {
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(9);
-        doc.text('2. FOR CRANIOFACIAL DISTRIBUTION:', margin, y);
+        doc.text('2. FOR CRANIOFACIAL FACIAL DISTRIBUTION:', margin, y);
         y += 4.5;
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(8.5);
         const faceRecs = [
-          "• Contraindication Warning: Avoid standard high-strength alcoholic Aluminum Chloride on face due to extreme risk of severe chemical dermatitis, ocular irritation, and barrier destruction.",
-          "• Clinical Protocol: Consider low-concentration Glycopyrrolate topical solution or cream (0.5% - 2.0%) applied to clean facial margins. Alternatively, review oral Glycopyrrolate (1mg - 2mg daily) or targeted intradermal Neuromodulator (Botox) mapping if anticholinergics are contraindicated."
+          "• Contraindication Warning: Do not use standard high-strength alcoholic Aluminum Chloride or heavy scalp lotions on the face due to extreme risk of severe chemical dermatitis and facial skin mantle destruction.",
+          "• Clinical Protocol: Consider low-concentration Glycopyrrolate topical cream or gel (0.5% - 2.0%) applied carefully to clean, dry facial margins (forehead/upper lip), avoiding eyes and mouth."
         ];
         faceRecs.forEach(fr => {
           const frLines = doc.splitTextToSize(fr, contentWidth);
           doc.text(frLines, margin, y);
           y += (frLines.length * 4) + 2;
+        });
+        y += 3;
+      }
+
+      if (hasScalp) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.text('3. FOR CRANIOFACIAL SCALP DISTRIBUTION:', margin, y);
+        y += 4.5;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.5);
+        const scalpRecs = [
+          "• Clinical Protocol: Since this is hair-bearing skin, avoid heavy creams or ointments which cause follicular occlusion. Consider a targeted topical pump spray solution (e.g., Odaban) applied directly to scalp partings at bedtime, or evaluate systemic oral anticholinergics if both face and scalp require concurrent global control."
+        ];
+        scalpRecs.forEach(sr => {
+          const srLines = doc.splitTextToSize(sr, contentWidth);
+          doc.text(srLines, margin, y);
+          y += (srLines.length * 4) + 2;
         });
         y += 3;
       }
