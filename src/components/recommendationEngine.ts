@@ -175,31 +175,47 @@ interface TriggerProfile {
   cleanTriggerList: string;
 }
 
-function evaluateTriggers(triggers: Array<TriggerInput | string>): TriggerProfile {
+function evaluateTriggers(triggers: Array<TriggerInput | string>, notes?: string): TriggerProfile {
   const triggerTokens = (triggers || []).map(t => {
     if (typeof t === "string") return t.toLowerCase().trim();
     return `${t.value || ""} ${t.label || ""} ${t.type || ""}`.toLowerCase().trim();
   });
 
-  const isIdiopathic = triggerTokens.length === 0 || triggerTokens.some(t =>
-    t.includes("no clear") || t.includes("no iden") || t.includes("none") || t.includes("spontaneous") || t.includes("unknown")
-  );
+  const notesLower = (notes || "").toLowerCase().trim();
+
+  // Extract implicit environmental / situational triggers from notes if present
+  const extractedNoteTriggers: string[] = [];
+  if (notesLower.includes("bus") || notesLower.includes("transit") || notesLower.includes("commute") || notesLower.includes("vehicle")) {
+    extractedNoteTriggers.push("public transit microclimate");
+  }
+  if (notesLower.includes("no ventilation") || notesLower.includes("no airflow") || notesLower.includes("poor ventilation") || notesLower.includes("stagnant air") || notesLower.includes("no air")) {
+    extractedNoteTriggers.push("stagnant airflow and poor ventilation");
+  }
+  if (notesLower.includes("lots of people") || notesLower.includes("crowded") || notesLower.includes("packed") || notesLower.includes("crowd")) {
+    extractedNoteTriggers.push("crowded ambient density");
+  }
+  if (notesLower.includes("heat") || notesLower.includes("hot") || notesLower.includes("warm") || notesLower.includes("sun")) {
+    extractedNoteTriggers.push("elevated ambient temperature");
+  }
+  if (notesLower.includes("stress") || notesLower.includes("anxi") || notesLower.includes("nervous")) {
+    extractedNoteTriggers.push("situational stress");
+  }
 
   const isEnvironmental = triggerTokens.some(t =>
-    t.includes("temp") || t.includes("heat") || t.includes("humid") || t.includes("sun") || t.includes("weather") || t.includes("warm")
-  );
+    t.includes("temp") || t.includes("heat") || t.includes("humid") || t.includes("sun") || t.includes("weather") || t.includes("warm") || t.includes("ventilation") || t.includes("airflow")
+  ) || notesLower.includes("bus") || notesLower.includes("ventilation") || notesLower.includes("airflow") || notesLower.includes("heat") || notesLower.includes("hot") || notesLower.includes("crowd");
 
   const isAdrenergic = triggerTokens.some(t =>
-    t.includes("stress") || t.includes("anxi") || t.includes("embarrass") || t.includes("nervous") || t.includes("public") || t.includes("social") || t.includes("work")
-  );
+    t.includes("stress") || t.includes("anxi") || t.includes("embarrass") || t.includes("nervous") || t.includes("public") || t.includes("social") || t.includes("work") || t.includes("crowd")
+  ) || notesLower.includes("crowd") || notesLower.includes("people") || notesLower.includes("stress") || notesLower.includes("anxi");
 
   const isGustatory = triggerTokens.some(t =>
     t.includes("spicy") || t.includes("caffeine") || t.includes("alcohol") || t.includes("food") || t.includes("drink")
-  );
+  ) || notesLower.includes("spicy") || notesLower.includes("caffeine") || notesLower.includes("coffee");
 
   const isPhysical = triggerTokens.some(t =>
-    t.includes("exercise") || t.includes("workout") || t.includes("walk") || t.includes("exertion") || t.includes("clothing")
-  );
+    t.includes("exercise") || t.includes("workout") || t.includes("walk") || t.includes("exertion") || t.includes("clothing") || t.includes("trek")
+  ) || notesLower.includes("walk") || notesLower.includes("exercise") || notesLower.includes("run");
 
   const isPharmacological = triggerTokens.some(t =>
     t.includes("medication") || t.includes("ssri") || t.includes("drug") || t.includes("prescription")
@@ -209,7 +225,7 @@ function evaluateTriggers(triggers: Array<TriggerInput | string>): TriggerProfil
     t.includes("night sweat") || t.includes("fever") || t.includes("illness") || isPharmacological
   );
 
-  // ZERO-SYNONYM RULE: Collect exact verbatim trigger strings provided by the user
+  // Collect exact verbatim trigger strings provided by the user
   const rawLabels: string[] = [];
   (triggers || []).forEach(t => {
     let str = "";
@@ -218,12 +234,19 @@ function evaluateTriggers(triggers: Array<TriggerInput | string>): TriggerProfil
     } else if (t) {
       str = (t.label || t.value || "").trim();
     }
-    if (str && !str.toLowerCase().includes("no clear") && !str.toLowerCase().includes("no iden") && !str.toLowerCase().includes("none") && !str.toLowerCase().includes("spontaneous")) {
+    if (str && !str.toLowerCase().includes("no clear") && !str.toLowerCase().includes("no iden") && !str.toLowerCase().includes("none") && !str.toLowerCase().includes("spontaneous") && !str.toLowerCase().includes("no_trigger")) {
       rawLabels.push(str);
     }
   });
 
+  // Append extracted triggers from notes if no structured triggers were selected
+  if (rawLabels.length === 0 && extractedNoteTriggers.length > 0) {
+    rawLabels.push(...extractedNoteTriggers);
+  }
+
   const uniqueRawLabels = Array.from(new Set(rawLabels));
+
+  const isIdiopathic = uniqueRawLabels.length === 0 && !isEnvironmental && !isAdrenergic && !isGustatory && !isPhysical && !isPharmacological;
 
   let cleanTriggerList = "idiopathic factors (spontaneous autonomic activity without an identifiable external trigger)";
   if (!isIdiopathic && uniqueRawLabels.length > 0) {
@@ -276,7 +299,7 @@ function buildClinicalAnalysis(
 ): string {
   const isPrimaryFocal = !anatomy.isGeneralized && !triggers.isPharmacological && !triggers.hasRedFlags && !anatomy.isGroin;
 
-  // Dynamic Consultant Openers (No robotic headers)
+  // Dynamic Consultant Openers (No repetitive trigger phrases)
   const primaryOpeners = [
     `Analyzing this flare-up, your symptoms align with Primary Focal Hyperhidrosis (excessive localized sweating without an underlying condition), localized specifically to your ${anatomy.cleanDisplayList} following ${triggers.cleanTriggerList}.`,
     `Based on your telemetry, this episode reflects a focal sudomotor surge confined to your ${anatomy.cleanDisplayList}, activated upon exposure to ${triggers.cleanTriggerList}.`,
@@ -291,11 +314,11 @@ function buildClinicalAnalysis(
 
   const opener = isPrimaryFocal ? pick(primaryOpeners, seed) : pick(secondaryOpeners, seed + 1);
 
-  // Dynamic Mechanism Descriptions (Seamless Clinical Flow)
+  // Dynamic Mechanism Descriptions (Uses smooth anatomical pronouns instead of re-repeating trigger strings)
   const mechPart1 = [
-    `When ${triggers.cleanTriggerList} registered, your sympathetic nervous system (your body's automatic reaction pathway) dispatched rapid cholinergic signals (nerve impulses controlling sweat glands) directly to the eccrine glands in your ${anatomy.cleanDisplayList}.`,
-    `As ${triggers.cleanTriggerList} occurred, your hypothalamus (your brain's internal thermostat) signaled postganglionic sympathetic nerves to activate sweat glands strictly within your ${anatomy.cleanDisplayList}.`,
-    `In response to ${triggers.cleanTriggerList}, hyperactive nerve pathways in your sympathetic chain triggered immediate sudomotor output across your ${anatomy.cleanDisplayList}.`
+    `During this onset, your sympathetic nervous system (your body's automatic reaction pathway) dispatched rapid cholinergic signals (nerve impulses controlling sweat glands) directly to the eccrine glands in your ${anatomy.cleanDisplayList}.`,
+    `As this stimulus occurred, your hypothalamus (your brain's internal thermostat) signaled postganglionic sympathetic nerves to activate sweat glands strictly within your ${anatomy.cleanDisplayList}.`,
+    `In response, hyperactive nerve pathways in your sympathetic chain triggered immediate sudomotor output across your ${anatomy.cleanDisplayList}.`
   ];
 
   const mechPart2 = [
@@ -558,7 +581,7 @@ export function generateEpisodeInsights(input: EpisodeInput): EpisodeInsights & 
   }
 
   const anatomy = normalizeAnatomy(bodyAreas);
-  const triggerProfile = evaluateTriggers(triggers);
+  const triggerProfile = evaluateTriggers(triggers, notes);
   const severityProfile = evaluateSeverity(severity);
 
   return {

@@ -104,10 +104,10 @@ class EpisodeInsightGenerator {
     const isGeneralized = areas.length > 5 || hasAny(notesText, 'entire body', 'everywhere');
 
     // 2. Probability Distribution (Amygdala vs Hypothalamus)
-    const isEmotional = hasAny(trigText, 'stress', 'anxiety', 'nervous', 'anger', 'anticipat', 'social', 'crowd', 'embarrass', 'exam', 'work pressure');
-    const isThermal = hasAny(trigText, 'hot', 'heat', 'humid', 'temperature', 'sun', 'warm', 'outdoor');
-    const isDietary = hasAny(trigText, 'spicy', 'caffein', 'alcohol', 'hot drink', 'energy drink');
-    const isPhysical = hasAny(trigText, 'exercise', 'physical');
+    const isEmotional = hasAny(trigText, 'stress', 'anxiety', 'nervous', 'anger', 'anticipat', 'social', 'crowd', 'embarrass', 'exam', 'work pressure') || hasAny(notesText, 'crowd', 'people', 'bus', 'transit', 'stress', 'anxi');
+    const isThermal = hasAny(trigText, 'hot', 'heat', 'humid', 'temperature', 'sun', 'warm', 'outdoor') || hasAny(notesText, 'bus', 'ventilation', 'airflow', 'heat', 'hot', 'warm', 'sun');
+    const isDietary = hasAny(trigText, 'spicy', 'caffein', 'alcohol', 'hot drink', 'energy drink') || hasAny(notesText, 'spicy', 'caffeine', 'coffee');
+    const isPhysical = hasAny(trigText, 'exercise', 'physical') || hasAny(notesText, 'walk', 'exercise', 'run');
 
     // Friendly severity interpretation
     const severityText = sev >= 4
