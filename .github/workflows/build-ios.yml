@@ -1,0 +1,35 @@
+name: Build iOS IPA (Codemagic)
+
+# This workflow triggers a Codemagic build via API.
+# Codemagic handles the Mac + Xcode environment for free (up to 500 min/month on free tier).
+#
+# SETUP REQUIRED (one-time):
+#   1. Sign up at https://codemagic.io (free, use GitHub login)
+#   2. Connect this repo in Codemagic dashboard
+#   3. Add your Apple Developer account credentials in Codemagic settings
+#   4. Copy your Codemagic API token → add as GitHub secret: CODEMAGIC_API_TOKEN
+#   5. Copy your Codemagic App ID → add as GitHub secret: CODEMAGIC_APP_ID
+#
+# Until those secrets are set, this workflow will be skipped gracefully.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  trigger-codemagic-ios:
+    runs-on: ubuntu-latest
+    if: ${{ vars.CODEMAGIC_ENABLED == 'true' }}
+    steps:
+      - name: Trigger Codemagic iOS build
+        run: |
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -H "x-auth-token: ${{ secrets.CODEMAGIC_API_TOKEN }}" \
+            --data '{
+              "appId": "${{ secrets.CODEMAGIC_APP_ID }}",
+              "workflowId": "ios-workflow",
+              "branch": "main"
+            }' \
+            https://api.codemagic.io/builds

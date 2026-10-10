@@ -143,7 +143,7 @@ const Privacy = () => {
 
           <div className="bg-clean-white rounded-lg p-6 border border-border/50">
             <p className="text-sm text-professional-gray">
-              <strong>Important:</strong> This Privacy Policy may be updated periodically. We will notify you of any significant changes via email or through the app. Your continued use of SweatSmart after changes take effect constitutes acceptance of the updated policy.
+              <strong>Important:</strong> This Privacy Policy may be updated periodically. We will notify you of any significant changes via email or through the app. Your continued use of HidroAlly after changes take effect constitutes acceptance of the updated policy.
             </p>
           </div>
         </div>

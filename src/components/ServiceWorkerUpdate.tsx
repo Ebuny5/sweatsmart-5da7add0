@@ -105,7 +105,7 @@ const ServiceWorkerUpdate = () => {
           <RefreshCw className="h-5 w-5" />
           <div className="flex-1">
             <p className="font-medium">Update Available</p>
-            <p className="text-sm opacity-90">A new version of SweatSmart is ready.</p>
+            <p className="text-sm opacity-90">A new version of HidroAlly is ready.</p>
           </div>
           <div className="flex gap-2">
             <Button 

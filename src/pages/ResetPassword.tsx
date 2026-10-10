@@ -90,8 +90,8 @@ const ResetPassword = () => {
   if (!isValidSession) {
     return (
       <AppLayout isAuthenticated={false}>
-        <div className="flex justify-center items-center min-h-[80vh]">
-          <Card className="w-full max-w-md">
+        <div className="flex justify-center items-center min-h-screen bg-[#E9E4FA]">
+          <Card className="w-full max-w-md bg-[#E9E4FA]">
             <CardContent className="pt-6">
               <div className="text-center">
                 <AlertCircle className="h-12 w-12 mx-auto text-destructive mb-4" />
@@ -109,8 +109,8 @@ const ResetPassword = () => {
 
   return (
     <AppLayout isAuthenticated={false}>
-      <div className="flex justify-center items-center min-h-[80vh]">
-        <Card className="w-full max-w-md">
+      <div className="flex justify-center items-center min-h-screen bg-[#E9E4FA]">
+        <Card className="w-full max-w-md bg-[#E9E4FA]">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-bold">Reset your password</CardTitle>
             <CardDescription>

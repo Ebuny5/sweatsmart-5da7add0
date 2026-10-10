@@ -1,0 +1,10 @@
+--- src/components/dashboard/QuickActions.tsx
++++ src/components/dashboard/QuickActions.tsx
+@@ -5,6 +5,7 @@
+ import { useEpisodes } from "@/hooks/useEpisodes";
+ import { useClimateData } from "@/hooks/useClimateData";
+ import { gaugeHDSS } from "@/utils/hdssGauger";
++import { CURRENT_HDSS_KEY, LAST_LOG_TIME_KEY } from "@/services/LoggingReminderService";
+ import { Thermometer, Droplets, Sun, Wind, RefreshCw, ChevronRight, AlertTriangle, Shield, Loader2 } from "lucide-react";
+ import WarriorBadge from "@/components/dashboard/WarriorBadge";
+ import { getWarriorInsight } from "@/utils/warriorLogic";

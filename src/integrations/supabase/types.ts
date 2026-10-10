@@ -109,12 +109,121 @@ export type Database = {
         }
         Relationships: []
       }
+      clinical_anatomical_protocols: {
+        Row: {
+          advanced_treatment: string
+          contraindications: string | null
+          display_name: string
+          first_line_treatment: string
+          id: string
+          immediate_relief: string
+          region_key: string
+        }
+        Insert: {
+          advanced_treatment: string
+          contraindications?: string | null
+          display_name: string
+          first_line_treatment: string
+          id: string
+          immediate_relief: string
+          region_key: string
+        }
+        Update: {
+          advanced_treatment?: string
+          contraindications?: string | null
+          display_name?: string
+          first_line_treatment?: string
+          id?: string
+          immediate_relief?: string
+          region_key?: string
+        }
+        Relationships: []
+      }
+      clinical_dry_day_insights: {
+        Row: {
+          barrier_recovery: string
+          clinical_analysis: string
+          id: string
+          immediate_maintenance: string
+          theme_title: string
+          tracking_milestone: string
+          treatment_continuity: string
+        }
+        Insert: {
+          barrier_recovery: string
+          clinical_analysis: string
+          id: string
+          immediate_maintenance: string
+          theme_title: string
+          tracking_milestone: string
+          treatment_continuity: string
+        }
+        Update: {
+          barrier_recovery?: string
+          clinical_analysis?: string
+          id?: string
+          immediate_maintenance?: string
+          theme_title?: string
+          tracking_milestone?: string
+          treatment_continuity?: string
+        }
+        Relationships: []
+      }
+      clinical_severity_thresholds: {
+        Row: {
+          clinical_burden: string
+          hdss_score: number
+          referral_guidance: string
+          severity_label: string
+        }
+        Insert: {
+          clinical_burden: string
+          hdss_score: number
+          referral_guidance: string
+          severity_label: string
+        }
+        Update: {
+          clinical_burden?: string
+          hdss_score?: number
+          referral_guidance?: string
+          severity_label?: string
+        }
+        Relationships: []
+      }
+      clinical_trigger_etiologies: {
+        Row: {
+          category_key: string
+          category_name: string
+          id: string
+          is_red_flag: boolean | null
+          lifestyle_strategy: string
+          pathology_explanation: string
+        }
+        Insert: {
+          category_key: string
+          category_name: string
+          id: string
+          is_red_flag?: boolean | null
+          lifestyle_strategy: string
+          pathology_explanation: string
+        }
+        Update: {
+          category_key?: string
+          category_name?: string
+          id?: string
+          is_red_flag?: boolean | null
+          lifestyle_strategy?: string
+          pathology_explanation?: string
+        }
+        Relationships: []
+      }
       episodes: {
         Row: {
           body_areas: string[]
           created_at: string
           date: string
           id: string
+          is_dry_day: boolean
           notes: string | null
           severity: number
           triggers: Json | null
@@ -126,6 +235,7 @@ export type Database = {
           created_at?: string
           date: string
           id?: string
+          is_dry_day?: boolean
           notes?: string | null
           severity: number
           triggers?: Json | null
@@ -137,6 +247,7 @@ export type Database = {
           created_at?: string
           date?: string
           id?: string
+          is_dry_day?: boolean
           notes?: string | null
           severity?: number
           triggers?: Json | null
@@ -287,23 +398,53 @@ export type Database = {
       }
       profiles: {
         Row: {
+          age: number | null
+          avatar: string | null
+          avatar_type: string | null
+          biological_sex: string | null
+          country: string | null
           created_at: string
+          diagnosis_type: string | null
           display_name: string | null
+          gender: string | null
+          gender_description: string | null
+          gender_identity: string | null
           id: string
+          is_profile_complete: boolean
           updated_at: string
           user_id: string
         }
         Insert: {
+          age?: number | null
+          avatar?: string | null
+          avatar_type?: string | null
+          biological_sex?: string | null
+          country?: string | null
           created_at?: string
+          diagnosis_type?: string | null
           display_name?: string | null
+          gender?: string | null
+          gender_description?: string | null
+          gender_identity?: string | null
           id?: string
+          is_profile_complete?: boolean
           updated_at?: string
           user_id: string
         }
         Update: {
+          age?: number | null
+          avatar?: string | null
+          avatar_type?: string | null
+          biological_sex?: string | null
+          country?: string | null
           created_at?: string
+          diagnosis_type?: string | null
           display_name?: string | null
+          gender?: string | null
+          gender_description?: string | null
+          gender_identity?: string | null
           id?: string
+          is_profile_complete?: boolean
           updated_at?: string
           user_id?: string
         }
@@ -360,6 +501,57 @@ export type Database = {
         }
         Relationships: []
       }
+      radar_cache: {
+        Row: {
+          cache_key: string
+          created_at: string
+          doctors: Json
+          id: string
+          meta: Json
+          scope: string
+        }
+        Insert: {
+          cache_key: string
+          created_at?: string
+          doctors: Json
+          id?: string
+          meta: Json
+          scope: string
+        }
+        Update: {
+          cache_key?: string
+          created_at?: string
+          doctors?: Json
+          id?: string
+          meta?: Json
+          scope?: string
+        }
+        Relationships: []
+      }
+      radar_search_log: {
+        Row: {
+          created_at: string
+          id: string
+          scope: string
+          search_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          scope: string
+          search_date?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          scope?: string
+          search_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       specialist_reviews: {
         Row: {
           comment: string | null
@@ -413,6 +605,7 @@ export type Database = {
           continent: string
           country: string
           country_code: string
+          covered_regions: string[] | null
           created_at: string | null
           email: string | null
           id: string
@@ -441,6 +634,7 @@ export type Database = {
           continent: string
           country: string
           country_code: string
+          covered_regions?: string[] | null
           created_at?: string | null
           email?: string | null
           id?: string
@@ -469,6 +663,7 @@ export type Database = {
           continent?: string
           country?: string
           country_code?: string
+          covered_regions?: string[] | null
           created_at?: string | null
           email?: string | null
           id?: string
@@ -488,6 +683,57 @@ export type Database = {
           updated_at?: string | null
           verified_at?: string | null
           website?: string | null
+        }
+        Relationships: []
+      }
+      user_engagement_logs: {
+        Row: {
+          app_opens: number | null
+          climate_alert_checks: number | null
+          created_at: string | null
+          date: string
+          dry_mode_entries: number | null
+          episodes_logged: number | null
+          growth_radar_views: number | null
+          hidroally_chat_uses: number | null
+          id: string
+          specialist_radar_uses: number | null
+          sweat_journey_views: number | null
+          updated_at: string | null
+          user_id: string
+          wearable_simulator_uses: number | null
+        }
+        Insert: {
+          app_opens?: number | null
+          climate_alert_checks?: number | null
+          created_at?: string | null
+          date?: string
+          dry_mode_entries?: number | null
+          episodes_logged?: number | null
+          growth_radar_views?: number | null
+          hidroally_chat_uses?: number | null
+          id?: string
+          specialist_radar_uses?: number | null
+          sweat_journey_views?: number | null
+          updated_at?: string | null
+          user_id: string
+          wearable_simulator_uses?: number | null
+        }
+        Update: {
+          app_opens?: number | null
+          climate_alert_checks?: number | null
+          created_at?: string | null
+          date?: string
+          dry_mode_entries?: number | null
+          episodes_logged?: number | null
+          growth_radar_views?: number | null
+          hidroally_chat_uses?: number | null
+          id?: string
+          specialist_radar_uses?: number | null
+          sweat_journey_views?: number | null
+          updated_at?: string | null
+          user_id?: string
+          wearable_simulator_uses?: number | null
         }
         Relationships: []
       }
@@ -535,11 +781,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_user: { Args: never; Returns: undefined }
+      get_clinical_episode_insights: {
+        Args: {
+          p_body_areas: string[]
+          p_is_dry_day?: boolean
+          p_notes?: string
+          p_severity: number
+          p_triggers: string[]
+        }
+        Returns: Json
+      }
+      get_tracking_consistency: { Args: never; Returns: number }
       increment_notification_count: {
         Args: { p_date: string; p_user_id: string }
         Returns: undefined
       }
       keep_alive: { Args: never; Returns: undefined }
+      log_engagement_action: { Args: { action: string }; Returns: undefined }
       search_knowledge_base: {
         Args: {
           filter_category?: string
@@ -573,12 +832,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -602,11 +861,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -627,11 +886,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -652,11 +911,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -669,11 +928,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

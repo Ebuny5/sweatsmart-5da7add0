@@ -195,6 +195,17 @@ export const BODY_AREA_OPTIONS: BodyAreaOption[] = [
     priority: "Medium",
     keywords: ["groin", "crotch"],
   },
+  {
+    area: "thighs",
+    name: "thighs",
+    label: "Thighs",
+    icon: "user",
+    emoji: "🦵",
+    clinicalName: "Femoral Hyperhidrosis",
+    complication: "Chafing, clothing stains, skin irritation",
+    priority: "Medium",
+    keywords: ["thighs", "legs", "thigh"],
+  },
 ];
 
 export const TRIGGER_GROUPS: {
@@ -269,6 +280,20 @@ export const TRIGGER_GROUPS: {
         type: "environmental",
         tip: "Radiant heat from sun exposure combined with UV stress",
         keywords: ["sun", "outside", "sunlight"],
+      },
+      {
+        label: "Poor Ventilation",
+        emoji: "🏢",
+        type: "environmental",
+        tip: "Stagnant air prevents sweat evaporation, increasing core temperature",
+        keywords: ["ventilation", "stuffy", "air", "poor ventilation"],
+      },
+      {
+        label: "No Identifiable Trigger",
+        emoji: "❓",
+        type: "environmental",
+        tip: "Idiopathic episodes happen spontaneously without an apparent external or internal cause",
+        keywords: ["none", "nothing", "random", "spontaneous", "no trigger"],
       },
     ],
   },
@@ -451,6 +476,7 @@ export const TRIGGER_GROUPS: {
         label: "Hormonal Changes",
         emoji: "🔄",
         type: "physical",
+        tip: "Fluctuations in estrogen and testosterone alter the body's thermoneutral zone",
         keywords: ["hormones", "period", "menopause"],
       },
       {
