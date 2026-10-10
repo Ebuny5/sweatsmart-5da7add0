@@ -186,12 +186,11 @@ function evaluateTriggers(triggers: Array<TriggerInput | string>): TriggerProfil
   );
 
   const isEnvironmental = triggerTokens.some(t =>
-    (t.includes("temp") || t.includes("heat") || t.includes("humid") || t.includes("sun") || t.includes("weather") || t.includes("warm")) &&
-    !t.includes("crowd")
+    t.includes("temp") || t.includes("heat") || t.includes("humid") || t.includes("sun") || t.includes("weather") || t.includes("warm")
   );
 
   const isAdrenergic = triggerTokens.some(t =>
-    t.includes("stress") || t.includes("anxi") || t.includes("embarrass") || t.includes("nervous") || t.includes("public") || t.includes("social") || t.includes("work") || t.includes("crowd")
+    t.includes("stress") || t.includes("anxi") || t.includes("embarrass") || t.includes("nervous") || t.includes("public") || t.includes("social") || t.includes("work")
   );
 
   const isGustatory = triggerTokens.some(t =>
@@ -266,7 +265,7 @@ function evaluateSeverity(severity: number): SeverityProfile {
   return { score, label: "HDSS 1 (sweating is never noticeable and does not interfere with daily activities)" };
 }
 
-// ─── CLINICAL ANALYSIS BUILDER ────────────────────────────────────────────────
+// ─── CLINICAL ANALYSIS BUILDER (Rule 1 & Rule 2: Expert Consultant Voice & Verbatim Triggers) ───
 
 function buildClinicalAnalysis(
   anatomy: AnatomicalProfile,
@@ -275,54 +274,49 @@ function buildClinicalAnalysis(
   notes: string | undefined,
   seed: number
 ): string {
-  // 1. Pattern Classification
   const isPrimaryFocal = !anatomy.isGeneralized && !triggers.isPharmacological && !triggers.hasRedFlags && !anatomy.isGroin;
-  let patternText = "";
 
-  if (isPrimaryFocal) {
-    const primaryOptions = [
-      `Anatomical & Pattern Classification: Primary Focal Hyperhidrosis (excessive localized sweating without an underlying disease). This episode presents as localized sweating restricted to your ${anatomy.cleanDisplayList}, triggered by ${triggers.cleanTriggerList}.`,
-      `Anatomical & Pattern Classification: Primary Focal Hyperhidrosis. Your logged symptoms show localized eccrine gland (your body's primary sweat gland) activation specifically in your ${anatomy.cleanDisplayList} following ${triggers.cleanTriggerList}.`,
-      `Anatomical & Pattern Classification: Primary Focal Hyperhidrosis pattern. Perspiration in this session was confined directly to your ${anatomy.cleanDisplayList} in response to ${triggers.cleanTriggerList}.`
-    ];
-    patternText = pick(primaryOptions, seed);
-  } else {
-    const secondaryOptions = [
-      `Anatomical & Pattern Classification: Secondary or Distributed Autonomic Response. Sweating recorded across your ${anatomy.cleanDisplayList} involves multiple anatomical zones or unprovoked activation triggers, suggesting a broader autonomic reflex.`,
-      `Anatomical & Pattern Classification: Generalized / Secondary Autonomic Pattern. Your log indicates perspiration spanning your ${anatomy.cleanDisplayList}, prompted by ${triggers.cleanTriggerList}.`,
-      `Anatomical & Pattern Classification: Multi-Zone Autonomic Response. The combination of symptoms across your ${anatomy.cleanDisplayList} fits a distributed autonomic trigger pattern.`
-    ];
-    patternText = pick(secondaryOptions, seed + 1);
-  }
-
-  // 2. Episode Mechanism (Plain English + Bracket Explanations)
-  let mechanismText = "";
-  const mechOptions1 = [
-    `When ${triggers.isIdiopathic ? "spontaneous nerve signals occurred" : triggers.cleanTriggerList + " occurred"}, your sympathetic nervous system (your body's involuntary reaction circuit) rapidly signaled the eccrine glands (your body's primary sweat glands) in your ${anatomy.cleanDisplayList}.`,
-    `In response to ${triggers.cleanTriggerList}, your autonomic nervous system sent rapid sudomotor nerve impulses directly to the eccrine sweat glands in your ${anatomy.cleanDisplayList}.`,
-    `As ${triggers.cleanTriggerList} registered, sympathetic nerve pathways instantly activated the localized eccrine sweat glands across your ${anatomy.cleanDisplayList}.`
+  // Dynamic Consultant Openers (No robotic headers)
+  const primaryOpeners = [
+    `Analyzing this flare-up, your symptoms align with Primary Focal Hyperhidrosis (excessive localized sweating without an underlying condition), localized specifically to your ${anatomy.cleanDisplayList} following ${triggers.cleanTriggerList}.`,
+    `Based on your telemetry, this episode reflects a focal sudomotor surge confined to your ${anatomy.cleanDisplayList}, activated upon exposure to ${triggers.cleanTriggerList}.`,
+    `Reviewing this entry, we see a classic primary focal pattern where localized eccrine glands (your body's primary sweat glands) across your ${anatomy.cleanDisplayList} reacted sharply to ${triggers.cleanTriggerList}.`
   ];
 
-  const mechOptions2 = [
-    `Due to heightened nerve sensitivity in these specific areas, your glands produced a disproportionate sweat response, resulting in an ${severity.label} flare-up.`,
-    `Because the local sudomotor nerve endings in your ${anatomy.cleanDisplayList} are hypersensitive, they over-responded to the signal, causing an elevated ${severity.label} episode.`,
-    `Heightened localized nerve responses caused your sweat glands to over-secrete moisture, leading to an ${severity.label} level of discomfort.`
+  const secondaryOpeners = [
+    `Evaluating this log, the perspiration pattern recorded across your ${anatomy.cleanDisplayList} indicates a distributed autonomic response, triggered by ${triggers.cleanTriggerList}.`,
+    `This episode demonstrates a broader autonomic reflex spanning your ${anatomy.cleanDisplayList} following ${triggers.cleanTriggerList}.`,
+    `Looking at your entry, multi-site sweating across your ${anatomy.cleanDisplayList} suggests systemic sympathetic stimulation prompted by ${triggers.cleanTriggerList}.`
   ];
 
-  mechanismText = `Episode Mechanism: ${pick(mechOptions1, seed + 2)} ${pick(mechOptions2, seed + 3)}`;
+  const opener = isPrimaryFocal ? pick(primaryOpeners, seed) : pick(secondaryOpeners, seed + 1);
 
-  // Notes context if present
+  // Dynamic Mechanism Descriptions (Seamless Clinical Flow)
+  const mechPart1 = [
+    `When ${triggers.cleanTriggerList} registered, your sympathetic nervous system (your body's automatic reaction pathway) dispatched rapid cholinergic signals (nerve impulses controlling sweat glands) directly to the eccrine glands in your ${anatomy.cleanDisplayList}.`,
+    `As ${triggers.cleanTriggerList} occurred, your hypothalamus (your brain's internal thermostat) signaled postganglionic sympathetic nerves to activate sweat glands strictly within your ${anatomy.cleanDisplayList}.`,
+    `In response to ${triggers.cleanTriggerList}, hyperactive nerve pathways in your sympathetic chain triggered immediate sudomotor output across your ${anatomy.cleanDisplayList}.`
+  ];
+
+  const mechPart2 = [
+    `Due to heightened local nerve sensitivity in your ${anatomy.cleanDisplayList}, your glands released a disproportionate volume of perspiration relative to your body's thermal needs, leading to an ${severity.label} flare-up.`,
+    `Because localized nerve endings in your ${anatomy.cleanDisplayList} operate at a lowered activation threshold, this signal produced an ${severity.label} intensity episode.`,
+    `Hypersensitive nerve receptors in these specific zones caused an accelerated sweat response, escalating the session to ${severity.label}.`
+  ];
+
+  const mechanism = `${pick(mechPart1, seed + 2)} ${pick(mechPart2, seed + 3)}`;
+
   let notesText = "";
   if (notes && notes.trim().length > 0) {
-    notesText = ` Contextual Note: "${notes.trim()}". Documenting these exact situational factors helps clarify how external triggers interact with your sweating threshold.`;
+    notesText = ` Noted context: "${notes.trim()}". Logging these exact situational nuances helps refine your personal threshold map.`;
   }
 
   const chatCTA = "\n\nIf you need a more clinical or in-depth evaluation of this episode, our HidroAlly clinical assistant is ready in the chat.";
 
-  return `${patternText}\n\n${mechanismText}${notesText}${chatCTA}`;
+  return `${opener} ${mechanism}${notesText}${chatCTA}`;
 }
 
-// ─── IMMEDIATE RELIEF STRATEGIES ──────────────────────────────────────────────
+// ─── IMMEDIATE RELIEF STRATEGIES (Rule 3 & Rule 4: Strict Anatomical Targeting & RAG-Anchored) ───
 
 function buildImmediateRelief(
   anatomy: AnatomicalProfile,
@@ -331,103 +325,95 @@ function buildImmediateRelief(
 ): string[] {
   const strategies: string[] = [];
 
-  // 1. FOR SITUATIONAL / SOCIAL / ANTICIPATORY TRIGGERS
+  // 1. ANATOMICAL FOCAL TARGETING (Strictly restricted to logged areas)
+  if (anatomy.isPalmar || anatomy.isPlantar) {
+    const palmarPlantarRelief = [
+      "Volar Vasculature Cool Reset: Run cool tap water over your palms or feet for 2 minutes, or firmly press a chilled water bottle against your palmar surfaces. Dissipating heat directly through volar extremity blood vessels rapidly reduces local autonomic nerve firing.",
+      "Palmar & Plantar Surface Cooling: Hold a cold beverage container in your palms or step onto a cool tile floor for 90 seconds. Direct conductive cooling across your volar skin calms local hyperactive sweat gland ducts."
+    ];
+    strategies.push(pick(palmarPlantarRelief, seed));
+  }
+
+  if (anatomy.isCraniofacial) {
+    const craniofacialRelief = [
+      "Targeted Cutaneous Cooling: Press a clean, cold damp paper towel against your hairline, forehead, or temples for 60 seconds to lower surface skin temperature and slow down sweating signals to your facial margins.",
+      "Temporal Pulse-Point Cooling: Hold a cool damp cloth firmly to your temples for one minute. Cooling local temporal cutaneous vessels reduces thermal signals sent to your facial sweat glands."
+    ];
+    strategies.push(pick(craniofacialRelief, seed + 1));
+  }
+
+  if (anatomy.isAxillary) {
+    const axillaryRelief = [
+      "Underarm Ventilation & Cool Reset: Step into a ventilated area or apply a cool, absorbent compress under your arms for 90 seconds to eliminate trapped thermal moisture and quiet axillary sudomotor activity.",
+      "Axillary Airflow Exposure: Position yourself near a personal fan or open airflow window to facilitate rapid evaporative cooling across your underarms."
+    ];
+    strategies.push(pick(axillaryRelief, seed + 2));
+  }
+
+  // 2. TRIGGER-SPECIFIC SOMATIC DOWN-REGULATION (Public-Friendly & Discreet)
   if (triggers.isAdrenergic) {
-    const socialRelief = [
-      "Discrete Pulse-Point Cooling: Hold a chilled beverage, cold water bottle, or cool wet towel firmly against your radial wrist or neck pulse point for 30 to 60 seconds. This rapidly lowers blood temperature reaching local thermoreceptors without attracting attention in crowded or social settings.",
-      "Tactical Slow-Exhalation Respiration: Perform 3 to 5 cycles of extended exhalation breathing (inhale for 4 seconds, exhale slowly for 6 seconds). Extending your exhalation stimulates vagal tone (activating your parasympathetic rest-and-digest response) to immediately blunt the acute adrenal spike causing sudden sweating.",
-      "Sensory Grounding & Extremity Cooling: Press the soles of your feet firmly into the cold floor or press your palms against a cool surface while taking slow exhalations. Reanchoring your sensory focus interrupts hyperactive sympathetic signaling to your sweat glands."
+    const somaticRelief = [
+      "Tactical Slow-Exhalation Respiration: Practice 3 to 5 cycles of extended exhalation breathing (inhale for 4 seconds, exhale slowly for 6 seconds). Extending your exhalation stimulates vagal tone (activating your parasympathetic nervous system) to immediately blunt the acute adrenal spike causing sudden sweating.",
+      "Discreet Radial Pulse-Point Cooling: Press your radial wrist pulse point against a cold water bottle or chilled surface for 45 seconds. This discreetly cools blood traveling through thermoreceptors without drawing attention in social settings."
     ];
-    strategies.push(pick(socialRelief, seed));
-  }
-
-  // 2. FOR THERMAL / AMBIENT TRIGGERS
-  if (triggers.isEnvironmental) {
-    const thermalRelief = [
-      "Local Skin-Temperature Reduction: Step into an air-conditioned room or in front of an active airflow fan and apply a damp cool cloth directly across your exposed skin. Rapid evaporative cooling communicates an immediate temperature drop to your hypothalamus (your brain's thermostat).",
-      "Hydration & Heat Sink Reset: Sip cold ice-water steadily for 2 minutes. Lowering internal oral and core vascular temperature suppresses central thermoregulatory sweat drives."
-    ];
-    strategies.push(pick(thermalRelief, seed + 1));
-  }
-
-  // 3. ANATOMY-SPECIFIC RELIEF (Complementary)
-  if (anatomy.isCraniofacial && !strategies.some(s => s.toLowerCase().includes("forehead"))) {
+    strategies.push(pick(somaticRelief, seed + 3));
+  } else if (triggers.isEnvironmental) {
     strategies.push(
-      "Targeted Facial Cooling: Press a clean, cool damp paper towel against your hairline, forehead, or temples for 60 seconds to cool local cutaneous nerve junctions without compromising skin integrity."
-    );
-  } else if (anatomy.isAxillary && !strategies.some(s => s.toLowerCase().includes("underarm"))) {
-    strategies.push(
-      "Underarm Microclimate Reset: Step into a ventilated space or bathroom stall to allow air circulation under your arms, dabbing excess moisture with a tissue to stop trapped thermal buildup."
-    );
-  } else if ((anatomy.isPalmar || anatomy.isPlantar) && !strategies.some(s => s.toLowerCase().includes("wrist") || s.toLowerCase().includes("feet"))) {
-    strategies.push(
-      "Extremity Heat Sink: Dip your palms or feet into cool tap water or wipe with a cool towel for 90 seconds to reduce local autonomic nerve firing across volar skin surfaces."
+      "Local Evaporative Cooling: Step into an air-conditioned room or active airflow zone and sip cold ice-water to lower internal core temperature and suppress central thermoregulatory sweat drives."
     );
   }
 
-  // Default / General Fallback
-  if (strategies.length < 2) {
+  // Fallback
+  if (strategies.length === 0) {
     strategies.push(
-      "Autonomic Downregulation: Take 5 slow diaphragmatic belly breaths in a ventilated area to calm sympathetic nerve signals driving sudomotor activity."
+      "Paced Diaphragmatic Respiration: Take 5 slow belly breaths in a cool, ventilated space to downregulate sympathetic sudomotor activity."
     );
   }
 
   return strategies.slice(0, 3);
 }
 
-// ─── LIFESTYLE MODIFICATIONS ──────────────────────────────────────────────────
+// ─── LIFESTYLE MODIFICATIONS (Rule 4: Exactly TWO Practical Real-World Preparation Steps) ───
 
 function buildLifestyle(
   anatomy: AnatomicalProfile,
   triggers: TriggerProfile,
-  seed: number
+  seed: number,
+  longitudinalText: string
 ): string[] {
   const mods: string[] = [];
 
-  // 1. FOR SITUATIONAL / SOCIAL / ANTICIPATORY TRIGGERS
+  // Step 1: Trigger-Tailored Real-World Preparation
   if (triggers.isAdrenergic) {
-    const socialLifestyle = [
-      "Street-Smart Positioning & Early Arrival: When attending events in crowded or enclosed spaces, arrive 10 minutes early to position yourself near open doorways, air conditioning vents, or aisle seats. Securing proximity to fresh airflow prevents thermal entrapment and reduces anticipatory anxiety.",
-      "Portable Airflow & Micro-Cooling Gear: Carry a compact, whisper-quiet handheld fan or cooling towel in your bag. Having immediate access to personal airflow in packed venues provides psychological security and active microclimate control."
+    const socialPrep = [
+      "Street-Smart Positioning & Early Arrival: When attending events in crowded or enclosed spaces, arrive 10 minutes early to secure a well-ventilated spot near open doorways, air conditioning vents, or aisle seats to prevent thermal entrapment and reduce anticipatory anxiety.",
+      "Personal Micro-Cooling Gear: Carry a compact, whisper-quiet handheld fan or cooling towel in your bag. Having immediate access to personal airflow in packed venues provides active microclimate control."
     ];
-    mods.push(pick(socialLifestyle, seed));
-  }
-
-  // 2. FOR THERMAL / AMBIENT TRIGGERS
-  if (triggers.isEnvironmental) {
-    const thermalLifestyle = [
-      "Microclimate & Fabric Optimization: Wear lightweight, loose-fitting garments made from natural breathable fibers (like linen, merino wool, or bamboo blends) to maximize natural convective cooling and prevent ambient heat retention.",
-      "Pre-Emptive Climate Planning: Check daily humidity and temperature forecasts in HidroAlly before leaving home to plan shaded routes and schedule outdoor activity during cooler morning or evening windows."
+    mods.push(pick(socialPrep, seed));
+  } else if (triggers.isEnvironmental) {
+    const thermalPrep = [
+      "Microclimate & Breathable Layering: Wear lightweight, loose-fitting garments crafted from natural breathable fibers (such as linen, merino wool, or bamboo weaves) to maximize convective cooling and avoid heat retention.",
+      "Pre-Emptive Route Planning: Check daily humidity and temperature forecasts in HidroAlly before leaving home to plan shaded routes and schedule outdoor activity during cooler morning or evening windows."
     ];
-    mods.push(pick(thermalLifestyle, seed + 1));
-  }
-
-  // 3. FOR GUSTATORY / DIETARY TRIGGERS
-  if (triggers.isGustatory) {
+    mods.push(pick(thermalPrep, seed + 1));
+  } else if (triggers.isGustatory) {
     mods.push(
-      "Stimulant & Dietary Modulation: Limit dietary vasodilators (such as caffeine, alcohol, and capsaicin-rich spicy foods) during high-stakes days, as these compounds lower the firing threshold of your sympathetic nervous system."
+      "Stimulant & Dietary Modulation: Limit dietary vasodilators (caffeine, alcohol, capsaicin-rich spicy foods) on high-demand days to avoid lowering the activation threshold of your sympathetic nervous system."
+    );
+  } else {
+    mods.push(
+      "Pre-Emptive Climate & Airflow Preparation: Maintain active ventilation in your primary workspace using a quiet desk fan to ensure continuous moisture evaporation throughout the day."
     );
   }
 
-  // 4. ANATOMICAL / GENERAL LIFESTYLE
-  if (anatomy.isTruncal || anatomy.isAxillary) {
-    if (!mods.some(m => m.toLowerCase().includes("fabric"))) {
-      mods.push(
-        "Breathable Layering: Utilize moisture-wicking base layers to draw sweat away from the skin surface, preventing damp clothing from creating friction or trapping body heat."
-      );
-    }
-  }
+  // Step 2: Longitudinal Progress Reflection (Rule 5: Programmatic logging history)
+  mods.push(longitudinalText);
 
-  if (mods.length < 2) {
-    mods.push(
-      "Longitudinal Symptom Logging: Continue recording flare-ups and dry days in HidroAlly. Tracking your logs over a 4-week window provides objective data for your specialist or dermatologist reviews."
-    );
-  }
-
-  return mods.slice(0, 3);
+  // Exactly TWO items as required by Rule 4
+  return mods.slice(0, 2);
 }
 
-// ─── MEDICAL ATTENTION / CARE & SPECIALIST SCHEDULING ────────────────────────
+// ─── MEDICAL ATTENTION (Rule 6: Removal of Care Options / Upsell Blocks) ────────────────────────
 
 function buildMedical(
   anatomy: AnatomicalProfile,
@@ -436,14 +422,14 @@ function buildMedical(
   seed: number
 ): string {
   if (triggers.hasRedFlags || anatomy.isGeneralized) {
-    return "Secondary Screening Guidance: Generalized sweating across the entire body, unexplained night sweats, or sweating linked to new medications warrants a medical evaluation. Consult your healthcare provider to check thyroid levels, metabolic health, and prescription side effects.";
+    return "Secondary Screening Guidance: Generalized sweating across the entire body, unexplained night sweats, or sweating linked to new medications warrants a comprehensive clinical review. Bring your HidroAlly logs to your physician to evaluate metabolic health and medication profiles.";
   }
 
   if (severity.score >= 3) {
-    return "Because this episode score indicates active disruption to your routine, you can view your care options or let us know when you are ready to connect with our team for a partner dermatologist consultation.";
+    return "Clinical Consultation Preparation: At HDSS 3 or 4, functional routine disruption is significant. Your logged telemetry provides structured, objective evidence for your upcoming partner dermatologist consultation to configure specialized clinical treatments.";
   }
 
-  return "Routine Longitudinal Tracking: Your logged episode shows an identifiable pattern without acute red flags. Continue tracking symptoms in HidroAlly. If sweating accelerates or starts disrupting your routine, you can connect with our team for a partner dermatologist consultation.";
+  return "Longitudinal Symptom Tracking: Your entry demonstrates an identifiable focal pattern without acute systemic red flags. Continue logging flare-ups and dry days in HidroAlly to establish a thorough clinical record for expert dermatologist review.";
 }
 
 // ─── DRY DAY PROTOCOL ─────────────────────────────────────────────────────────
@@ -526,7 +512,7 @@ export function generateEpisodeInsights(input: EpisodeInput): EpisodeInsights & 
     episodeCount = 0,
     userName,
     isDryDay = false,
-    episodesList,
+    episodesList = [],
   } = input;
 
   const seed = (episodeCount * 31 + Math.floor(Date.now() / 60000)) % 101;
@@ -536,6 +522,22 @@ export function generateEpisodeInsights(input: EpisodeInput): EpisodeInsights & 
   if (isDryDay) {
     return buildDryDayProtocol(userName, episodesList);
   }
+
+  // Rule 5: Programmatic Longitudinal Progress Calculation
+  const totalEntries = episodesList.length || (episodeCount > 0 ? episodeCount : 1);
+  let activeWeeks = 1;
+
+  if (episodesList.length > 1) {
+    const dates = episodesList.map(e => new Date(e.datetime || Date.now()).getTime()).filter(t => !isNaN(t));
+    if (dates.length > 1) {
+      const minDate = Math.min(...dates);
+      const maxDate = Math.max(...dates);
+      const diffDays = Math.max(1, Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24)));
+      activeWeeks = Math.max(1, Math.ceil(diffDays / 7));
+    }
+  }
+
+  const longitudinalText = `Longitudinal Profile Building: You have logged ${totalEntries} total entries across ${activeWeeks} active ${activeWeeks === 1 ? 'week' : 'weeks'} of tracking. Documenting your flare-ups and dry days establishes clear longitudinal evidence for your clinical consultations.`;
 
   if (!bodyAreas || bodyAreas.length === 0) {
     return {
@@ -547,7 +549,8 @@ export function generateEpisodeInsights(input: EpisodeInput): EpisodeInsights & 
         "Deep Respiration: Take 5 slow, deep belly breaths to calm your nervous system."
       ],
       lifestyleModifications: [
-        "Include both body areas and triggers in your next log to build a helpful history."
+        "Include both body areas and triggers in your next log to build a helpful history.",
+        longitudinalText
       ],
       medicalAttention: "No acute red flags identified. Include body parts in future logs for detailed guidance.",
       cta,
@@ -561,7 +564,7 @@ export function generateEpisodeInsights(input: EpisodeInput): EpisodeInsights & 
   return {
     clinicalAnalysis: buildClinicalAnalysis(anatomy, triggerProfile, severityProfile, notes, seed),
     immediateRelief: buildImmediateRelief(anatomy, triggerProfile, seed),
-    lifestyleModifications: buildLifestyle(anatomy, triggerProfile, seed),
+    lifestyleModifications: buildLifestyle(anatomy, triggerProfile, seed, longitudinalText),
     medicalAttention: buildMedical(anatomy, triggerProfile, severityProfile, seed),
     emotionalOpener: `${greeting}, your personal hyperhidrosis clinical guide. Here is your evidence-based analysis for this logged episode.`,
     cta,

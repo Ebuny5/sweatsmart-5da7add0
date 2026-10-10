@@ -98,7 +98,7 @@ function fallbackExtract(text: string): { bodyAreas: BodyArea[]; triggers: strin
 
 const TRIGGER_CATEGORY_BY_VALUE: Record<string, Trigger['type']> = {
   hot_temperature: 'environmental', high_humidity: 'environmental',
-  crowded_spaces: 'situational', bright_lights: 'environmental',
+  crowded_spaces: 'environmental', bright_lights: 'environmental',
   loud_noises: 'environmental', transitional_temperature: 'environmental',
   synthetic_fabrics: 'environmental', outdoor_sun_exposure: 'environmental',
   stress: 'emotional', anxiety: 'emotional', anticipatory_sweating: 'emotional',

@@ -22,7 +22,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useEngagement } from "@/hooks/useEngagement";
 import { useEpisodes } from "@/hooks/useEpisodes";
 import { generateFallbackInsights } from "@/components/recommendationEngine";
-import { generateBookEnrichedInsights } from "@/services/aiInsightsService";
 import { loggingReminderService, LAST_LOG_TIME_KEY, CURRENT_HDSS_KEY } from "@/services/LoggingReminderService";
 import { useVoiceLogging } from "@/hooks/useVoiceLogging";
 import VoiceVisualizer from "@/components/episode/VoiceVisualizer";
@@ -709,27 +708,15 @@ const LogEpisode = () => {
 
         const fullEpisodesList = [newEpisodeForStreak, ...(episodes || [])];
 
-        let insights;
-        try {
-          insights = await generateBookEnrichedInsights({
-            severity: finalSeverity,
-            bodyAreas: finalBodyAreas,
-            triggers: triggerData,
-            notes: finalNotes,
-            isDryDay,
-            episodesList: fullEpisodesList,
-          });
-        } catch {
-          insights = generateFallbackInsights(
-            finalSeverity,
-            finalBodyAreas as BodyArea[],
-            triggerData,
-            finalNotes,
-            undefined,
-            isDryDay,
-            fullEpisodesList as any
-          );
-        }
+        const insights = generateFallbackInsights(
+          finalSeverity,
+          finalBodyAreas as BodyArea[],
+          triggerData,
+          finalNotes,
+          undefined,
+          isDryDay,
+          fullEpisodesList as any
+        );
 
         setAiInsights(insights);
         toast(
