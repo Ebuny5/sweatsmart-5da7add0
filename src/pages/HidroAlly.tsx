@@ -1396,9 +1396,10 @@ const HidroAlly = () => {
             const delta = parsed.choices?.[0]?.delta?.content || '';
             if (delta) {
               assistantText += delta;
+              const cleanText = assistantText.replace(/\*/g, '');
               setMessages(prev => {
                 const updated = [...prev];
-                updated[updated.length - 1] = { role: 'assistant', content: assistantText };
+                updated[updated.length - 1] = { role: 'assistant', content: cleanText };
                 return updated;
               });
             }
@@ -1418,16 +1419,19 @@ const HidroAlly = () => {
         return /^(hi|hey|hello|good morning|good afternoon|good evening|howdy|sup|what'?s up|yo)\b/i.test(clean);
       };
 
+      assistantText = assistantText.replace(/\*/g, '');
+
       if (!isShortGreetingResponse(assistantText) && !assistantText.includes("HidroAlly is not a dermatologist or medical provider")) {
         assistantText = assistantText.trim() + "\n\n" + MANDATORY_NOTICE;
-        setMessages(prev => {
-          const updated = [...prev];
-          if (updated.length > 0) {
-            updated[updated.length - 1] = { role: 'assistant', content: assistantText };
-          }
-          return updated;
-        });
       }
+
+      setMessages(prev => {
+        const updated = [...prev];
+        if (updated.length > 0) {
+          updated[updated.length - 1] = { role: 'assistant', content: assistantText };
+        }
+        return updated;
+      });
 
       // Check if the response triggers PDF generation
       if (assistantText.includes('triggerPdf')) {
