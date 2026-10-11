@@ -1396,9 +1396,10 @@ const HidroAlly = () => {
             const delta = parsed.choices?.[0]?.delta?.content || '';
             if (delta) {
               assistantText += delta;
+              const cleanText = assistantText.replace(/\*/g, '');
               setMessages(prev => {
                 const updated = [...prev];
-                updated[updated.length - 1] = { role: 'assistant', content: assistantText };
+                updated[updated.length - 1] = { role: 'assistant', content: cleanText };
                 return updated;
               });
             }
@@ -1407,6 +1408,30 @@ const HidroAlly = () => {
       }
 
       setIsLoading(false);
+
+      // Guarantee educational notice on all non-greeting educational/analytical responses
+      const MANDATORY_NOTICE = "> HidroAlly is not a dermatologist or medical provider. All information and insights are provided for educational purposes only. Always consult a qualified healthcare professional for medical diagnosis or treatment.";
+
+      const isShortGreetingResponse = (text: string) => {
+        const clean = text.trim();
+        const wordCount = clean.split(/\s+/).length;
+        if (wordCount > 30) return false;
+        return /^(hi|hey|hello|good morning|good afternoon|good evening|howdy|sup|what'?s up|yo)\b/i.test(clean);
+      };
+
+      assistantText = assistantText.replace(/\*/g, '');
+
+      if (!isShortGreetingResponse(assistantText) && !assistantText.includes("HidroAlly is not a dermatologist or medical provider")) {
+        assistantText = assistantText.trim() + "\n\n" + MANDATORY_NOTICE;
+      }
+
+      setMessages(prev => {
+        const updated = [...prev];
+        if (updated.length > 0) {
+          updated[updated.length - 1] = { role: 'assistant', content: assistantText };
+        }
+        return updated;
+      });
 
       // Check if the response triggers PDF generation
       if (assistantText.includes('triggerPdf')) {
