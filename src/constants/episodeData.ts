@@ -282,11 +282,11 @@ export const TRIGGER_GROUPS: {
         keywords: ["sun", "outside", "sunlight"],
       },
       {
-        label: "Poor Ventilation",
-        emoji: "🏢",
+        label: "Poor Airflow / No Ventilation",
+        emoji: "🚪",
         type: "environmental",
         tip: "Stagnant air prevents sweat evaporation, increasing core temperature",
-        keywords: ["ventilation", "stuffy", "air", "poor ventilation"],
+        keywords: ["ventilation", "stuffy", "air", "poor ventilation", "poor airflow", "no ventilation"],
       },
       {
         label: "No Identifiable Trigger",
@@ -370,10 +370,17 @@ export const TRIGGER_GROUPS: {
       },
       {
         label: "Work Pressure",
-        emoji: "📋",
+        emoji: "💼",
         type: "emotional",
         tip: "Deadline stress and professional performance anxiety",
-        keywords: ["work", "deadline", "pressure"],
+        keywords: ["work", "deadline", "pressure", "work pressure"],
+      },
+      {
+        label: "Fear",
+        emoji: "😱",
+        type: "emotional",
+        tip: "Sudden fear triggers instantaneous fight-or-flight epinephrine release",
+        keywords: ["fear", "scared", "frightened", "terrified"],
       },
       {
         label: "Exam / Test Situation",
@@ -451,6 +458,13 @@ export const TRIGGER_GROUPS: {
     selectedBg: "bg-blue-50",
     selectedBorder: "border-blue-400",
     triggers: [
+      {
+        label: "Dancing",
+        emoji: "💃",
+        type: "physical",
+        tip: "Continuous body movement elevates internal core metabolic temperature",
+        keywords: ["dancing", "dance"],
+      },
       {
         label: "Physical Exercise",
         emoji: "🏃",

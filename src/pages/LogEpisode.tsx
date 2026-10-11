@@ -129,8 +129,8 @@ const CLINICAL_KNOWLEDGE: Record<string, { title: string; mechanism: string; ico
     icon: "🧶"
   },
   poor_ventilation: {
-    title: "Microclimate Stagnation",
-    mechanism: "Zero air velocity halts boundary-layer sweat evaporation, accelerating clothing saturation.",
+    title: "Microclimate Stagnation / Poor Ventilation",
+    mechanism: "Zero air velocity halts boundary-layer sweat evaporation, trapping ambient humidity against skin and accelerating clothing saturation.",
     icon: "🚪"
   },
   crowded_spaces: {
@@ -155,6 +155,16 @@ const CLINICAL_KNOWLEDGE: Record<string, { title: string; mechanism: string; ico
   },
 
   // Phase 2: Emotional & Cognitive
+  work_pressure: {
+    title: "Cognitive Workload & Stress",
+    mechanism: "Professional deadlines and high-pressure tasks stimulate acute sympathetic outflow, triggering sudden sudomotor responses in palms, underarms, or face.",
+    icon: "💼"
+  },
+  fear: {
+    title: "Acute Fight-or-Flight Response",
+    mechanism: "Sudden fear or threat detection triggers instantaneous epinephrine release, driving rapid eccrine sweating across palmar and plantar surfaces.",
+    icon: "😱"
+  },
   stress: {
     title: "Sympathoadrenal Activation",
     mechanism: "Acute mental stress triggers rapid acetylcholine release onto eccrine M3 receptors within milliseconds.",
@@ -197,6 +207,11 @@ const CLINICAL_KNOWLEDGE: Record<string, { title: string; mechanism: string; ico
   },
 
   // Phase 3: Physical, Dietary & Lifestyle (Includes Trekking)
+  dancing: {
+    title: "Rhythmic Exertion & Movement",
+    mechanism: "Continuous body movement elevates internal core metabolic temperature, triggering active thermoregulatory sweating.",
+    icon: "💃"
+  },
   trekking: {
     title: "Locomotive Exertion (Trekking)",
     mechanism: "Prolonged ambulation recruits major lower-extremity muscle groups, initiating metabolic heat production that commands active eccrine discharge.",
@@ -305,7 +320,7 @@ const TRIGGER_GROUPS = [
       { id: "transitional_temp", label: "Temp Shift", type: "environment", icon: "🔄" },
       { id: "sun_exposure", label: "Sun Exposure", type: "environment", icon: "☀️" },
       { id: "synthetic_fabrics", label: "Synthetic Fabrics", type: "environment", icon: "🧶" },
-      { id: "poor_ventilation", label: "Poor Airflow", type: "environment", icon: "🚪" },
+      { id: "poor_ventilation", label: "Poor Airflow / No Ventilation", type: "environment", icon: "🚪" },
       { id: "crowded_spaces", label: "Crowded Space", type: "social", icon: "👥" },
       { id: "bright_lights", label: "Bright Lights", type: "environment", icon: "💡" },
       { id: "loud_noises", label: "Loud Noises", type: "environment", icon: "🔊" },
@@ -317,6 +332,8 @@ const TRIGGER_GROUPS = [
     desc: "Psychological and cognitive catalysts that activate the sympathetic fight-or-flight reflex",
     colorKey: "rose" as const,
     items: [
+      { id: "work_pressure", label: "Work Pressure", type: "emotional", icon: "💼" },
+      { id: "fear", label: "Fear", type: "emotional", icon: "😱" },
       { id: "stress", label: "Stress", type: "emotional", icon: "⚡" },
       { id: "anxiety", label: "Anxiety", type: "emotional", icon: "🧠" },
       { id: "anticipatory", label: "Anticipatory Sweating", type: "emotional", icon: "⏳" },
@@ -332,6 +349,7 @@ const TRIGGER_GROUPS = [
     desc: "Locomotion, exertion, stimulants, and gustatory triggers elevating core temperature",
     colorKey: "orange" as const,
     items: [
+      { id: "dancing", label: "Dancing", type: "physical", icon: "💃" },
       { id: "trekking", label: "Trekking / Walking", type: "physical", icon: "🥾" },
       { id: "physical_exertion", label: "Exercise / Exertion", type: "physical", icon: "🏃" },
       { id: "spicy_food", label: "Spicy Food", type: "dietary", icon: "🌶️" },
