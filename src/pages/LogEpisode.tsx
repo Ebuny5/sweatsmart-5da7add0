@@ -354,7 +354,7 @@ const TRIGGER_GROUPS = [
       { id: "physical_exertion", label: "Exercise / Exertion", type: "physical", icon: "🏃" },
       { id: "spicy_food", label: "Spicy Food", type: "dietary", icon: "🌶️" },
       { id: "caffeine", label: "Caffeine / Coffee", type: "dietary", icon: "☕" },
-      { id: "hot_drinks", label: "Hot Drinks", type: "dietary", icon: "🍵" },
+      { id: "hot_drinks", label: "Hot drink/ meal", type: "dietary", icon: "🍵" },
       { id: "alcohol", label: "Alcohol", type: "dietary", icon: "🍷" },
       { id: "heavy_meals", label: "Heavy Meals", type: "dietary", icon: "🍽️" },
       { id: "nicotine", label: "Nicotine", type: "lifestyle", icon: "🚬" },

@@ -421,11 +421,11 @@ export const TRIGGER_GROUPS: {
         keywords: ["alcohol", "wine", "beer", "drink"],
       },
       {
-        label: "Hot Drinks",
+        label: "Hot drink/ meal",
         emoji: "🍵",
         type: "dietary",
         tip: "Raises core body temperature regardless of content",
-        keywords: ["hot drink", "tea", "coffee"],
+        keywords: ["hot drink", "tea", "coffee", "hot meal"],
       },
       {
         label: "Heavy Meals",
