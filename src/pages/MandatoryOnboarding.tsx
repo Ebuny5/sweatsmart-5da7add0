@@ -1,7 +1,4 @@
-import React, { useEffect, useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { markOnboarded, nameFromAuth, werePermissionsAsked } from "@/utils/onboardingStatus";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,8 +10,7 @@ import { Sparkles, ArrowRight } from "lucide-react";
 import AppLayout from "@/components/layout/AppLayout";
 
 const MandatoryOnboarding = () => {
-  const { profile } = useProfile();
-  const { user } = useAuth();
+  const { profile, updateProfile } = useProfile();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -25,18 +21,6 @@ const MandatoryOnboarding = () => {
     diagnosis_type: "",
     country: "",
   });
-
-  // Prefill anything the user already gave us so they never re-type it.
-  useEffect(() => {
-    if (!profile) return;
-    setFormData((prev) => ({
-      age: prev.age || (profile.age ? String(profile.age) : ""),
-      biological_sex: prev.biological_sex || (profile as any).biological_sex || "",
-      gender_identity: prev.gender_identity || (profile as any).gender_identity || "",
-      diagnosis_type: prev.diagnosis_type || (profile as any).diagnosis_type || "",
-      country: prev.country || (profile as any).country || "",
-    }));
-  }, [profile]);
 
   const [isSaving, setIsSaving] = useState(false);
 
@@ -53,38 +37,26 @@ const MandatoryOnboarding = () => {
       return;
     }
 
-    if (!user) return;
     setIsSaving(true);
 
     try {
-      const payload: Record<string, unknown> = {
-        user_id: user.id,
+      const success = await updateProfile({
         age: parseInt(formData.age),
         biological_sex: formData.biological_sex,
         gender_identity: formData.gender_identity,
         diagnosis_type: formData.diagnosis_type,
         country: formData.country,
         is_profile_complete: true,
-      };
-      if (!profile?.display_name?.trim()) {
-        const n = nameFromAuth(user);
-        if (n) payload.display_name = n;
-      }
+      });
 
-      const { error } = await supabase
-        .from("profiles")
-        .upsert(payload as never, { onConflict: "user_id" });
-
-      if (!error) {
-        markOnboarded(user.id);
-        window.dispatchEvent(new CustomEvent("sweatsmart:profile-updated"));
+      if (success) {
         toast({
           title: "Profile setup complete ✨",
           description: "Welcome to HidroAlly, your hyperhidrosis digital companion 😊",
         });
-        navigate(werePermissionsAsked(user.id) ? "/home" : "/setup-profile", { replace: true });
+        navigate("/home", { replace: true });
       } else {
-        throw error;
+        throw new Error("Failed to update profile");
       }
     } catch (error) {
       console.error(error);

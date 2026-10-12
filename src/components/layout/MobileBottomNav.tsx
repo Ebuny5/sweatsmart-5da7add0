@@ -22,40 +22,40 @@ import {
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
-// Uniform color for all active nav items to match Home screen theme
+// Colour for each nav item when active
 const primaryItems = [
   {
     path: "/home",
     icon: LayoutDashboard,
     label: "Home",
-    activeColor: "text-purple-700 font-bold",
-    activeBg: "bg-purple-100/70",
-    dotColor: "bg-purple-600",
+    activeColor: "text-violet-600",
+    activeBg: "bg-violet-50",
+    dotColor: "bg-violet-500",
   },
   {
     path: "/log-episode",
     icon: PlusCircle,
     label: "Log",
-    activeColor: "text-purple-700 font-bold",
-    activeBg: "bg-purple-100/70",
-    dotColor: "bg-purple-600",
+    activeColor: "text-pink-600",
+    activeBg: "bg-pink-50",
+    dotColor: "bg-pink-500",
     isCTA: true,
   },
   {
     path: "/dashboard",
     icon: LayoutDashboard,
     label: "Analytics",
-    activeColor: "text-purple-700 font-bold",
-    activeBg: "bg-purple-100/70",
-    dotColor: "bg-purple-600",
+    activeColor: "text-blue-600",
+    activeBg: "bg-blue-50",
+    dotColor: "bg-blue-500",
   },
   {
     path: "/insights",
     icon: TrendingUp,
     label: "Insight",
-    activeColor: "text-purple-700 font-bold",
-    activeBg: "bg-purple-100/70",
-    dotColor: "bg-purple-600",
+    activeColor: "text-pink-600",
+    activeBg: "bg-pink-50",
+    dotColor: "bg-pink-500",
   },
 ];
 
@@ -84,34 +84,31 @@ const MobileBottomNav: React.FC = () => {
         <div className="flex items-center justify-around h-16 px-2">
 
           {primaryItems.map((item) => {
-            // Log button aligned inline with navbar
+            // Special CTA button for "Log"
             if (item.isCTA) {
               return (
                 <NavLink
                   key={item.path}
                   to={item.path}
-                  className="flex flex-col items-center justify-center min-w-[52px]"
+                  className="flex flex-col items-center justify-center -mt-5"
                 >
                   {({ isActive }) => (
-                    <div className="flex flex-col items-center gap-0.5">
+                    <>
                       <div className={cn(
-                        "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
+                        "w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transition-all",
                         isActive
-                          ? "bg-purple-100/70 text-purple-700 scale-105 shadow-sm"
-                          : "bg-gradient-to-br from-purple-600 via-pink-500 to-teal-400 text-white shadow-md active:scale-95"
+                          ? "bg-gradient-to-br from-pink-500 to-rose-500 scale-105 shadow-pink-200"
+                          : "bg-gradient-to-br from-violet-500 to-pink-500 shadow-purple-200"
                       )}>
-                        <item.icon className={cn("h-5 w-5", isActive ? "stroke-[2.5]" : "stroke-[2]")} />
+                        <item.icon className="h-6 w-6 text-white" />
                       </div>
                       <span className={cn(
-                        "text-[10px] font-semibold transition-colors",
-                        isActive ? "text-purple-700 font-bold" : "text-gray-500"
+                        "text-[10px] font-bold mt-1",
+                        isActive ? "text-pink-600" : "text-gray-500"
                       )}>
                         {item.label}
                       </span>
-                      {isActive && (
-                        <div className="w-1 h-1 rounded-full bg-purple-600" />
-                      )}
-                    </div>
+                    </>
                   )}
                 </NavLink>
               );
@@ -127,16 +124,16 @@ const MobileBottomNav: React.FC = () => {
                   <div className="flex flex-col items-center gap-0.5">
                     <div className={cn(
                       "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
-                      isActive ? `${item.activeBg} scale-105` : "hover:bg-purple-50/40 text-slate-500"
+                      isActive ? `${item.activeBg} scale-105` : "hover:bg-gray-50"
                     )}>
                       <item.icon className={cn(
                         "h-5 w-5 transition-colors",
-                        isActive ? `${item.activeColor} stroke-[2.5]` : "text-gray-400 stroke-[1.8]"
+                        isActive ? item.activeColor : "text-gray-400"
                       )} />
                     </div>
                     <span className={cn(
-                      "text-[10px] font-semibold transition-colors tracking-tight",
-                      isActive ? item.activeColor : "text-gray-500"
+                      "text-[10px] font-semibold transition-colors",
+                      isActive ? item.activeColor : "text-gray-400"
                     )}>
                       {item.label}
                     </span>

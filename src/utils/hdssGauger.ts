@@ -95,7 +95,6 @@ export function gaugeHDSS(
       0,
       false,
       currentWeather.sky,
-      currentWeather.weatherId,
     );
     if (risk.level === "high" || risk.level === "extreme") {
       envRiskElevated = true;

@@ -30,7 +30,6 @@ type WeatherResult = {
   location?: string;
   timestamp: number;
   isSimulated?: boolean;
-  weatherId?: number;
 };
 
 // In-memory cache to reduce redundant API calls (3 minutes TTL for rapid tracking)
@@ -79,12 +78,12 @@ function calculateDewPoint(tempC: number, humidity: number): number {
 }
 
 function calculateRealFeel(tempC: number, humidity: number, uvIndex?: number | null): number {
-  // Unified RealFeel: NOAA Heat Index + solar load when UV > 6 (same in app, weather API and push)
-  let realFeel = calculateHeatIndex(tempC, humidity);
+  const hi = calculateHeatIndex(tempC, humidity);
+  let solarAdj = 0;
   if (uvIndex != null && !isNaN(uvIndex) && uvIndex > 6) {
-    realFeel += (uvIndex - 6) * 0.5;
+    solarAdj = 2.5;
   }
-  return Math.round(realFeel * 10) / 10;
+  return Math.round((hi + solarAdj) * 10) / 10;
 }
 
 serve(async (req: Request) => {
@@ -284,7 +283,6 @@ serve(async (req: Request) => {
       location: weatherData.name,
       timestamp: Date.now(),
       isSimulated: false,
-      weatherId,
     };
 
     // Update cache

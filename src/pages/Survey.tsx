@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 const Survey = () => {
   return (
     <AppLayout>
-      <div className="container max-w-4xl mx-auto space-y-8">
+      <div className="w-full px-4 sm:px-6 md:px-8 mx-auto space-y-8">
         <div className="text-center space-y-4">
           <h1 className="text-4xl font-bold text-foreground">Survey</h1>
           <p className="text-xl text-professional-gray max-w-2xl mx-auto">

@@ -104,7 +104,7 @@ export default function NewIndex() {
   }, [user, loading, navigate]);
 
   const handleGetStarted = () => {
-    navigate('/login');
+    navigate('/auth');
   };
 
   return (

@@ -16,8 +16,6 @@ export interface WeatherData {
   description?: string;
   location?: string;
   isSimulated?: boolean;
-  /** OpenWeather condition ID to detect active precipitation (e.g. 200-699) */
-  weatherId?: number;
 }
 
 export interface PhysiologicalData {
@@ -53,6 +51,7 @@ export type BodyArea =
   | 'feet'
   | 'toes'
   | 'feet_soles'
+  | 'legs'
   | 'underarms'
   | 'face'
   | 'scalp'
@@ -60,10 +59,10 @@ export type BodyArea =
   | 'back'
   | 'chest'
   | 'trunk'
+  | 'trunk_full_torso'
   | 'groin'
   | 'thighs'
-  | 'entire_body'
-  | (string & {});
+  | 'entire_body';
 
 export interface BodyAreaDetail {
   area: BodyArea;

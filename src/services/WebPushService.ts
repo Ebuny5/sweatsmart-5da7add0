@@ -512,41 +512,27 @@ class WebPushService {
   /**
    * Get current location coordinates
    */
-  private getCachedCoords(): { latitude: number; longitude: number } | null {
-    try {
-      const raw = localStorage.getItem('sweatsmart:lastCoords');
-      if (!raw) return null;
-      const c = JSON.parse(raw);
-      if (typeof c?.latitude === 'number' && typeof c?.longitude === 'number') return c;
-    } catch { /* ignore */ }
-    return null;
-  }
-
   private async getCurrentCoords(): Promise<{ latitude: number; longitude: number } | null> {
     if (typeof window === 'undefined' || !('geolocation' in navigator)) {
-      return this.getCachedCoords();
+      return null;
     }
 
     try {
-      try {
-        const perm = await navigator.permissions?.query({ name: 'geolocation' as PermissionName });
-        if (perm && perm.state === 'denied') return this.getCachedCoords();
-      } catch { /* permissions API unsupported (e.g. some WebViews) */ }
+      // First check if permission is granted before trying to get location
+      const perm = await navigator.permissions.query({ name: 'geolocation' });
+      if (perm.state === 'denied' || perm.state === 'prompt') {
+        return null;
+      }
 
-      const live = await new Promise<{ latitude: number; longitude: number } | null>((resolve) => {
+      return await new Promise((resolve) => {
         navigator.geolocation.getCurrentPosition(
           (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
           () => resolve(null),
-          { enableHighAccuracy: false, timeout: 8000, maximumAge: 10 * 60 * 1000 }
+          { enableHighAccuracy: false, timeout: 5000 }
         );
       });
-      if (live) {
-        localStorage.setItem('sweatsmart:lastCoords', JSON.stringify(live));
-        return live;
-      }
-      return this.getCachedCoords();
     } catch {
-      return this.getCachedCoords();
+      return null;
     }
   }
 

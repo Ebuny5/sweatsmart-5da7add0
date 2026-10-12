@@ -108,6 +108,17 @@ export const BODY_AREA_OPTIONS: BodyAreaOption[] = [
     keywords: ["palms", "palm"],
   },
   {
+    area: "legs",
+    name: "legs",
+    label: "Legs",
+    icon: "foot",
+    emoji: "🦵",
+    clinicalName: "Lower Limb Focal Distribution",
+    complication: "Symmetrical eccrine sweating extending across feet, ankles, lower legs, or full leg surfaces.",
+    priority: "High",
+    keywords: ["legs", "leg", "lower limbs"],
+  },
+  {
     area: "fingers",
     name: "fingers",
     label: "Fingers",
@@ -161,6 +172,17 @@ export const BODY_AREA_OPTIONS: BodyAreaOption[] = [
     complication: "Clothing adherence, rapid dehydration, torso discomfort",
     priority: "Medium",
     keywords: ["trunk", "torso"],
+  },
+  {
+    area: "trunk_full_torso",
+    name: "trunk_full_torso",
+    label: "Trunk / Full Torso",
+    icon: "shirt",
+    emoji: "👕",
+    clinicalName: "Truncal & Generalized Distribution",
+    complication: "Broad thermoregulatory or compensatory sweating across the full anterior and posterior torso (chest, abdomen, and back).",
+    priority: "Medium",
+    keywords: ["trunk", "torso", "full torso"],
   },
   {
     area: "chest",
@@ -282,11 +304,11 @@ export const TRIGGER_GROUPS: {
         keywords: ["sun", "outside", "sunlight"],
       },
       {
-        label: "Poor Airflow / No Ventilation",
-        emoji: "🚪",
+        label: "Poor Ventilation",
+        emoji: "🏢",
         type: "environmental",
         tip: "Stagnant air prevents sweat evaporation, increasing core temperature",
-        keywords: ["ventilation", "stuffy", "air", "poor ventilation", "poor airflow", "no ventilation"],
+        keywords: ["ventilation", "stuffy", "air", "poor ventilation"],
       },
       {
         label: "No Identifiable Trigger",
@@ -370,17 +392,10 @@ export const TRIGGER_GROUPS: {
       },
       {
         label: "Work Pressure",
-        emoji: "💼",
+        emoji: "📋",
         type: "emotional",
         tip: "Deadline stress and professional performance anxiety",
-        keywords: ["work", "deadline", "pressure", "work pressure"],
-      },
-      {
-        label: "Fear",
-        emoji: "😱",
-        type: "emotional",
-        tip: "Sudden fear triggers instantaneous fight-or-flight epinephrine release",
-        keywords: ["fear", "scared", "frightened", "terrified"],
+        keywords: ["work", "deadline", "pressure"],
       },
       {
         label: "Exam / Test Situation",
@@ -400,11 +415,11 @@ export const TRIGGER_GROUPS: {
     selectedBorder: "border-green-400",
     triggers: [
       {
-        label: "Spicy Food",
+        label: "Spicy Food / Ketchup & Condiments",
         emoji: "🌶️",
         type: "dietary",
-        tip: "Capsaicin stimulates trigeminal nerve",
-        keywords: ["spicy", "chili", "hot food"],
+        tip: "Capsaicin, acidic vinegar bases, and spices in condiments like ketchup trigger facial and scalp sweating via gustatory autonomic reflex pathways.",
+        keywords: ["spicy", "chili", "hot food", "ketchup", "condiments", "vinegar"],
       },
       {
         label: "Caffeine",
@@ -421,11 +436,11 @@ export const TRIGGER_GROUPS: {
         keywords: ["alcohol", "wine", "beer", "drink"],
       },
       {
-        label: "Hot Drinks",
+        label: "Hot Drinks / Hot Meals",
         emoji: "🍵",
         type: "dietary",
-        tip: "Raises core body temperature regardless of content",
-        keywords: ["hot drink", "tea", "coffee"],
+        tip: "Ingestion of high-temperature liquids or steaming meals transfers direct heat to oral and esophageal thermal receptors, driving immediate facial, head, and trunk sweating.",
+        keywords: ["hot drink", "tea", "coffee", "hot meal", "hot food", "soup"],
       },
       {
         label: "Heavy Meals",
@@ -458,13 +473,6 @@ export const TRIGGER_GROUPS: {
     selectedBg: "bg-blue-50",
     selectedBorder: "border-blue-400",
     triggers: [
-      {
-        label: "Dancing",
-        emoji: "💃",
-        type: "physical",
-        tip: "Continuous body movement elevates internal core metabolic temperature",
-        keywords: ["dancing", "dance"],
-      },
       {
         label: "Physical Exercise",
         emoji: "🏃",

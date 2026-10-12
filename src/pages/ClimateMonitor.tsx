@@ -355,7 +355,6 @@ const ClimateMonitor = () => {
       0,
       false,
       (weatherData as any).sky ?? 'unknown',
-      weatherData.weatherId,
     );
 
     const riskToAlertType: Record<SweatRiskLevel, string> = {

@@ -69,12 +69,10 @@ function warriorEngineExtract(text: string) {
   if (/\b(ac|air conditioning|outside to inside|inside to outside|temperature change|transition)\b/.test(lower)) triggers.push('transitional_temperature');
   if (/\b(synthetic|polyester|nylon|fabric|clothing|thick clothing)\b/.test(lower)) triggers.push('synthetic_fabrics');
   if (/\b(sun|sunny|outdoor|outside)\b/.test(lower)) triggers.push('outdoor_sun_exposure');
-  if (/\b(poor airflow|no ventilation|stagnant air|stuffy|no airflow)\b/.test(lower)) triggers.push('poor_ventilation');
 
   if (/\b(stress|stressed)\b/.test(lower)) triggers.push('stress');
   if (/\b(pressure|exhausted|working since morning|deadline|work)\b/.test(lower)) triggers.push('work_pressure');
-  if (/\b(fear|afraid|scared|terrified|frightened)\b/.test(lower)) triggers.push('fear');
-  if (/\b(anxious|anxiety|panic|worried)\b/.test(lower)) triggers.push('anxiety');
+  if (/\b(anxious|anxiety|panic|worried|scared)\b/.test(lower)) triggers.push('anxiety');
   if (/\b(embarrass|ashamed)\b/.test(lower)) triggers.push('embarrassment');
   if (/\b(excited|excitement)\b/.test(lower)) triggers.push('excitement');
   if (/\b(fight|upset|angry|anger|mad)\b/.test(lower)) triggers.push('anger');
@@ -91,7 +89,6 @@ function warriorEngineExtract(text: string) {
   if (/\b(heavy meal|big meal|ate too much|heavy food|ate heavy food)\b/.test(lower)) triggers.push('heavy_meals');
   if (/\b(energy drink|red bull|monster)\b/.test(lower)) triggers.push('energy_drinks');
 
-  if (/\b(dancing|dance|danced)\b/.test(lower)) triggers.push('dancing');
   if (/\b(exercise|gym|workout|running|sport|walking fast|ran|race)\b/.test(lower)) triggers.push('physical_exercise');
   if (/\b(night sweat|woke up sweating|sleep)\b/.test(lower)) triggers.push('night_sweats');
   if (/\b(poor sleep|bad sleep|tired)\b/.test(lower)) triggers.push('poor_sleep');

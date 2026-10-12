@@ -79,9 +79,7 @@ class ClimateAlertService {
       weatherData.uvIndex,
       thresholds,
       false,
-      (weatherData as any).sky ?? 'unknown',
-      0, // edaValue
-      weatherData.weatherId,
+      (weatherData as any).sky ?? 'unknown'
     );
 
     const risk = calculateSweatRisk(
@@ -90,8 +88,7 @@ class ClimateAlertService {
       weatherData.uvIndex ?? 0,
       0,
       false,
-      (weatherData as any).sky ?? 'unknown',
-      weatherData.weatherId,
+      (weatherData as any).sky ?? 'unknown'
     );
 
     const riskToAlertType: Record<string, string> = {

@@ -162,7 +162,6 @@ export function useClimateData(): ClimateSnapshot {
         realFeel: activeData.realFeel,
         isSimulated: data?.isSimulated || false,
         lastUpdated: Date.now(),
-        weatherId: activeData.weatherId,
       };
 
       const risk = calculateSweatRisk(
@@ -172,7 +171,6 @@ export function useClimateData(): ClimateSnapshot {
         0,
         false,
         w.sky,
-        w.weatherId
       );
 
       // ── Reverse geocode city name ─────────────────────────────────────────
