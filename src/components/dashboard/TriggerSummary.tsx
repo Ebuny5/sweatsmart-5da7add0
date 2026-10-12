@@ -109,7 +109,7 @@ const TriggerSummary: React.FC<TriggerSummaryProps> = ({ triggers, allEpisodes =
                 width={90}
               />
               <Tooltip
-                formatter={(value: any, name: string) => [value, name === 'count' ? 'Episodes' : 'Avg Severity']}
+                formatter={(value: any, name: string) => [value, name === 'count' || name === 'Episodes' ? 'Episodes' : 'Avg Severity']}
                 labelFormatter={(label: string, payload: any[]) => {
                   const item = payload?.[0]?.payload;
                   return (

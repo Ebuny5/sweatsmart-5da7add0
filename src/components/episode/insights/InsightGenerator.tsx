@@ -402,7 +402,7 @@ const InsightCard: React.FC<{ insight: clinicalInsight }> = ({ insight }) => {
       pdf.setFontSize(8); pdf.setFont('helvetica', 'italic');
       pdf.text('This report is for educational reference. Please discuss these insights with a healthcare professional.', margin, y);
 
-      pdf.save(`sweatsmart-insight-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+      pdf.save('HidroAlly Analysis & Reccomendation.pdf');
       toast({ title: 'Report exported', description: 'Your PDF is ready.' });
     } catch {
       toast({ title: 'Export failed', variant: 'destructive' });

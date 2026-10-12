@@ -13,6 +13,7 @@ import { useGoogleAuth } from "@/hooks/useGoogleAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Chrome, Mail } from "lucide-react";
 import Captcha from "@/components/ui/captcha";
+import { resolvePostLoginRoute } from "@/utils/onboardingStatus";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -23,25 +24,6 @@ const Login = () => {
   const { toast } = useToast();
   const { signInWithGoogle, isLoading: googleLoading } = useGoogleAuth();
 
-  const checkProfileDisplayName = async (userId: string): Promise<string | null> => {
-    const profileRequest = supabase
-      .from("profiles")
-      .select("display_name")
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    const timeout = new Promise<null>((resolve) => {
-      window.setTimeout(() => resolve(null), 3500);
-    });
-
-    try {
-      const result = await Promise.race([profileRequest, timeout]);
-      if (!result || result.error) return null;
-      return result.data?.display_name ?? null;
-    } catch {
-      return null;
-    }
-  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,17 +52,14 @@ const Login = () => {
           variant: "destructive",
         });
       } else {
-        const displayName = await checkProfileDisplayName(data.user.id);
-
-        if (!displayName) {
-          navigate("/setup-profile");
-        } else {
+        const route = await resolvePostLoginRoute(data.user);
+        if (route === "/home") {
           toast({
             title: "Login successful",
             description: "Welcome back to HidroAlly!",
           });
-          navigate("/home");
         }
+        navigate(route, { replace: true });
       }
     } catch (error) {
       toast({

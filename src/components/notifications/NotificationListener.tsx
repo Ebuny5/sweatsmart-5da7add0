@@ -7,6 +7,7 @@ import { climateAlertService } from '@/services/ClimateAlertService';
 import { audioAlertPlayer, type AlertKind } from '@/utils/audioAlertPlayer';
 import { attachNativeTapHandler } from '@/services/NativeNotificationBridge';
 import { useAuth } from '@/contexts/AuthContext';
+import { webPushService } from '@/services/WebPushService';
 
 type InAppNotificationDetail = {
   title: string;
@@ -30,6 +31,16 @@ const NotificationListener = () => {
     void notificationManager.requestNativePermissionsIfAvailable();
     void attachNativeTapHandler((url) => navigate(url));
 
+    // Keep the background push subscription linked to this user + location,
+    // so closed-app climate alerts work without any setup screen.
+    const syncPush = () => {
+      webPushService.syncSubscriptionContext().catch((e) => console.warn('Push context sync failed:', e));
+    };
+    syncPush();
+    const syncInterval = setInterval(syncPush, 30 * 60 * 1000);
+    const onVisible = () => { if (document.visibilityState === 'visible') syncPush(); };
+    document.addEventListener('visibilitychange', onVisible);
+
     // Listen for Service Worker messages (Background PUSH wake-ups)
     const handleSWMessage = (event: MessageEvent) => {
       if (event.data && event.data.type === 'PLAY_NOTIFICATION_SOUND') {
@@ -51,6 +62,8 @@ const NotificationListener = () => {
     return () => {
       loggingReminderService.cleanup();
       climateAlertService.cleanup();
+      clearInterval(syncInterval);
+      document.removeEventListener('visibilitychange', onVisible);
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.removeEventListener('message', handleSWMessage);
       }

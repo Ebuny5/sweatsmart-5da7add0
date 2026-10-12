@@ -217,7 +217,7 @@ const CareGapCard = ({ onWiden, hideWiden }: { onWiden: () => void, hideWiden?: 
       <span className="text-xs font-bold text-red-400">Care Gap Detected</span>
     </div>
     <p className="text-xs text-white/55 leading-relaxed mb-3">
-      No certified hyperhidrosis specialists are registered near you yet. This is a known gap across many African cities — HidroAlly is actively working to map specialist availability across the continent.
+      No certified hyperhidrosis specialists are registered in this zone yet. Widen your search using the tabs above, or consult a telehealth provider below.
     </p>
     <div className="flex gap-2">
       {!hideWiden && <button onClick={onWiden}
@@ -257,7 +257,7 @@ const DoctorCard = ({ doctor, isActive, onTap }: { doctor: Doctor; isActive: boo
           <TierBadge tier={doctor.tier} isIhs={doctor.isIhsVerified} isNds={doctor.isNdsMember} specialistConfirmed={doctor.specialistConfirmed} />
         </div>
         {doctor.clinicName && <p className="text-[11px] text-teal-400/70 truncate mt-0.5">{doctor.clinicName}</p>}
-        <p className="text-[11px] text-white/45 truncate mt-0.5">{doctor.isTelehealth ? 'Virtual — Africa & Global' : doctor.address}</p>
+        <p className="text-[11px] text-white/45 truncate mt-0.5">{doctor.isTelehealth ? 'Virtual — Remote Provider' : doctor.address}</p>
 
         {unconfirmed && (
           <p className="text-[11px] text-amber-300/85 mt-1.5 leading-snug">
@@ -834,7 +834,7 @@ const SpecialistRadar = () => {
                 <div className="rounded-xl p-3 mb-3"
                   style={{ background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.2)' }}>
                   <p className="text-xs text-violet-300/80 leading-relaxed">
-                    No physical specialists nearby — but these virtual experts can review your Warrior Report today. Telehealth is often the fastest path to HH diagnosis in Africa.
+                    No physical specialists nearby — but these virtual experts can review your Warrior Report today. Telehealth is often the fastest path to HH diagnosis.
                   </p>
                 </div>
               )}

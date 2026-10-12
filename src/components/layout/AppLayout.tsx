@@ -41,7 +41,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, isAuthenticated }) => {
         <Header isAuthenticated={authenticated} />
         <div className="flex flex-1 w-full max-w-[100vw] overflow-x-hidden safe-area-left safe-area-right">
           {authenticated && !isMobile && <Sidebar />}
-          <main className={`flex-1 w-full max-w-[100vw] overflow-x-hidden ${isMobile ? "px-0 py-0 pb-20" : "py-6"}`}>
+          <main className={`flex-1 w-full max-w-[100vw] overflow-x-hidden ${isMobile ? "px-0 py-0 pb-20" : "container py-6"}`}>
             {children}
           </main>
         </div>

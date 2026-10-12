@@ -303,12 +303,12 @@ const WarriorLaunchpad = () => {
     if (totalEpisodes === 0) {
       const index = Math.floor(Date.now() / (4 * 60 * 60 * 1000)) % FIRST_TIMER_ONBOARDING_MESSAGES.length;
       const msg = FIRST_TIMER_ONBOARDING_MESSAGES[index];
-      return { icon: msg.icon, text: msg.text.replace("{firstName || 'Warrior'}", profile?.first_name || 'Warrior') };
+      return { icon: msg.icon, text: msg.text.replace("{firstName || 'Warrior'}", (profile as any)?.first_name || 'Warrior') };
     }
     if (sweatRisk === "extreme") return { icon: "⚠️", text: "Extreme sweat risk today — consider rescheduling outdoor plans" };
     if (sweatRisk === "high") return { icon: "🌡️", text: "High humidity today — carry cooling wipes and stay hydrated" };
     return { icon: "💡", text: isMissedCheckIn ? "Check out your insights & recommendations today" : rawWarriorInsight.message };
-  }, [sweatRisk, isMissedCheckIn, rawWarriorInsight.message, episodes.length, profile?.first_name]);
+  }, [sweatRisk, isMissedCheckIn, rawWarriorInsight.message, episodes.length, (profile as any)?.first_name]);
 
   const tip = COMMUNITY_TIPS[tipIndex];
 
@@ -366,10 +366,12 @@ const WarriorLaunchpad = () => {
 
       {/* ── HERO GREETING ───────────────────────────────────────────── */}
       <div className="px-6 pt-8 pb-16 rounded-b-[2.5rem] shadow-lg shadow-purple-200" style={{ backgroundColor: "#7c3aed" }}>
-        <h1 className="text-white text-2xl font-black tracking-tight leading-tight">
-          {greeting.text}, {firstName}!
-        </h1>
-        <p className="text-purple-100 text-xs mt-1">{today}</p>
+        <div className="flex justify-between items-baseline gap-2">
+          <h1 className="text-white text-lg sm:text-2xl font-bold tracking-tight leading-tight">
+            {greeting.text}, {firstName}!
+          </h1>
+          <p className="text-purple-100/85 text-xs sm:text-sm font-normal shrink-0 whitespace-nowrap">{today}</p>
+        </div>
 
         {/* ── STATS CARDS ──────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-2 mt-5">
@@ -389,7 +391,7 @@ const WarriorLaunchpad = () => {
 
           {/* Card 3: EDA (Skin Conductance) */}
           <div className="bg-orange-50 rounded-2xl p-3 flex flex-col items-center justify-center gap-1 shadow-sm border border-orange-100">
-            <img src="/eda-icon.webp" alt="EDA Icon" className="h-8 w-8 mb-0.5 animate-pulse object-contain" />
+            <img src="/eda-icon.webp" alt="EDA Icon" className="h-10 w-10 mb-0.5 animate-pulse object-contain" />
             <span className="text-2xl font-black text-orange-700 leading-none">
               {edaData ? edaData.value.toFixed(1) : "—"}
             </span>
@@ -443,7 +445,7 @@ const WarriorLaunchpad = () => {
           {/* Primary — full width */}
           <button
             onClick={() => navigate("/log-episode")}
-            className="w-full mb-3 bg-gradient-to-r from-violet-500 to-purple-600 rounded-2xl p-5 flex items-center gap-4 shadow-lg shadow-violet-200 hover:shadow-xl hover:scale-[1.01] transition-all text-left min-h-[76px]"
+            className="w-full mb-3 bg-gradient-to-r from-violet-500 to-purple-600 rounded-2xl p-4 flex items-center gap-4 shadow-lg shadow-violet-200 hover:shadow-xl hover:scale-[1.01] transition-all text-left"
           >
             <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-3xl shadow-inner shrink-0">
               💧
@@ -461,7 +463,7 @@ const WarriorLaunchpad = () => {
           <div className="grid grid-cols-2 gap-3 mb-3">
             <button
               onClick={() => setQuickLogOpen(true)}
-              className="bg-gradient-to-br from-cyan-400 to-teal-500 rounded-2xl p-4 flex flex-col items-start gap-2 shadow-md shadow-teal-200 hover:shadow-lg hover:scale-[1.02] transition-all text-left min-h-[100px]"
+              className="bg-gradient-to-br from-cyan-400 to-teal-500 rounded-2xl p-3 flex flex-col items-start gap-2 shadow-md shadow-teal-200 hover:shadow-lg hover:scale-[1.02] transition-all text-left"
             >
               <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl shadow-inner">
                 ⚡
@@ -480,7 +482,7 @@ const WarriorLaunchpad = () => {
               <button
                 key={path}
                 onClick={() => navigate(path)}
-                className={`bg-gradient-to-br ${gradient} rounded-2xl p-4 flex flex-col items-start gap-2 shadow-md ${shadow} hover:shadow-lg hover:scale-[1.02] transition-all text-left min-h-[100px]`}
+                className={`bg-gradient-to-br ${gradient} rounded-2xl p-3 flex flex-col items-start gap-2 shadow-md ${shadow} hover:shadow-lg hover:scale-[1.02] transition-all text-left`}
               >
                 <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl shadow-inner">
                   {emoji}
@@ -540,7 +542,7 @@ const WarriorLaunchpad = () => {
 
         {/* ── QUICK LOG MODAL ─────────────────────────────────────────── */}
         <Dialog open={quickLogOpen} onOpenChange={setQuickLogOpen}>
-          <DialogContent className="max-w-[90vw] sm:max-w-md rounded-3xl p-6 max-h-[85vh] overflow-y-auto flex flex-col">
+          <DialogContent className="w-full max-w-lg rounded-3xl p-6 max-h-[85vh] overflow-y-auto flex flex-col">
             <DialogHeader className="shrink-0">
               <DialogTitle className="text-xl font-black text-gray-800">Quick HDSS Log</DialogTitle>
               <DialogDescription className="text-sm text-gray-500">
@@ -583,7 +585,7 @@ const WarriorLaunchpad = () => {
 
         {/* ── WARRIOR BADGE (EVENT TRIGGERED) ────────────────────────── */}
         <Dialog open={showWarriorModal} onOpenChange={setShowWarriorModal}>
-          <DialogContent className="max-w-[90vw] sm:max-w-md rounded-3xl p-6 flex flex-col gap-4">
+          <DialogContent className="w-full max-w-lg rounded-3xl p-6 flex flex-col gap-4">
             <DialogHeader className="text-center">
               <DialogTitle className="text-xl font-black text-gray-800 text-center">
                 Congratulations! You've logged your first episode 🎉

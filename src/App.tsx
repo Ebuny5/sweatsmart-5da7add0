@@ -14,7 +14,6 @@ import Index from "./pages/Index";
 import NewIndex from "./pages/NewIndex";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Auth from "./pages/Auth";
 import VerifyEmail from "./pages/VerifyEmail";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -66,6 +65,7 @@ const queryClient = new QueryClient({
 
 import MandatoryOnboarding from "./pages/MandatoryOnboarding";
 import { useProfile } from "@/hooks/useProfile";
+import { isOnboardedCached } from "@/utils/onboardingStatus";
 
 // Protected Route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -88,8 +88,19 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // Enforce mandatory onboarding
-  if (profile && !profile.is_profile_complete && location.pathname !== '/mandatory-onboarding' && location.pathname !== '/setup-profile') {
+  // Returning users never see setup again. Only a verified, loaded profile
+  // without clinical intake is sent to onboarding (network errors fail to home).
+  const setupPaths = ['/setup-profile', '/mandatory-onboarding', '/onboarding'];
+  const onboarded =
+    isOnboardedCached(user.id) ||
+    !!profile?.is_profile_complete ||
+    !!(profile?.age && profile?.diagnosis_type && profile?.country);
+
+  if (onboarded && location.pathname === '/mandatory-onboarding') {
+    return <Navigate to="/home" replace />;
+  }
+
+  if (profile && !onboarded && !setupPaths.includes(location.pathname)) {
     return <Navigate to="/mandatory-onboarding" replace />;
   }
 
@@ -114,7 +125,6 @@ const AppRoutes = () => {
   <Routes location={location} key={location.pathname}>
     <Route path="/" element={<Index />} />
     <Route path="/old-blue" element={<PublicRoute><NewIndex /></PublicRoute>} />
-    <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
     <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
     <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
     <Route path="/verify-email" element={<PublicRoute><VerifyEmail /></PublicRoute>} />
@@ -128,100 +138,100 @@ const AppRoutes = () => {
     } />
     <Route path="/auth/callback" element={<AuthCallback />} />
     <Route path="/onboarding" element={
-      <ProtectedRoute>
+
         <Onboarding />
-      </ProtectedRoute>
+
     } />
     <Route path="/setup-profile" element={
-      <ProtectedRoute>
+
         <SetupProfile />
-      </ProtectedRoute>
+
     } />
     <Route path="/mandatory-onboarding" element={
-      <ProtectedRoute>
+
         <MandatoryOnboarding />
-      </ProtectedRoute>
+
     } />
     <Route path="/home" element={
-      <ProtectedRoute>
+
         <Home />
-      </ProtectedRoute>
+
     } />
     <Route path="/dashboard" element={
-      <ProtectedRoute>
+
         <Dashboard />
-      </ProtectedRoute>
+
     } />
     <Route path="/log-episode" element={
-      <ProtectedRoute>
+
         <LogEpisode />
-      </ProtectedRoute>
+
     } />
     <Route path="/history" element={
-      <ProtectedRoute>
+
         <History />
-      </ProtectedRoute>
+
     } />
     <Route path="/episode/:id" element={
-      <ProtectedRoute>
+
         <EpisodeDetail />
-      </ProtectedRoute>
+
     } />
     <Route path="/profile" element={
-      <ProtectedRoute>
+
         <Profile />
-      </ProtectedRoute>
+
     } />
     <Route path="/insights" element={
-      <ProtectedRoute>
+
         <Insights />
-      </ProtectedRoute>
+
     } />
     <Route path="/community" element={
-      <ProtectedRoute>
+
         <Community />
-      </ProtectedRoute>
+
     } />
     <Route path="/settings" element={
-      <ProtectedRoute>
+
         <Settings />
-      </ProtectedRoute>
+
     } />
     <Route path="/achievements" element={
-      <ProtectedRoute>
+
         <Achievements />
-      </ProtectedRoute>
+
     } />
     <Route path="/palm-scanner" element={
-      <ProtectedRoute>
+
         <PalmScanner />
-      </ProtectedRoute>
+
     } />
     <Route path="/climate" element={
-      <ProtectedRoute>
+
         <ClimateMonitor />
-      </ProtectedRoute>
+
     } />
     <Route path="/climate/history" element={
-      <ProtectedRoute>
+
         <ClimateHistory />
-      </ProtectedRoute>
+
     } />
     <Route path="/climate/settings" element={<Navigate to="/settings" replace />} />
     <Route path="/hidro-ally" element={
-      <ProtectedRoute>
+
         <HidroAlly />
-      </ProtectedRoute>
+
     } />
     <Route path="/knowledge-admin" element={
-      <ProtectedRoute>
+
         <KnowledgeBaseAdmin />
-      </ProtectedRoute>
+
     } />
     <Route path="/specialist-radar" element={
-      <ProtectedRoute>
+
         <SpecialistRadar />
-      </ProtectedRoute>
+
     } />
     <Route path="/contact" element={<Contact />} />
     <Route path="/feedback" element={<Feedback />} />

@@ -290,7 +290,7 @@ function drawBadge(
   ctx.font = "13px 'Georgia', serif";
   ctx.fillStyle = `${v.accent1}99`;
   ctx.letterSpacing = "3px";
-  ctx.fillText("SWEATSMART · NEVER SWEAT ALONE", shieldX + 2, shieldTop + 510);
+  ctx.fillText("HIDROALLY · NEVER SWEAT ALONE", shieldX + 2, shieldTop + 510);
   ctx.restore();
 
   // ── Bottom three dots ─────────────────────────────────────────────────────

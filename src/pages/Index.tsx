@@ -1021,6 +1021,22 @@ const HidroAllyLanding = () => {
       text-align: center;
     }
 
+    .footer-company-link {
+      color: #b07cf0;
+      font-weight: 600;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      transition: color 0.2s ease, opacity 0.2s ease;
+    }
+
+    .footer-company-link:hover,
+    .footer-company-link:focus-visible {
+      color: #d5b3ff;
+      opacity: 0.98;
+    }
+
+
+
     .footer-links {
       display: flex;
       gap: 28px;
@@ -1720,7 +1736,19 @@ const HidroAllyLanding = () => {
             </div>
           </div>
         </div>
-        <p className="footer-copy">© {new Date().getFullYear()} HidroAlly by Giftovate Therapeutics Ltd. All rights reserved.</p>
+        <p className="footer-copy">
+          © {new Date().getFullYear()} HidroAlly by{' '}
+          <a
+            href="https://giftovate.world"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="footer-company-link"
+          >
+            Giftovate Therapeutics Ltd.
+          </a>{' '}
+          All rights reserved.
+        </p>
+
       </footer>
     </div>
   );

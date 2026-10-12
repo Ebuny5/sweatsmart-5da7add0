@@ -22,7 +22,7 @@ const TIMEFRAME_CONFIG: Record<Timeframe, {
   maxPoints: number;
   tooltipLabel: string;
 }> = {
-  D: { label: "Day",   bucketFn: (d) => format(d, "MMM d"),                 maxPoints: 14, tooltipLabel: "Day"   },
+  D: { label: "Day",   bucketFn: (d) => format(d, "MMM d"),                  maxPoints: 14, tooltipLabel: "Day"   },
   W: { label: "Week",  bucketFn: (d) => format(startOfWeek(d), "MMM d"),    maxPoints: 12, tooltipLabel: "Week"  },
   M: { label: "Month", bucketFn: (d) => format(startOfMonth(d), "MMM ''yy"), maxPoints: 12, tooltipLabel: "Month" },
   Y: { label: "Year",  bucketFn: (d) => format(d, "yyyy"),                  maxPoints: 6,  tooltipLabel: "Year"  },
@@ -68,7 +68,6 @@ const DualTooltip = ({ active, payload, label, timeframe }: any) => {
   );
 };
 
-
 const generateInsight = (
   allEpisodesRaw: ProcessedEpisode[],
   tf: Timeframe,
@@ -82,7 +81,6 @@ const generateInsight = (
   const now   = new Date();
   const total = allEpisodes.length;
 
-  // ── DAY view ──────────────────────────────────────────────────────────────
   if (tf === "D") {
     const todayStr     = format(now, "yyyy-MM-dd");
     const yesterdayStr = format(new Date(now.getTime() - 86400000), "yyyy-MM-dd");
@@ -122,7 +120,6 @@ const generateInsight = (
     return `Same number of episodes today and yesterday (${todayCount} each). Severity ${sevDiff < -0.2 ? `improved by ${Math.abs(sevDiff).toFixed(1)} HDSS` : sevDiff > 0.2 ? `rose by ${sevDiff.toFixed(1)} HDSS` : "is stable"} — ${total} total tracked.`;
   }
 
-  // ── WEEK view ─────────────────────────────────────────────────────────────
   if (tf === "W") {
     const weekStart     = startOfWeek(now);
     const prevWeekStart = new Date(weekStart.getTime() - 7 * 86400000);
@@ -159,7 +156,6 @@ const generateInsight = (
     return `Same episode count this week as last (${thisCount}). Severity ${sevDiff < -0.2 ? `improved ${Math.abs(sevDiff).toFixed(1)} HDSS` : sevDiff > 0.2 ? `rose ${sevDiff.toFixed(1)} HDSS` : "stable"} — ${total} total tracked.`;
   }
 
-  // ── MONTH / YEAR view ─────────────────────────────────────────────────────
   if (chartData.length >= 2) {
     const last     = chartData[chartData.length - 1];
     const prev     = chartData[chartData.length - 2];
@@ -210,14 +206,11 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ allEpisodes = [], t
       .map(([date, d]) => ({
         date,
         count: d.count,
-        // null (not 0) so the green dry-day marker only renders on days that
-        // actually have a dry-day log
         dryCount: d.dryCount > 0 ? d.dryCount : null,
         severity: d.severities.length
           ? parseFloat((d.severities.reduce((a, b) => a + b, 0) / d.severities.length).toFixed(2))
           : null,
       }))
-
       .sort((a, b) => { try { return new Date(a.date).getTime() - new Date(b.date).getTime(); } catch { return 0; } })
       .slice(-cfg.maxPoints);
   }, [allEpisodes, timeframe]);
@@ -227,6 +220,10 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ allEpisodes = [], t
     [allEpisodes, timeframe, chartData, trackingConsistency]
   );
   const maxCount = Math.max(...chartData.map(d => d.count), 1);
+
+  // Calibrated left-axis ceiling: ensures highest bar reaches ~75% height (near HDSS 3)
+  // and never falsely hits the top HDSS 4 line.
+  const leftAxisCeiling = Math.max(Math.ceil(maxCount * 1.33), 4);
 
   if (!allEpisodes.length) {
     return (
@@ -238,7 +235,7 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ allEpisodes = [], t
   }
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-3.5 space-y-2">
 
       {/* D / W / M / Y picker */}
       <div className="flex items-center bg-gray-100 rounded-2xl p-1 gap-1">
@@ -246,9 +243,9 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ allEpisodes = [], t
           <button
             key={tf}
             onClick={() => setTimeframe(tf)}
-            className={`flex-1 py-2.5 rounded-xl transition-all font-black text-xs ${
+            className={`flex-1 py-1.5 rounded-xl transition-all font-black text-xs ${
               timeframe === tf
-                ? "bg-gradient-to-r from-violet-500 to-pink-500 text-white shadow-lg shadow-purple-200 scale-105"
+                ? "bg-gradient-to-r from-violet-500 to-pink-500 text-white shadow-md shadow-purple-200 scale-105"
                 : "text-gray-500 hover:text-gray-700"
             }`}
           >
@@ -258,31 +255,41 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ allEpisodes = [], t
         ))}
       </div>
 
-      {/* Legend */}
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-sm bg-violet-400" />
-          <span className="text-[11px] text-gray-500 font-medium">Episode count</span>
+      {/* Symmetrical Centered Legend */}
+      <div className="grid grid-cols-3 gap-1 py-0.5 items-start text-center">
+        {/* Episode count */}
+        <div className="flex items-center justify-center gap-1.5 pt-0.5">
+          <div className="w-2.5 h-2.5 rounded-sm bg-violet-400 shrink-0" />
+          <span className="text-[11px] text-gray-600 font-medium">Episode count</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-emerald-500" />
-          <span className="text-[11px] text-gray-500 font-medium">Dry days</span>
+
+        {/* Dry days */}
+        <div className="flex items-center justify-center gap-1.5 pt-0.5">
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
+          <span className="text-[11px] text-gray-600 font-medium">Dry days</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-4 h-0.5 bg-pink-500 rounded-full" />
-          <span className="text-[11px] text-gray-500 font-medium">HDSS severity (1–4)</span>
+
+        {/* HDSS severity with (1–4) centered directly under the words */}
+        <div className="flex flex-col items-center justify-center">
+          <div className="flex items-center gap-1.5 justify-center">
+            <div className="w-3.5 h-0.5 bg-pink-500 rounded-full shrink-0" />
+            <span className="text-[11px] text-gray-600 font-medium leading-none">HDSS severity</span>
+          </div>
+          <span className="text-[10px] text-gray-400 font-medium mt-1 leading-none text-center pl-4">
+            (1–4)
+          </span>
         </div>
       </div>
 
-      {/* Combo chart */}
-      <div className="h-[380px] w-full">
+      {/* Combo chart: Expanded height (235px) for wider spacing between HDSS 1–4 & visible left count axis */}
+      <div className="h-[235px] w-full mt-0.5 mb-0">
         {chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={{ top: 16, right: 0, left: -10, bottom: 40 }}>
+            <ComposedChart data={chartData} margin={{ top: 10, right: 2, left: -4, bottom: 0 }}>
               <defs>
                 <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.9} />
-                  <stop offset="100%" stopColor="#c4b5fd" stopOpacity={0.5} />
+                  <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.95} />
+                  <stop offset="100%" stopColor="#c4b5fd" stopOpacity={0.6} />
                 </linearGradient>
                 <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#ec4899" stopOpacity={0.2} />
@@ -290,55 +297,91 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ allEpisodes = [], t
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#ede9fe" strokeOpacity={0.7} />
-              <XAxis dataKey="date" fontSize={9} tickLine={false} axisLine={false}
-                tick={{ fill: "#9ca3af", fontWeight: 600 }} angle={-45} textAnchor="end" height={60} interval="preserveStartEnd" />
-              <YAxis yAxisId="left" orientation="left" fontSize={9} tickLine={false} axisLine={false} width={25}
-                tick={{ fill: "#a78bfa" }} allowDecimals={false} domain={[0, Math.ceil(maxCount * 1.3)]} />
-              <YAxis yAxisId="right" orientation="right" fontSize={10} tickLine={false} axisLine={false} width={25}
-                domain={[1, 4]} ticks={[1, 2, 3, 4]} tick={{ fill: "#f472b6", fontWeight: 600 }} />
+              <XAxis
+                dataKey="date"
+                fontSize={9}
+                tickLine={false}
+                axisLine={false}
+                tick={{ fill: "#9ca3af", fontWeight: 600 }}
+                angle={-35}
+                textAnchor="end"
+                height={26}
+                interval="preserveStartEnd"
+              />
+              {/* Restored Left YAxis numbers for Episode Count */}
+              <YAxis
+                yAxisId="left"
+                orientation="left"
+                fontSize={9}
+                tickLine={false}
+                axisLine={false}
+                width={24}
+                tick={{ fill: "#8b5cf6", fontWeight: 600 }}
+                allowDecimals={false}
+                domain={[0, leftAxisCeiling]}
+              />
+              {/* Right YAxis for HDSS 1–4 */}
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                fontSize={10}
+                tickLine={false}
+                axisLine={false}
+                width={22}
+                domain={[1, 4]}
+                ticks={[1, 2, 3, 4]}
+                tick={{ fill: "#ec4899", fontWeight: 700 }}
+              />
               <Tooltip content={<DualTooltip timeframe={timeframe} />} />
-              <Bar yAxisId="left" dataKey="count" fill="url(#barGrad)" radius={[6, 6, 0, 0]} maxBarSize={28} name="Episodes" />
-              <Scatter yAxisId="left" dataKey="dryCount" fill="#10b981" shape="circle" r={8} name="Dry Days" isAnimationActive={false} />
+              <Bar yAxisId="left" dataKey="count" fill="url(#barGrad)" radius={[6, 6, 0, 0]} maxBarSize={30} name="Episodes" />
+              <Scatter yAxisId="left" dataKey="dryCount" fill="#10b981" shape="circle" r={7} name="Dry Days" isAnimationActive={false} />
               <Area yAxisId="right" type="monotone" dataKey="severity" stroke="none" fill="url(#areaGrad)" connectNulls />
-              <Line yAxisId="right" type="monotone" dataKey="severity" stroke="#ec4899" strokeWidth={2.5}
-                dot={{ fill: "#ec4899", strokeWidth: 2, r: 4, stroke: "#fff" }}
-                activeDot={{ r: 6, fill: "#f43f5e", stroke: "#fff", strokeWidth: 2 }}
-                connectNulls name="HDSS Severity" />
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="severity"
+                stroke="#ec4899"
+                strokeWidth={2.5}
+                dot={{ fill: "#ec4899", strokeWidth: 1.5, r: 3.5, stroke: "#fff" }}
+                activeDot={{ r: 5.5, fill: "#f43f5e", stroke: "#fff", strokeWidth: 2 }}
+                connectNulls
+                name="HDSS Severity"
+              />
             </ComposedChart>
           </ResponsiveContainer>
         ) : (
-          <div className="flex flex-col items-center justify-center h-full gap-3">
-            <span className="text-3xl opacity-25">📊</span>
+          <div className="flex flex-col items-center justify-center h-full gap-2">
+            <span className="text-2xl opacity-25">📊</span>
             <p className="text-xs text-gray-400 font-medium">No data in this range — try a wider timeframe</p>
           </div>
         )}
       </div>
 
-      {/* HDSS reference */}
-      <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
+      {/* HDSS reference pills */}
+      <div className="flex gap-1.5 overflow-x-auto scrollbar-hide py-0.5">
         {[
           { level: 1, label: "Never noticeable", cls: "bg-sky-50 text-sky-700 border-sky-200" },
           { level: 2, label: "Tolerable",         cls: "bg-blue-50 text-blue-700 border-blue-200" },
           { level: 3, label: "Barely tolerable",  cls: "bg-amber-50 text-amber-700 border-amber-200" },
           { level: 4, label: "Intolerable",       cls: "bg-red-50 text-red-700 border-red-200" },
         ].map(h => (
-          <div key={h.level} className={`flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] font-semibold shrink-0 ${h.cls}`}>
+          <div key={h.level} className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-semibold shrink-0 ${h.cls}`}>
             <span className="font-black">HDSS {h.level}</span>
             <span className="opacity-60">— {h.label}</span>
           </div>
         ))}
       </div>
 
-      {/* Smart Summary card */}
-      <div className="rounded-2xl bg-[#f5f4f7] border border-purple-100 p-4 flex items-start gap-3">
-        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-sky-400 to-blue-500 flex items-center justify-center shrink-0 shadow-sm">
-          <Sparkles className="h-4 w-4 text-white" />
+      {/* Compact Smart Summary card */}
+      <div className="rounded-xl bg-[#f5f4f7] border border-purple-100 py-2 px-2.5 flex items-start gap-2">
+        <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-sky-400 to-blue-500 flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+          <Sparkles className="h-3 w-3 text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-black text-sky-600 uppercase tracking-widest mb-1">
+          <p className="text-[8.5px] font-black text-sky-600 uppercase tracking-widest mb-0.5">
             Smart Summary · {TIMEFRAME_CONFIG[timeframe].label} View
           </p>
-          <p className="text-xs text-gray-700 leading-relaxed">{aiInsight}</p>
+          <p className="text-[11px] text-gray-700 leading-tight">{aiInsight}</p>
         </div>
       </div>
 

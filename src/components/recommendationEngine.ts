@@ -26,12 +26,10 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 export interface TriggerInput {
-  type: string;
-  value: string;
-  label: string;
+  type?: string;
+  value?: string;
+  label?: string;
 }
 
 export interface ClimateInput {
@@ -41,9 +39,9 @@ export interface ClimateInput {
 }
 
 export interface EpisodeInput {
-  severity: number;
+  severity: number; // HDSS 1 to 4
   bodyAreas: string[];
-  triggers: TriggerInput[];
+  triggers: Array<TriggerInput | string>;
   notes?: string;
   climate?: ClimateInput;
   episodeCount?: number; // total episodes logged, used for variation + longitudinal context
@@ -55,7 +53,6 @@ export interface EpisodeInput {
 export interface EpisodeInsights {
   clinicalAnalysis: string;
   immediateRelief: string[];
-  treatmentOptions: string[];
   lifestyleModifications: string[];
   medicalAttention: string;
   isDryDay?: boolean;
@@ -111,132 +108,94 @@ interface NotesIntelligence {
 function parseNotes(notes?: string): NotesIntelligence {
   const n = (notes || "").toLowerCase();
 
-  return {
-    wasCooking:          /cook|peel|fry|boil|bake|stove|oven|kitchen|pot |fire|yam|plantain|rice|soup|prep|prepare food/.test(n),
-    wasExercising:       /gym|run|jog|sport|workout|exercise|walk|training|field|football|play|swim/.test(n),
-    wasAtWork:           /office|meeting|presentation|work|boss|colleague|interview|deadline|desk|client|zoom|call/.test(n),
-    wasInPublic:         /party|church|event|wedding|ceremony|restaurant|gathering|crowd|market|mall|shop|supermarket|outside with people/.test(n),
-    wasSleeping:         /sleep|woke|midnight|bed|night|nap|rest/.test(n),
-    wasOutdoors:         /outside|sun|outdoor|street|road|open air|garden|field|market|heat outside/.test(n),
-    wasEating:           /eat|food|meal|lunch|dinner|breakfast|drink|restaurant|café|coffee|tea|snack/.test(n),
-
-    poorVentilation:     /no ventilat|no air|no fan|no window|stuffy|airless|closed room|no ac|suffocating|hot room|not ventilated|poorly ventilated/.test(n),
-    wasInHeat:           /hot|heat|warm|scorching|blazing|humid|sweaty environment/.test(n),
-    wasWearingHeavyClothing: /tight|thick|uniform|suit|heavy cloth|long sleeve|layered|polyester|synthetic|jeans/.test(n),
-
-    mentionsTightness:   /tight|tighten|pressure in|pressure on|constrict|sausage|ring tight|can.t bend/.test(n),
-    mentionsSwelling:    /swell|puffy|puff|bloat|bigger|enlarg|swell up|swollen/.test(n),
-    mentionsTingling:    /tingle|tingling|pins and needles|prickling|electric|zap/.test(n),
-    mentionsNumbness:    /numb|numbness|can.t feel|lost feeling|no sensation|dead/.test(n),
-    mentionsSlipping:    /slip|slippery|fell|fall|wet floor|tile|bathroom/.test(n),
-    mentionsPain:        /pain|hurt|ache|sore|burning|throb/.test(n),
-    mentionsSkinWrinkling: /wrinkl|pruny|prune|raisin|skin wrinkl/.test(n),
-    mentionsDizziness:   /dizzy|dizziness|lightheaded|faint|blackout|pass out|syncope/.test(n),
-    mentionsNightSweats: /night sweat|woke up sweating|soaked|drenched|bedsheet|pillow wet/.test(n),
-
-    expressesEmbarrassment: /embarrass|ashamed|humiliat|mortified|shame|awkward/.test(n),
-    expressesFrustration:   /frustrat|fed up|tired of|sick of|can.t take|had enough|awful|horrible/.test(n),
-    expressesAnxiety:       /anxious|scared|worried|dread|panic|nervous about/.test(n),
-    expressesHope:          /hope|better|improv|progress|working|helped/.test(n),
-
-    raw: notes || "",
-  };
+function pick<T>(arr: T[], seed: number): T {
+  if (arr.length === 0) return "" as any;
+  if (arr.length === 1) return arr[0];
+  return arr[Math.abs(seed) % arr.length];
 }
 
-// ─── Body area catalogues ─────────────────────────────────────────────────────
+// ─── Anatomical Normalization (Strict Isolation) ──────────────────────────────
 
-const PALMOPLANTAR = new Set([
-  "palms", "hands", "hand", "palm", "fingers", "fingertips",
-  "feet & soles", "feet", "soles", "foot", "sole", "toes",
-]);
-
-const AXILLARY = new Set([
-  "armpits", "armpit", "underarms", "underarm", "axillae", "axilla",
-]);
-
-const CRANIOFACIAL = new Set([
-  "face & scalp", "face", "scalp only", "scalp", "forehead",
-  "head", "upper lip", "chin", "cheeks", "nose", "neck", "hairline",
-]);
-
-const TRUNCAL = new Set([
-  "back", "chest", "groin", "trunk", "abdomen",
-  "stomach", "buttocks", "thighs", "torso", "whole body", "entire body",
-]);
-
-type Pattern =
-  | "palmoplantar" | "axillary" | "craniofacial"
-  | "focal_mixed" | "multi_focal"
-  | "generalized" | "possible_secondary" | "uncertain";
-
-interface PatternResult {
-  pattern: Pattern;
-  hasPalmoplantar: boolean;
-  hasAxillary: boolean;
-  hasCraniofacial: boolean;
-  hasTruncal: boolean;
-  isPossibleSecondary: boolean;
-  // grouped originals for targeted advice
-  palmList: string[];
-  axList: string[];
-  facList: string[];
-  truncList: string[];
-  allAreas: string[];
-  // derived booleans
-  hasHandAreas: boolean;
-  hasFootAreas: boolean;
-  hasFaceAreas: boolean;
+interface AnatomicalProfile {
+  rawAreas: string[];
+  cleanDisplayList: string;
+  hasHead: boolean;
+  hasFace: boolean;
+  hasScalp: boolean;
+  isCraniofacial: boolean; // head, face, scalp
+  isAxillary: boolean;     // underarms, armpits
+  isPalmar: boolean;       // hands, palms
+  isPlantar: boolean;      // feet, soles
+  isTruncal: boolean;      // back, chest, abdomen
+  isGroin: boolean;
+  isGeneralized: boolean;
+  isMultiSite: boolean;
 }
 
-function classify(bodyAreas: string[]): PatternResult {
-  const lc = bodyAreas.map(a => a.toLowerCase().trim());
+function normalizeAnatomy(bodyAreas: string[]): AnatomicalProfile {
+  const rawList = (bodyAreas || []).map(a => String(a).trim().toLowerCase().replace(/_/g, " "));
 
-  const palmList  = lc.filter(a => PALMOPLANTAR.has(a));
-  const axList    = lc.filter(a => AXILLARY.has(a));
-  const facList   = lc.filter(a => CRANIOFACIAL.has(a));
-  const truncList = lc.filter(a => TRUNCAL.has(a));
+  const formattedParts: string[] = [];
+  let hasHead = false;
+  let hasFace = false;
+  let hasScalp = false;
+  let isAxillary = false;
+  let isPalmar = false;
+  let isPlantar = false;
+  let isTruncal = false;
+  let isGroin = false;
+  let isGeneralized = false;
 
-  const hasPalmoplantar = palmList.length > 0;
-  const hasAxillary     = axList.length > 0;
-  const hasCraniofacial = facList.length > 0;
-  const hasTruncal      = truncList.length > 0;
+  for (const raw of rawList) {
+    if (raw.includes("entire") || raw.includes("whole") || raw.includes("generalized")) {
+      formattedParts.push("entire body");
+      isGeneralized = true;
+    } else if (raw.includes("head")) {
+      formattedParts.push("head");
+      hasHead = true;
+    } else if (raw.includes("face") || raw.includes("facial")) {
+      formattedParts.push("face");
+      hasFace = true;
+    } else if (raw.includes("scalp")) {
+      formattedParts.push("scalp");
+      hasScalp = true;
+    } else if (raw.includes("armpit") || raw.includes("underarm") || raw.includes("axill")) {
+      formattedParts.push("underarms");
+      isAxillary = true;
+    } else if (raw.includes("palm") || raw.includes("hand")) {
+      formattedParts.push("palms");
+      isPalmar = true;
+    } else if (raw.includes("feet") || raw.includes("foot") || raw.includes("sole")) {
+      formattedParts.push("feet");
+      isPlantar = true;
+    } else if (raw.includes("back")) {
+      formattedParts.push("back");
+      isTruncal = true;
+    } else if (raw.includes("chest")) {
+      formattedParts.push("chest");
+      isTruncal = true;
+    } else if (raw.includes("groin")) {
+      formattedParts.push("groin");
+      isGroin = true;
+    } else {
+      formattedParts.push(raw);
+    }
+  }
 
-  const focalCount = (hasPalmoplantar?1:0)+(hasAxillary?1:0)+(hasCraniofacial?1:0);
-  const isWholeBody   = lc.includes("whole body")||lc.includes("entire body");
-  const isTruncalOnly = hasTruncal && focalCount === 0;
-  const isWidespread  = lc.length >= 5;
-  const isPossibleSecondary = isWholeBody||isTruncalOnly||(hasTruncal&&isWidespread);
+  // Deduplicate formatted parts preserving exact order logged
+  const uniqueParts = Array.from(new Set(formattedParts));
 
-  let pattern: Pattern;
-  if (isPossibleSecondary)               pattern = "possible_secondary";
-  else if (hasTruncal && focalCount > 0) pattern = "generalized";
-  else if (focalCount >= 3)              pattern = "multi_focal";
-  else if (hasPalmoplantar && hasAxillary) pattern = "focal_mixed";
-  else if (hasPalmoplantar)              pattern = "palmoplantar";
-  else if (hasAxillary)                  pattern = "axillary";
-  else if (hasCraniofacial)              pattern = "craniofacial";
-  else if (hasTruncal)                   pattern = "possible_secondary";
-  else                                   pattern = "uncertain";
+  let cleanDisplayList = "affected area";
+  if (uniqueParts.length === 1) {
+    cleanDisplayList = uniqueParts[0];
+  } else if (uniqueParts.length === 2) {
+    cleanDisplayList = `${uniqueParts[0]} and ${uniqueParts[1]}`;
+  } else if (uniqueParts.length > 2) {
+    cleanDisplayList = `${uniqueParts.slice(0, -1).join(", ")}, and ${uniqueParts[uniqueParts.length - 1]}`;
+  }
 
-  return {
-    pattern, hasPalmoplantar, hasAxillary, hasCraniofacial, hasTruncal,
-    isPossibleSecondary, palmList, axList, facList, truncList,
-    allAreas: bodyAreas,
-    hasHandAreas: palmList.some(a => ["palms","hands","hand","palm","fingers","fingertips"].includes(a)),
-    hasFootAreas: palmList.some(a => ["feet & soles","feet","soles","foot","sole","toes"].includes(a)),
-    hasFaceAreas: facList.length > 0,
-  };
-}
-
-// ─── Severity ─────────────────────────────────────────────────────────────────
-
-interface SeverityMeta {
-  hdss: string;
-  label: string;
-  sentence: string;
-  isPresThreshold: boolean;
-  isBotoxLevel: boolean;
-}
+  const isCraniofacial = hasHead || hasFace || hasScalp;
+  const isMultiSite = uniqueParts.length > 1 || isGeneralized;
 
 function getSeverity(s: number): SeverityMeta {
   if (s <= 1) return {
@@ -266,40 +225,17 @@ function getSeverity(s: number): SeverityMeta {
   };
 }
 
-// ─── Trigger helpers ──────────────────────────────────────────────────────────
+// ─── Trigger Classification ───────────────────────────────────────────────────
 
-function has(t: TriggerInput[], ...keys: string[]): boolean {
-  return t.some(tr => {
-    const v = `${tr.value} ${tr.label} ${tr.type}`.toLowerCase();
-    return keys.some(k => v.includes(k.toLowerCase()));
-  });
-}
-
-function allTriggerLabels(triggers: TriggerInput[]): string {
-  const labels = triggers.map(t => t.label || t.value).filter(Boolean);
-  if (!labels.length) return "";
-  if (labels.length === 1) return labels[0];
-  return `${labels.slice(0,-1).join(", ")}, and ${labels[labels.length-1]}`;
-}
-
-const isEmot = (t: TriggerInput[]) => has(t,
-  "stress","anxiety","anticipatory","embarrassment","excitement",
-  "anger","nervousness","public speaking","social","work pressure","exam");
-const isFood = (t: TriggerInput[]) => has(t,
-  "spicy","caffeine","alcohol","hot drink","heavy meal","gustatory","energy drink");
-const isMeds = (t: TriggerInput[]) => has(t,
-  "ssri","antidepressant","opioid","pain medication","nsaid","aspirin","ibuprofen",
-  "blood pressure","insulin","diabetes","supplement","herbal","new medication");
-const isPhys = (t: TriggerInput[]) => has(t,
-  "exercise","night sweat","poor sleep","hormonal","illness","fever","hypoglycemia","clothing");
-
-// ─── Variation picker ─────────────────────────────────────────────────────────
-// Uses episodeCount so each logged episode gets a genuinely different phrase pool.
-// Never mod-by-1 (always use values > 1 for pool arrays).
-
-function pick<T>(arr: T[], seed: number): T {
-  if (arr.length === 1) return arr[0];
-  return arr[Math.abs(seed) % arr.length];
+interface TriggerProfile {
+  isIdiopathic: boolean;
+  isEnvironmental: boolean;
+  isAdrenergic: boolean;
+  isGustatory: boolean;
+  isPhysical: boolean;
+  isPharmacological: boolean;
+  hasRedFlags: boolean;
+  cleanTriggerList: string;
 }
 
 // ─── Area display ─────────────────────────────────────────────────────────────
@@ -323,9 +259,7 @@ function areaPhrase(areas: string[]): string {
   return `Multifocal primary focal hyperhidrosis (${formattedAreas})`;
 }
 
-// ─── Knowledge Base Clinical Pathways ────────────────────────────────────────
-// These inject insights from The Hyperhidrosis Warrior's Manual into the output.
-// They activate when notes or triggers suggest a relevant clinical pattern.
+  const notesLower = (notes || "").toLowerCase().trim();
 
 function getKBInsights(
   p: PatternResult,
@@ -373,10 +307,9 @@ function getKBInsights(
     );
   }
 
-  return insights.join(" ");
-}
-
-// ─── Emotional acknowledgment ─────────────────────────────────────────────────
+  const isEnvironmental = triggerTokens.some(t =>
+    t.includes("temp") || t.includes("heat") || t.includes("humid") || t.includes("sun") || t.includes("weather") || t.includes("warm") || t.includes("ventilation") || t.includes("airflow")
+  ) || notesLower.includes("bus") || notesLower.includes("ventilation") || notesLower.includes("airflow") || notesLower.includes("heat") || notesLower.includes("hot") || notesLower.includes("crowd");
 
 function getEmotionalOpener(ni: NotesIntelligence, seed: number): string {
   if (ni.expressesEmbarrassment) {
@@ -399,7 +332,9 @@ function getEmotionalOpener(ni: NotesIntelligence, seed: number): string {
   return "I've reviewed your episode, your triggers, and your notes. You're showing incredible strength in tracking this. 💙";
 }
 
-// ─── CLINICAL ANALYSIS ────────────────────────────────────────────────────────
+  const isGustatory = triggerTokens.some(t =>
+    t.includes("spicy") || t.includes("caffeine") || t.includes("alcohol") || t.includes("food") || t.includes("drink")
+  ) || notesLower.includes("spicy") || notesLower.includes("caffeine") || notesLower.includes("coffee");
 
 function buildClinical(
   p: PatternResult,
@@ -473,10 +408,23 @@ function buildClinical(
     ],
   };
 
-  const opening = pick(patternOpenings[p.pattern], seed);
+  const hasRedFlags = triggerTokens.some(t =>
+    t.includes("night sweat") || t.includes("fever") || t.includes("illness") || isPharmacological
+  );
 
-  // ── Mechanism sentence (plain language, grounded in triggers and notes)
-  const mechs: string[] = [];
+  // Collect exact verbatim trigger strings provided by the user
+  const rawLabels: string[] = [];
+  (triggers || []).forEach(t => {
+    let str = "";
+    if (typeof t === "string") {
+      str = t.trim();
+    } else if (t) {
+      str = (t.label || t.value || "").trim();
+    }
+    if (str && !str.toLowerCase().includes("no clear") && !str.toLowerCase().includes("no iden") && !str.toLowerCase().includes("none") && !str.toLowerCase().includes("spontaneous") && !str.toLowerCase().includes("no_trigger")) {
+      rawLabels.push(str);
+    }
+  });
 
   if (has(triggers,"hot temperature","heat","warm","temperature")||(climate?.temperature&&climate.temperature>=27)||ni.wasInHeat) {
     mechs.push(pick([
@@ -554,12 +502,25 @@ function buildClinical(
     ], seed+4);
   }
 
-  // ── Context sentence positioning
-  const contextBlock = contextSentence ? `\n\n${contextSentence}` : "";
+  const isIdiopathic = uniqueRawLabels.length === 0 && !isEnvironmental && !isAdrenergic && !isGustatory && !isPhysical && !isPharmacological;
 
-  const chatCTA = "\n\nIf you need a more clinical or in-depth understanding of this specific episode, let's continue our conversation in the HidroAlly chat. 💙";
+  let cleanTriggerList = "idiopathic factors (spontaneous autonomic activity without an identifiable external trigger)";
+  if (!isIdiopathic && uniqueRawLabels.length > 0) {
+    if (uniqueRawLabels.length === 1) cleanTriggerList = uniqueRawLabels[0];
+    else if (uniqueRawLabels.length === 2) cleanTriggerList = `${uniqueRawLabels[0]} and ${uniqueRawLabels[1]}`;
+    else cleanTriggerList = `${uniqueRawLabels.slice(0, -1).join(", ")}, and ${uniqueRawLabels[uniqueRawLabels.length - 1]}`;
+  }
 
-  return `${opening}${mechText}${climateNote}${contextBlock}${kbSection} ${sv.sentence}${close}${chatCTA}`;
+  return {
+    isIdiopathic,
+    isEnvironmental,
+    isAdrenergic,
+    isGustatory,
+    isPhysical,
+    isPharmacological,
+    hasRedFlags,
+    cleanTriggerList,
+  };
 }
 
 // ─── IMMEDIATE RELIEF ─────────────────────────────────────────────────────────
@@ -626,6 +587,8 @@ function buildRelief(
       `Step away from the kitchen or cooking area immediately. In a cooking environment, heat is being continuously generated by the food, the stove, and your own physical activity, staying in that space means the trigger is still active. Step out for at least 5 minutes, ideally to a cooler or ventilated space. Your body cannot begin to recover from an episode while the primary heat source is still present.`
     );
   }
+  return { score, label: "HDSS 1 (sweating is never noticeable and does not interfere with daily activities)" };
+}
 
   // ── Emotional / stress-driven
   if (isEmot(triggers) && items.length < 3) {
@@ -666,12 +629,18 @@ function buildRelief(
     ], seed+3));
   }
 
-  return items.slice(0, 3);
-}
+  // Dynamic Mechanism Descriptions (Uses smooth anatomical pronouns instead of re-repeating trigger strings)
+  const mechPart1 = [
+    `During this onset, your sympathetic nervous system (your body's automatic reaction pathway) dispatched rapid cholinergic signals (nerve impulses controlling sweat glands) directly to the eccrine glands in your ${anatomy.cleanDisplayList}.`,
+    `As this stimulus occurred, your hypothalamus (your brain's internal thermostat) signaled postganglionic sympathetic nerves to activate sweat glands strictly within your ${anatomy.cleanDisplayList}.`,
+    `In response, hyperactive nerve pathways in your sympathetic chain triggered immediate sudomotor output across your ${anatomy.cleanDisplayList}.`
+  ];
 
-// ─── TREATMENT OPTIONS ────────────────────────────────────────────────────────
-// CRITICAL: Aluminium chloride is NEVER recommended for craniofacial areas.
-// This section enforces that rule absolutely.
+  const mechPart2 = [
+    `Due to heightened local nerve sensitivity in your ${anatomy.cleanDisplayList}, your glands released a disproportionate volume of perspiration relative to your body's thermal needs, leading to an ${severity.label} flare-up.`,
+    `Because localized nerve endings in your ${anatomy.cleanDisplayList} operate at a lowered activation threshold, this signal produced an ${severity.label} intensity episode.`,
+    `Hypersensitive nerve receptors in these specific zones caused an accelerated sweat response, escalating the session to ${severity.label}.`
+  ];
 
 function buildTreatments(
   p: PatternResult,
@@ -708,9 +677,8 @@ function buildTreatments(
       ? "Apply to completely dry underarm skin at bedtime, use a cool hairdryer setting on the area first if needed, and wash off in the morning. Your sweat glands are at their least active overnight, which allows deeper penetration and better efficacy."
       : `Apply to completely dry ${p.hasHandAreas ? "palms" : "soles"} at bedtime. For the hands, thin cotton gloves worn overnight improve penetration; for the soles, thin cotton socks serve the same purpose. Wash off in the morning.`;
 
-    const schedule = sv.isPresThreshold
-      ? "Begin with nightly application for two consecutive weeks, then reduce to every two to three nights once improvement is established."
-      : "Consistent nightly use for ten to fourteen days produces results for most warriors, after which maintenance every two to three nights sustains the improvement.";
+  return `${opener} ${mechanism}${notesText}${chatCTA}`;
+}
 
     options.push(pick([
       `Clinical-strength aluminium chloride antiperspirant at 20% concentration, this is the evidence-based first-line treatment for ${hasAxillary ? "axillary" : "palmoplantar"} hyperhidrosis at your severity level. ${facialWarning}It works by temporarily blocking the opening of overactive sweat gland ducts, significantly reducing output without permanent alteration. ${appNote} ${schedule} Look specifically for products labelled "clinical strength" or formulated for hyperhidrosis, standard pharmacy antiperspirants do not contain sufficient concentration to be effective for this condition. ✨`,
@@ -784,17 +752,16 @@ function buildTreatments(
     );
   }
 
-  return options.slice(0, 2);
+  return strategies.slice(0, 3);
 }
 
-// ─── LIFESTYLE MODIFICATIONS ──────────────────────────────────────────────────
+// ─── LIFESTYLE MODIFICATIONS (Rule 4: Exactly TWO Practical Real-World Preparation Steps) ───
 
 function buildLifestyle(
-  p: PatternResult,
-  triggers: TriggerInput[],
-  ni: NotesIntelligence,
-  climate: ClimateInput | undefined,
+  anatomy: AnatomicalProfile,
+  triggers: TriggerProfile,
   seed: number,
+  longitudinalText: string
 ): string[] {
   const mods: string[] = [];
   const isHot = !!(climate?.temperature && climate.temperature >= 28);
@@ -891,15 +858,24 @@ function buildLifestyle(
     ], seed+2));
   }
 
-  // ── Hormonal
-  if (has(triggers,"hormonal","menstrual","menopause","hormonal changes")) {
+  // Step 1: Trigger-Tailored Real-World Preparation
+  if (triggers.isAdrenergic) {
+    const socialPrep = [
+      "Street-Smart Positioning & Early Arrival: When attending events in crowded or enclosed spaces, arrive 10 minutes early to secure a well-ventilated spot near open doorways, air conditioning vents, or aisle seats to prevent thermal entrapment and reduce anticipatory anxiety.",
+      "Personal Micro-Cooling Gear: Carry a compact, whisper-quiet handheld fan or cooling towel in your bag. Having immediate access to personal airflow in packed venues provides active microclimate control."
+    ];
+    mods.push(pick(socialPrep, seed));
+  } else if (triggers.isEnvironmental) {
+    const thermalPrep = [
+      "Microclimate & Breathable Layering: Wear lightweight, loose-fitting garments crafted from natural breathable fibers (such as linen, merino wool, or bamboo weaves) to maximize convective cooling and avoid heat retention.",
+      "Pre-Emptive Route Planning: Check daily humidity and temperature forecasts in HidroAlly before leaving home to plan shaded routes and schedule outdoor activity during cooler morning or evening windows."
+    ];
+    mods.push(pick(thermalPrep, seed + 1));
+  } else if (triggers.isGustatory) {
     mods.push(
       `Track your episodes against your hormonal cycle using the notes field, note the date of your cycle and any symptoms alongside the episode data. Over several weeks, a pattern typically becomes visible that identifies which hormonal phase carries the highest episode risk. This data is directly useful in a clinical conversation: it allows a gynaecologist or general practitioner (GP) to assess whether hormonal management options are appropriate for your specific pattern, which is a treatment avenue distinct from standard hyperhidrosis management.`
     );
-  }
-
-  // ── Poor sleep
-  if (has(triggers,"poor sleep") || ni.wasSleeping) {
+  } else {
     mods.push(
       `Sleep quality has a direct, measurable effect on hyperhidrosis severity the following day. Sleep deprivation lowers your stress resilience, which makes emotional and social triggers more reactive, and raises your baseline sympathetic nervous system activity, which means your sweat glands are primed to respond more easily to everything. Treating sleep quality as part of your hyperhidrosis management, not just general health, is clinically justified.`
     );
@@ -921,17 +897,17 @@ function buildLifestyle(
     ], seed));
   }
 
-  return mods.slice(0, 3);
+  // Exactly TWO items as required by Rule 4
+  return mods.slice(0, 2);
 }
 
-// ─── MEDICAL ATTENTION ────────────────────────────────────────────────────────
+// ─── MEDICAL ATTENTION (Rule 6: Removal of Care Options / Upsell Blocks) ────────────────────────
 
 function buildMedical(
-  p: PatternResult,
-  sv: SeverityMeta,
-  triggers: TriggerInput[],
-  ni: NotesIntelligence,
-  seed: number,
+  anatomy: AnatomicalProfile,
+  triggers: TriggerProfile,
+  severity: SeverityProfile,
+  seed: number
 ): string {
   const areaList = p.allAreas.join(", ");
   const redFlags: string[] = [];
@@ -970,7 +946,14 @@ function buildMedical(
   ], seed);
 }
 
-// ─── HIDROALLY CTA ────────────────────────────────────────────────────────────
+// ─── DRY DAY PROTOCOL ─────────────────────────────────────────────────────────
+
+function buildDryDayProtocol(
+  userName: string | undefined,
+  episodesList?: any[]
+): EpisodeInsights & { cta: string; emotionalOpener: string } {
+  const allEpisodes = episodesList || [];
+  const sorted = [...allEpisodes].sort((a, b) => new Date(b.datetime).getTime() - new Date(a.datetime).getTime());
 
 function buildCTA(ni: NotesIntelligence, seed: number): string {
   if (ni.expressesEmbarrassment || ni.expressesFrustration) {
@@ -986,48 +969,60 @@ function buildCTA(ni: NotesIntelligence, seed: number): string {
   ], seed);
 }
 
-// ─── HIDROALLY WRAPPER ────────────────────────────────────────────────────────
-// This is what the user sees. It wraps all sections with HidroAlly's voice.
+  const now = new Date();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const epsLast7Days = sorted.filter(ep => new Date(ep.datetime) >= sevenDaysAgo);
+  const dryDaysLast7 = epsLast7Days.filter(ep => ep.is_dry_day).length || 1;
 
-function wrapWithHidroAlly(
-  sections: EpisodeInsights,
-  ni: NotesIntelligence,
-  userName: string | undefined,
-  seed: number,
-): EpisodeInsights & { cta: string; emotionalOpener: string } {
-  const greeting = userName
-    ? `Hi ${userName}, this is HidroAlly 👋`
-    : `Hi, this is HidroAlly 👋`;
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const epsLast30Days = sorted.filter(ep => new Date(ep.datetime) >= thirtyDaysAgo);
+  const monthlyDryTotal = epsLast30Days.filter(ep => ep.is_dry_day).length || 1;
+
+  let header = "";
+  let clinicalAnalysis = "";
+  let immediateRelief: string[] = [];
 
   const opener = `Your data helps build a better understanding of your triggers.\n\n${greeting}, your personal hyperhidrosis clinical guide.\n\nI’ve analyzed your episode data to help you make sense of what your body just went through. By tracking these triggers, you are gaining a better understanding of your physiological patterns and showing incredible strength in managing this condition. Here is what I've found based on your recent report.`;
 
-  const emotionalOpener = getEmotionalOpener(ni, seed);
-  const cta = buildCTA(ni, seed);
+  const greeting = userName ? `Hi ${userName}, this is HidroAlly` : "Hi, this is HidroAlly";
 
   return {
-    ...sections,
-    emotionalOpener: emotionalOpener ? `${opener}\n\n${emotionalOpener}` : opener,
-    cta,
+    emotionalOpener: `${greeting}. Great job tracking an asymptomatic day! Here is your maintenance guidance.`,
+    clinicalAnalysis,
+    immediateRelief,
+    lifestyleModifications: [
+      "Note Successful Conditions: Pay attention to your environment today (indoor temperature, clothing choices, stress levels) and replicate these conditions on warmer days."
+    ],
+    medicalAttention: "No active flare-up or red flags logged today. Keep logging dry days alongside flare-ups to demonstrate progress at your next doctor visit.",
+    cta: "If you need a more clinical or in-depth evaluation of this episode, our HidroAlly clinical assistant is ready in the chat.",
+    isDryDay: true,
+    dryDayMetrics: {
+      currentStreak,
+      dryDaysLast7,
+      monthlyDryTotal,
+      header,
+    },
   };
 }
 
-// ─── MAIN ENTRY POINT ─────────────────────────────────────────────────────────
+// ─── MAIN ENGINE EXPORT ───────────────────────────────────────────────────────
 
 export function generateEpisodeInsights(input: EpisodeInput): EpisodeInsights & { cta: string; emotionalOpener: string } {
   const {
     severity,
     bodyAreas,
     triggers = [],
-    notes,
+    notes = "",
     climate,
     episodeCount = 0,
     userName,
     isDryDay = false,
-    episodesList,
+    episodesList = [],
   } = input;
 
-  // Seed: combine episodeCount and current minute so every call is unique
-  const seed = (episodeCount * 7 + Math.floor(Date.now() / 60000)) % 97;
+  const seed = (episodeCount * 31 + Math.floor(Date.now() / 60000)) % 101;
+  const greeting = userName ? `Hi ${userName}, this is HidroAlly` : "Hi, this is HidroAlly";
+  const cta = "If you need a more clinical or in-depth evaluation of this episode, our HidroAlly clinical assistant is ready in the chat.";
 
   const ni = parseNotes(notes);
 
@@ -1036,25 +1031,55 @@ export function generateEpisodeInsights(input: EpisodeInput): EpisodeInsights & 
   // response instead. Must run BEFORE the empty-bodyAreas check below, since
   // every dry day log has bodyAreas: [] by design, not by omission.
   if (isDryDay) {
-    return buildDryDayResponse(ni, userName, seed, episodesList);
+    return buildDryDayProtocol(userName, episodesList);
   }
+
+  // Rule 5: Programmatic Longitudinal Progress Calculation
+  const totalEntries = episodesList.length || (episodeCount > 0 ? episodeCount : 1);
+  let activeWeeks = 1;
+
+  if (episodesList.length > 1) {
+    const dates = episodesList.map(e => new Date(e.datetime || Date.now()).getTime()).filter(t => !isNaN(t));
+    if (dates.length > 1) {
+      const minDate = Math.min(...dates);
+      const maxDate = Math.max(...dates);
+      const diffDays = Math.max(1, Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24)));
+      activeWeeks = Math.max(1, Math.ceil(diffDays / 7));
+    }
+  }
+
+  const longitudinalText = `Longitudinal Profile Building: You have logged ${totalEntries} total entries across ${activeWeeks} active ${activeWeeks === 1 ? 'week' : 'weeks'} of tracking. Documenting your flare-ups and dry days establishes clear longitudinal evidence for your clinical consultations.`;
 
   if (!bodyAreas || bodyAreas.length === 0) {
-    return buildEmptyResponse(ni, userName, seed);
+    return {
+      emotionalOpener: `${greeting}. You logged this episode without selecting body areas. Selecting specific regions next time unlocks tailored guidance.`,
+      clinicalAnalysis: "No body areas were selected for this entry. Please select specific body parts during your next log so HidroAlly can provide precise anatomical analysis.",
+      immediateRelief: [
+        "Cool Water Wrist Rinse: Run cool water over your wrists for 2 minutes to send a fast whole-body cooling signal through your bloodstream.",
+        "Air Circulation: Move near a fan or open window to encourage natural evaporation.",
+        "Deep Respiration: Take 5 slow, deep belly breaths to calm your nervous system."
+      ],
+      lifestyleModifications: [
+        "Include both body areas and triggers in your next log to build a helpful history.",
+        longitudinalText
+      ],
+      medicalAttention: "No acute red flags identified. Include body parts in future logs for detailed guidance.",
+      cta,
+    };
   }
 
-  const p  = classify(bodyAreas);
-  const sv = getSeverity(severity);
+  const anatomy = normalizeAnatomy(bodyAreas);
+  const triggerProfile = evaluateTriggers(triggers, notes);
+  const severityProfile = evaluateSeverity(severity);
 
-  const sections: EpisodeInsights = {
-    clinicalAnalysis:       buildClinical(p, sv, triggers, ni, climate, seed),
-    immediateRelief:        buildRelief(p, triggers, ni, climate, seed),
-    treatmentOptions:       buildTreatments(p, sv, triggers, seed),
-    lifestyleModifications: buildLifestyle(p, triggers, ni, climate, seed),
-    medicalAttention:       buildMedical(p, sv, triggers, ni, seed),
+  return {
+    clinicalAnalysis: buildClinicalAnalysis(anatomy, triggerProfile, severityProfile, notes, seed),
+    immediateRelief: buildImmediateRelief(anatomy, triggerProfile, seed),
+    lifestyleModifications: buildLifestyle(anatomy, triggerProfile, seed, longitudinalText),
+    medicalAttention: buildMedical(anatomy, triggerProfile, severityProfile, seed),
+    emotionalOpener: `${greeting}, your personal hyperhidrosis clinical guide. Here is your evidence-based analysis for this logged episode.`,
+    cta,
   };
-
-  return wrapWithHidroAlly(sections, ni, userName, seed);
 }
 
 /**
@@ -1068,30 +1093,23 @@ export function generateEpisodeInsights(input: EpisodeInput): EpisodeInsights & 
 export function generateFallbackInsights(
   severity: number,
   bodyAreas: string[],
-  triggers: TriggerInput[],
+  triggers: Array<TriggerInput | string>,
   notes?: string,
-  climate?: ClimateInput,
+  climate?: any,
   isDryDay?: boolean,
-  episodes?: Array<{ is_dry_day?: boolean }>,
+  episodes?: Array<{ is_dry_day?: boolean; datetime?: string; severity?: number }>
 ): EpisodeInsights & { emotionalOpener: string; cta: string } {
-  // Prefer the live episode list when provided, otherwise fall back to local logs
-  let actualCount = 0;
-  if (episodes && episodes.length) {
-    actualCount = episodes.filter((e) => !e?.is_dry_day).length;
-  } else {
-    const localLogsJson = localStorage.getItem('sweatSmartLogs');
-    actualCount = localLogsJson ? JSON.parse(localLogsJson).filter((log: any) => !log.is_dry_day).length : 0;
-  }
+  const episodeList = episodes || [];
+  const actualCount = episodeList.filter(e => !e?.is_dry_day).length;
 
-
-  const result = generateEpisodeInsights({
+  return generateEpisodeInsights({
     severity,
     bodyAreas,
     triggers,
     notes,
-    climate,
     isDryDay,
     episodeCount: actualCount,
+    episodesList: episodeList,
   });
   return result;
 }

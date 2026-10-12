@@ -7,7 +7,7 @@ const Cookies = () => {
 
   return (
     <AppLayout isAuthenticated={!!session}>
-      <div className="w-full px-4 sm:px-6 md:px-8 mx-auto py-8 px-4">
+      <div className="container max-w-4xl mx-auto py-8 px-4">
         <h1 className="text-4xl font-bold mb-6">Cookies Policy</h1>
         
         <Card>

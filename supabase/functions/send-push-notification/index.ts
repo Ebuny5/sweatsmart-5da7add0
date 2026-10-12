@@ -326,39 +326,38 @@ function calculateHeatIndex(tempC: number, humidity: number): number {
 }
 
 function calculateRealFeel(tempC: number, humidity: number, uvIndex?: number | null): number {
-  let realFeel = tempC;
-  if (tempC >= 20) {
-    const vaporPressure = (humidity / 100) * 6.105 * Math.exp((17.27 * tempC) / (237.7 + tempC));
-    realFeel = tempC + 0.33 * vaporPressure - 4.0;
-  }
-  if (uvIndex != null && !isNaN(uvIndex) && uvIndex >= 6) {
-    realFeel += (uvIndex - 5) * 0.6;
+  // Unified RealFeel: NOAA Heat Index + solar load when UV > 6 (same in app, weather API and push)
+  let realFeel = calculateHeatIndex(tempC, humidity);
+  if (uvIndex != null && !isNaN(uvIndex) && uvIndex > 6) {
+    realFeel += (uvIndex - 6) * 0.5;
   }
   return Math.round(realFeel * 10) / 10;
 }
 
 // ── Upgraded 4-Tier Sweat Risk Evaluator ──
-function calculateSweatRisk(temp: number, humidity: number, uv: number, thresholds: any = {}) {
+function calculateSweatRisk(temp: number, humidity: number, uv: number, thresholds: any = {}, weatherId?: number) {
   const realFeel = calculateRealFeel(temp, humidity, uv);
   const uvVal = uv != null && !isNaN(uv) ? uv : 0;
 
-  // GATEKEEPER 1: Cool Rainy Weather (Works for Night, Morning, and Afternoon Downpours)
-  if (temp < 23.5 && uvVal < 2.0 && realFeel < 27) {
+  const isActiveRain = weatherId != null && weatherId >= 200 && weatherId < 700;
+
+  // GATEKEEPER 1: Active Rain & Cool Weather
+  if ((isActiveRain && temp <= 27.5 && uvVal < 2.0) || (!isActiveRain && realFeel < 27)) {
     return 'low';
   }
 
-  // EXTREME RISK: Intense sun + high humidity OR RealFeel >= 32°C (Afternoon Steam Trap)
-  if (realFeel >= 32 || (uvVal >= 3.0 && humidity >= 85 && temp >= 28)) {
+  // EXTREME RISK: Intense sun + high humidity OR RealFeel >= 35°C (Afternoon Steam Trap)
+  if (realFeel >= 35) {
     return 'extreme';
   }
 
-  // HIGH RISK: Daytime evaporative block (Temp >= 24°C AND Humidity >= 85% AND UV >= 2.0) OR RealFeel >= 30°C
-  if (realFeel >= 30 || (temp >= 24.0 && humidity >= 85 && uvVal >= 2.0)) {
+  // HIGH RISK: Daytime evaporative block (Temp >= 24°C AND Humidity >= 85% AND UV >= 2.0) OR RealFeel >= 32°C
+  if (realFeel >= 30) {
     return 'high';
   }
 
-  // MODERATE RISK: Warm muggy weather (Temp >= 24°C + Humidity >= 70%) OR RealFeel >= 28°C
-  if (realFeel >= 28 || (temp >= 24.0 && humidity >= 70)) {
+  // MODERATE RISK: Warm muggy weather (Temp >= 24°C + Humidity >= 70%) OR RealFeel >= 30°C
+  if (realFeel >= 27) {
     return 'moderate';
   }
 
@@ -543,7 +542,7 @@ serve(async (req) => {
           }
 
           const todayCount = await getNotificationCountToday(supabase, sub.id, 'logging_reminder');
-          if (todayCount >= 4) {
+          if (todayCount >= 2) {
             console.log(`⏭️ Sub ${sub.id}: Max today (${todayCount})`);
             skipped++;
             skipReasons.dailyLimit++;
@@ -669,6 +668,8 @@ serve(async (req) => {
           const weather = await weatherRes.json();
           const temp = weather.main?.temp || 0;
           const humidity = weather.main?.humidity || 0;
+          const clouds = weather.clouds?.all ?? 0;
+          const weatherId = weather.weather?.[0]?.id ?? 800;
 
           const nowUnix = Math.floor(Date.now() / 1000);
           const sunrise = weather.sys?.sunrise || 0;
@@ -698,6 +699,18 @@ serve(async (req) => {
               );
               const uvData = await uvRes.json();
               uv = uvData.value || 0;
+
+              // WMO-style cloud attenuation: UV_eff = UV * (1 - 0.75 * cloudFraction^3.4)
+              const cloudFraction = Math.max(0, Math.min(100, clouds)) / 100;
+              const attenuation = 1 - 0.75 * Math.pow(cloudFraction, 3.4);
+              uv = uv * attenuation;
+
+              // Precipitation / thunderstorm / heavy cloud codes cut UV further
+              if (weatherId >= 200 && weatherId < 800) {
+                uv = uv * 0.6;
+              }
+
+              uv = Math.round(Math.max(0, uv) * 10) / 10;
             } catch { /* optional */ }
           }
 
@@ -711,20 +724,18 @@ serve(async (req) => {
              }
           }
 
-          const risk = calculateSweatRisk(temp, humidity, uv, customThresholds);
-          // Dispatch automatic push notifications for Moderate, High, and Extreme Risk
-          if (risk !== 'high' && risk !== 'extreme' && risk !== 'moderate') { skipped++; continue; }
+          const risk = calculateSweatRisk(temp, humidity, uv, customThresholds, weatherId);
+          // Only dispatch automatic push notifications for High and Extreme Risk to prevent spam
+          if (risk === 'low' || risk === 'safe') { skipped++; continue; }
 
-          const notifType = risk === 'extreme' ? 'climate_extreme' : (risk === 'high' ? 'climate_high' : 'climate_moderate');
-          const todayCount = await getNotificationCountToday(supabase, sub.id, notifType);
+          const notifType = risk === 'extreme' ? 'climate_extreme' : risk === 'high' ? 'climate_high' : 'climate_moderate';
 
           const totalToday = await getNotificationCountToday(supabase, sub.id, 'climate_high') +
-            await getNotificationCountToday(supabase, sub.id, 'climate_extreme') +
-            await getNotificationCountToday(supabase, sub.id, 'climate_moderate');
+            await getNotificationCountToday(supabase, sub.id, 'climate_extreme') + await getNotificationCountToday(supabase, sub.id, 'climate_moderate');
 
-          if (totalToday >= 10) { skipped++; continue; } // Increased max to 10 per day to ensure consistent alerts
+          if (totalToday >= 6) { skipped++; continue; } // Reduced max to 6 per day to avoid Chrome spam detection
 
-          // 15-minute cooldown timer logic for repeated alerts of the exact same tier (prevents spam on fast crons)
+          // 2-hour cooldown timer logic for repeated alerts
           const { data: lastNotif } = await supabase
              .from('notification_log')
              .select('sent_at, notification_type')
@@ -736,20 +747,13 @@ serve(async (req) => {
 
           if (lastNotif) {
              const lastSentMs = new Date(lastNotif.sent_at).getTime();
-
              const nowMs = Date.now();
-             const fifteenMinMs = 15 * 60 * 1000;
+             const twoHoursMs = 2 * 60 * 60 * 1000;
 
-             // If we've sent an alert in the last 15 minutes, block it to prevent rapid spam,
-             // but allow alerts more frequently than the previous 2-hour window.
-             if (nowMs - lastSentMs < fifteenMinMs) {
-                if (lastNotif.notification_type === notifType) {
-                   skipped++; continue;
-                }
-                if (lastNotif.notification_type === 'climate_extreme') {
-                   skipped++; continue;
-                }
-                if (lastNotif.notification_type === 'climate_high' && notifType === 'climate_moderate') {
+             // If we've sent any climate alert in the last 2 hours, block it to prevent spam
+             if (nowMs - lastSentMs < twoHoursMs) {
+                // The only exception is escalating from High to Extreme
+                if (!((lastNotif.notification_type === 'climate_high' && notifType === 'climate_extreme') || (lastNotif.notification_type === 'climate_moderate' && (notifType === 'climate_extreme' || notifType === 'climate_high')))) {
                    skipped++; continue;
                 }
              }
@@ -757,25 +761,25 @@ serve(async (req) => {
 
           const realFeel = calculateRealFeel(temp, humidity, uv);
 
-          let title = '⚠️ SweatSmart: Moderate Sweat Risk';
-          let body = `Moderate Sweat Risk: Heat Index reached ${calculateHeatIndex(temp, humidity).toFixed(1)}°C. Monitor symptoms and stay hydrated.`;
+          let title = '⚠️ HidroAlly: Moderate Sweat Risk';
+          let body = `Moderate Sweat Risk: RealFeel reached ${realFeel.toFixed(1)}°C. Monitor symptoms and stay hydrated.`;
 
           if (risk === 'extreme') {
-            title = '🚨 SweatSmart: Extreme Flare Hazard';
+            title = '🚨 HidroAlly: Extreme Flare Hazard';
             body = `Extreme Flare Hazard: Severe heat load (RealFeel ${realFeel.toFixed(1)}°C). Move to cool/shaded environment.`;
           } else if (risk === 'high') {
             if (uv >= 7.0) {
                title = `☀️ Scorching Sun Alert (UV ${uv.toFixed(1)})`;
                body = 'Scorching Sun Alert: Intense direct solar radiation detected. High risk of sudden facial and palm sweat flares. Seek shade and use cooling compress.';
             } else {
-               title = '⚠️ SweatSmart: High Sweat Alert';
+               title = '⚠️ HidroAlly: High Sweat Alert';
                body = `High Sweat Alert: RealFeel ${realFeel.toFixed(1)}°C with high humidity (${humidity}%). Prepare cool-down strategies.`;
             }
           }
 
           const result = await sendWebPush(
             { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
-            { title, body, tag: 'climate-alert', type: risk, url: '/climate' },
+            { title, body, tag: 'climate-alert', type: risk, kind: risk, url: '/climate' },
             vapidPublicKey, vapidPrivateKey, vapidSubject
           );
 
