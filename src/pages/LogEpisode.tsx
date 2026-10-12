@@ -21,7 +21,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEngagement } from "@/hooks/useEngagement";
 import { useEpisodes } from "@/hooks/useEpisodes";
-import { generateFallbackInsights } from "@/components/recommendationEngine";
+import { useProfile } from "@/hooks/useProfile";
+import { generateEpisodeInsights, newInsightState } from "@/features/insights/insightEngine";
+import { loadInsightState, saveInsightState } from "@/features/insights/insightState";
 import { loggingReminderService, LAST_LOG_TIME_KEY, CURRENT_HDSS_KEY } from "@/services/LoggingReminderService";
 import { useVoiceLogging } from "@/hooks/useVoiceLogging";
 import VoiceVisualizer from "@/components/episode/VoiceVisualizer";
@@ -479,6 +481,7 @@ const LogEpisode = () => {
   const location = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { profile } = useProfile();
   const { trackAction } = useEngagement();
   const { episodes } = useEpisodes();
   const searchParams = new URLSearchParams(location.search);
@@ -726,15 +729,44 @@ const LogEpisode = () => {
 
         const fullEpisodesList = [newEpisodeForStreak, ...(episodes || [])];
 
-        const insights = generateFallbackInsights(
-          finalSeverity,
-          finalBodyAreas as BodyArea[],
-          triggerData,
-          finalNotes,
-          undefined,
-          isDryDay,
-          fullEpisodesList as any
+        let loadedState = newInsightState();
+        if (user?.id) {
+          try {
+            loadedState = await loadInsightState(user.id);
+          } catch (stErr) {
+            console.warn("Could not load insight state, using fresh default state:", stErr);
+          }
+        }
+
+        const savedEpId = data?.[0]?.id || "temp";
+        const declaredType = (profile as any)?.diagnosis_type || (profile as any)?.diagnosisType || null;
+
+        const insights = generateEpisodeInsights(
+          {
+            severity: finalSeverity,
+            bodyAreas: finalBodyAreas as string[],
+            triggers: triggerData,
+            notes: finalNotes,
+            isDryDay,
+            datetime: datetime.toISOString(),
+            episodeId: savedEpId,
+            episodesList: fullEpisodesList as any[],
+            userName: profile?.display_name || undefined,
+            profile: {
+              declaredType,
+              diagnosis_type: declaredType,
+            },
+          },
+          loadedState
         );
+
+        if (user?.id && insights.newState) {
+          try {
+            await saveInsightState(user.id, insights.newState);
+          } catch (saveStErr) {
+            console.warn("Could not save updated insight state:", saveStErr);
+          }
+        }
 
         setAiInsights(insights);
         toast(

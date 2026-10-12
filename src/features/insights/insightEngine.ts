@@ -20,6 +20,7 @@ export interface TriggerInput { type?: string; value?: string; label?: string }
 export interface UserProfileInput {
   onsetAge?: number | null; familyHistory?: boolean | null; nightSweats?: boolean | null;
   onMedication?: boolean | null; conditions?: string[];
+  declaredType?: string | null; diagnosis_type?: string | null;
 }
 export interface EpisodeInput {
   severity: number;                       // HDSS 1 to 4
@@ -224,6 +225,13 @@ function assess(eps: NEp[], s: Stats, p: UserProfileInput): Assessment {
   else if (p.nightSweats === true) { flags.push("you get night sweats, which are not typical of primary hyperhidrosis"); strong = true; }
   if (p.onMedication === true) flags.push("you take regular medication, and some medicines cause sweating");
   if (p.conditions && p.conditions.length) flags.push(`you have ${join(p.conditions)}, which can affect sweating`);
+
+  const dt = (p.declaredType || p.diagnosis_type || "").toLowerCase();
+  if (dt.includes("primary")) {
+    support.push("you told us in your setup profile that your sweating is primary hyperhidrosis");
+  } else if (dt.includes("secondary")) {
+    flags.push("you indicated in your profile that your sweating may be secondary hyperhidrosis");
+  }
   const seenFlag = new Set<string>();
   for (const e of eps) for (const t of e.tids) {
     const f = TRIGGER_INDEX[t]?.flag;
