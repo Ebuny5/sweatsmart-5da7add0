@@ -23,6 +23,7 @@ interface AIInsightsProps {
     immediateRelief: string[];
     treatmentOptions?: string[];
     lifestyleModifications: string[];
+    patternTracker?: string[];
     medicalAttention: string;
     emotionalOpener?: string;
     emotionalSupport?: string;
@@ -83,6 +84,7 @@ const AIGeneratedInsights: React.FC<AIInsightsProps> = ({ insights }) => {
     `Clinical analysis. ${insights.clinicalAnalysis}`,
     listify('Immediate relief strategies', insights.immediateRelief),
     listify('Lifestyle modifications', insights.lifestyleModifications),
+    insights.patternTracker?.length ? listify('Pattern tracker', insights.patternTracker) : '',
     `HidroAlly care & specialist scheduling. ${insights.medicalAttention}`,
   ].filter(Boolean).join(' ');
 
@@ -328,6 +330,36 @@ Always consult with a healthcare provider for personalized medical advice.
 
       {!insights.isDryDay && (
       <>
+      {/* Pattern Tracker */}
+      {insights.patternTracker && insights.patternTracker.length > 0 && (
+        <Card className="border-l-4 border-l-teal-500">
+          <CardHeader>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center space-x-2">
+                <Activity className="h-5 w-5 text-teal-600" />
+                <CardTitle>Your Pattern Tracker</CardTitle>
+              </div>
+              <ListenButton
+                text={listify('Pattern tracker', insights.patternTracker)}
+                sectionKey="tracker"
+                label="pattern tracker"
+              />
+            </div>
+            <CardDescription>Longitudinal trend analysis and episode statistics</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2.5">
+              {insights.patternTracker.map((line, index) => (
+                <li key={index} className="flex gap-3">
+                  <span className="text-teal-600 mt-1 flex-shrink-0">•</span>
+                  <span className="text-muted-foreground text-sm leading-relaxed">{line}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Lifestyle Modifications */}
       <Card className="border-l-4 border-l-orange-500">
         <CardHeader>

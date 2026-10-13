@@ -309,21 +309,24 @@ const Profile = () => {
     year: "numeric", month: "long",
   });
 
-  // Calendar week tracking consistency: unique days logged since Sunday (Day 1)
+  // Unified episode metrics:
+  // flareEpisodes = active flare-up episodes (non-dry days)
+  // totalEpisodes = all logs including dry days
+  const flareEpisodes = episodes ? episodes.filter(e => !e.is_dry_day) : [];
+  const flareCount = flareEpisodes.length;
+  const totalCount = episodes ? episodes.length : 0;
+
+  // Calendar week tracking consistency: unique days logged in the past 7 days out of 7
   const calculateTrackingConsistency = () => {
     if (!episodes || episodes.length === 0) return 0;
 
     const toKey = (d: Date) =>
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const dayOfWeek = today.getDay(); // 0 is Sunday, 1 is Monday, etc.
-
+    const now = Date.now();
     const windowKeys = new Set<string>();
-    for (let i = 0; i <= dayOfWeek; i++) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - i);
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(now - i * 86400000);
       windowKeys.add(toKey(d));
     }
 
@@ -333,7 +336,6 @@ const Profile = () => {
       if (windowKeys.has(key)) loggedDays.add(key);
     }
 
-    // Calculate percentage based on a full 7-day week
     return Math.round((loggedDays.size / 7) * 100);
   };
 
@@ -447,14 +449,14 @@ const Profile = () => {
         {/* ── STATS CARDS ──────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-4 mx-4 -mt-8 mb-6 relative z-10">
           <StatCard
-            value={episodes.filter(e => !e.is_dry_day).length}
+            value={flareCount}
             label="Episodes Logged"
             emoji="📋"
             gradient="bg-gradient-to-br from-white to-blue-50 shadow-md border border-blue-100"
           />
           <StatCard
             value={`${trackingConsistencyPercentage}%`}
-            label="Tracking Consistency"
+            label="7-Day Consistency"
             emoji="🗓️"
             gradient="bg-gradient-to-br from-white to-orange-50 shadow-md border border-orange-100"
           />
@@ -639,22 +641,71 @@ const Profile = () => {
                 </div>
               ) : (
                 <div className="space-y-4 pt-2">
-                  {[
-                    { label: "Display Name", value: profileData.display_name || "Not set" },
-                    { label: "Email", value: user.email },
-                    { label: "Age", value: profileData.age || "Not set" },
-                    { label: "Biological Sex", value: profileData.biological_sex || "Not set" },
-                    { label: "Gender Identity", value: profileData.gender_identity || "Not set" },
-                    { label: "Diagnosis", value: profileData.diagnosis_type || "Not set" },
-                    { label: "Country", value: profileData.country || "Not set" },
-                  ].map((item) => (
-                    <div key={item.label} className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
-                      <span className="text-sm text-gray-400">{item.label}</span>
-                      <span className="text-sm font-semibold text-gray-800 text-right max-w-[60%] truncate">
-                        {item.value}
-                      </span>
+                  {(() => {
+                    const patReading = (profile as any)?.pattern_reading;
+                    const patConf = (profile as any)?.pattern_confidence || "none";
+                    const patEpCount = (profile as any)?.pattern_episode_count || 0;
+
+                    let readingText = "Keep logging, a reading unlocks at 4 episodes";
+                    if (patConf !== "none") {
+                      if (patReading === "primary_like") {
+                        readingText = `Resembles primary focal (${patConf}), based on ${patEpCount} episodes`;
+                      } else if (patReading === "check_cause") {
+                        readingText = "Worth checking for an underlying cause with a doctor";
+                      } else if (patReading === "mixed" || patReading === "unclear") {
+                        readingText = "Mixed signals so far, keep logging";
+                      }
+                    }
+
+                    return [
+                      { label: "Display Name", value: profileData.display_name || "Not set" },
+                      { label: "Email", value: user.email },
+                      { label: "Age", value: profileData.age || "Not set" },
+                      { label: "Biological Sex", value: profileData.biological_sex || "Not set" },
+                      { label: "Gender Identity", value: profileData.gender_identity || "Not set" },
+                      { label: "Diagnosis", value: profileData.diagnosis_type || "Not set" },
+                      { label: "HidroAlly pattern reading", value: readingText },
+                      { label: "Country", value: profileData.country || "Not set" },
+                    ];
+                  })().map((item) => (
+                    <div key={item.label} className="flex flex-col py-3 border-b border-gray-50 last:border-0 gap-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-400">{item.label}</span>
+                        <span className="text-sm font-semibold text-gray-800 text-right max-w-[60%]">
+                          {item.value}
+                        </span>
+                      </div>
+                      {item.label === "HidroAlly pattern reading" && (
+                        <p className="text-[10px] text-gray-400 italic">
+                          This is a pattern reading from your logs, not a medical diagnosis.
+                        </p>
+                      )}
                     </div>
                   ))}
+
+                  {/* Suggestion banner if Diagnosis is Unsure and Pattern Reading is primary_like with moderate/strong confidence */}
+                  {((profileData.diagnosis_type === "Unsure" || (profile as any)?.diagnosis_type === "Unsure") &&
+                    (profile as any)?.pattern_reading === "primary_like" &&
+                    ["moderate", "strong"].includes((profile as any)?.pattern_confidence)) && (
+                    <div className="mt-4 p-4 rounded-2xl bg-violet-50 border border-violet-200 text-violet-900 space-y-2">
+                      <p className="text-xs font-semibold">
+                        Your logs resemble primary focal hyperhidrosis. Update your profile?
+                      </p>
+                      <Button
+                        size="sm"
+                        onClick={async () => {
+                          const ok = await updateProfile({ diagnosis_type: "Primary Focal" } as any);
+                          if (ok) {
+                            setProfileData(prev => ({ ...prev, diagnosis_type: "Primary Focal" }));
+                            toast({ title: "Diagnosis updated", description: "Your profile has been updated to Primary Focal." });
+                          }
+                        }}
+                        className="bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold rounded-xl h-8 px-3"
+                      >
+                        Update to Primary Focal
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -691,8 +742,8 @@ const Profile = () => {
             <div>
               <p className="text-white font-black text-base leading-tight">Hyperhidrosis Warrior</p>
               <p className="text-blue-100 text-xs mt-0.5 leading-snug">
-                {episodes.length > 0
-                  ? `You've tracked ${episodes.length} episode${episodes.length > 1 ? "s" : ""}. Every log helps science understand this condition better.`
+                {totalCount > 0
+                  ? `You've tracked ${flareCount} flare-up episode${flareCount !== 1 ? "s" : ""}${totalCount > flareCount ? ` (${totalCount} total entries including dry days)` : ""}. Every log helps science understand this condition better.`
                   : "Start logging your episodes to build your warrior profile."}
               </p>
             </div>
