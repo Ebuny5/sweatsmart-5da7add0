@@ -739,7 +739,21 @@ const LogEpisode = () => {
         }
 
         const savedEpId = data?.[0]?.id || "temp";
-        const declaredType = (profile as any)?.diagnosis_type || (profile as any)?.diagnosisType || null;
+        const dtRaw = (profile as any)?.diagnosis_type || (profile as any)?.diagnosisType || "";
+        const declaredType = dtRaw.includes("Primary") ? "primary" : dtRaw.includes("Secondary") ? "secondary" : "unsure";
+
+        const bracketMap: Record<string, number> = {
+          "Childhood under 13": 10,
+          "Teens 13-19": 16,
+          "20-25": 23,
+          "26-39": 32,
+          "40 or older": 45,
+        };
+        const onsetAge = (profile as any)?.onset_bracket ? (bracketMap[(profile as any).onset_bracket] ?? null) : (profile?.age ? Number(profile.age) : null);
+        const familyHistory = (profile as any)?.family_history === "Yes" ? true : (profile as any)?.family_history === "No" ? false : null;
+        const nightSweats = (profile as any)?.night_sweats === "Never" ? false : (profile as any)?.night_sweats ? true : null;
+        const onMedication = typeof (profile as any)?.on_medication === "boolean" ? (profile as any).on_medication : null;
+        const conditions = Array.isArray((profile as any)?.conditions) ? (profile as any).conditions : undefined;
 
         const insights = generateEpisodeInsights(
           {
@@ -754,11 +768,28 @@ const LogEpisode = () => {
             userName: profile?.display_name || undefined,
             profile: {
               declaredType,
-              diagnosis_type: declaredType,
+              onsetAge,
+              familyHistory,
+              nightSweats,
+              onMedication,
+              conditions,
             },
           },
           loadedState
         );
+
+        if (user?.id && !isDryDay) {
+          try {
+            await supabase.from("profiles").update({
+              pattern_reading: insights.lean,
+              pattern_confidence: insights.readingConfidence,
+              pattern_episode_count: insights.entries,
+              pattern_updated_at: new Date().toISOString(),
+            } as any).eq("user_id", user.id);
+          } catch (patErr) {
+            console.warn("Could not save pattern reading to profile:", patErr);
+          }
+        }
 
         if (user?.id && insights.newState) {
           try {

@@ -18,9 +18,11 @@ import {
 // ───────────────────────────── Types ─────────────────────────────
 export interface TriggerInput { type?: string; value?: string; label?: string }
 export interface UserProfileInput {
+  /** What the user chose at onboarding. Their own statement, not a diagnosis. */
+  declaredType?: "primary" | "secondary" | "unsure" | null;
   onsetAge?: number | null; familyHistory?: boolean | null; nightSweats?: boolean | null;
   onMedication?: boolean | null; conditions?: string[];
-  declaredType?: string | null; diagnosis_type?: string | null;
+  diagnosis_type?: string | null;
 }
 export interface EpisodeInput {
   severity: number;                       // HDSS 1 to 4
@@ -49,6 +51,7 @@ export interface ReliefItem { id: string; area: string; because: string; text: s
 export interface LifestyleItem { id: string; trigger: string; text: string; stat: string | null }
 export interface InsightResult {
   stage: 1 | 2 | 3; entries: number; lean: string;
+  readingConfidence: "none" | "early" | "moderate" | "strong";
   sections: {
     clinicalAnalysis: { title: string; paragraphs: string[] };
     immediateRelief: { title: string; subtitle: string; items: ReliefItem[] };
@@ -216,6 +219,10 @@ function assess(eps: NEp[], s: Stats, p: UserProfileInput): Assessment {
   }
   const emo = eps.filter(e => e.tids.some(t => ["emotional", "none"].includes(TRIGGER_INDEX[t]?.kind))).length;
   if (n && emo / n >= 0.4) support.push("emotions or no obvious reason set off a good share of your episodes");
+
+  if (p.declaredType === "primary") support.push("you told us your sweating is primary hyperhidrosis");
+  else if (p.declaredType === "secondary") flags.push("you told us your sweating is secondary, so finding its cause stays the priority");
+
   if (p.onsetAge != null) {
     if (p.onsetAge <= 25) support.push("your sweating started before about age 25");
     else if (p.onsetAge >= 40) flags.push("sweating that begins later in adulthood is worth checking for a cause");
@@ -226,12 +233,6 @@ function assess(eps: NEp[], s: Stats, p: UserProfileInput): Assessment {
   if (p.onMedication === true) flags.push("you take regular medication, and some medicines cause sweating");
   if (p.conditions && p.conditions.length) flags.push(`you have ${join(p.conditions)}, which can affect sweating`);
 
-  const dt = (p.declaredType || p.diagnosis_type || "").toLowerCase();
-  if (dt.includes("primary")) {
-    support.push("you told us in your setup profile that your sweating is primary hyperhidrosis");
-  } else if (dt.includes("secondary")) {
-    flags.push("you indicated in your profile that your sweating may be secondary hyperhidrosis");
-  }
   const seenFlag = new Set<string>();
   for (const e of eps) for (const t of e.tids) {
     const f = TRIGGER_INDEX[t]?.flag;
@@ -377,7 +378,7 @@ function buildClinical(cur: NEp, s: Stats, a: Assessment, st: InsightState): str
   const { lean, support: sup, flags: flg } = a;
   if (n === 1) {
     paras.push("Because this is your first entry, it is too early to say whether your sweating is primary hyperhidrosis or secondary hyperhidrosis. In primary hyperhidrosis the sweat glands are healthy but the nerves that switch them on react too easily. In secondary hyperhidrosis something else is driving the sweating and that cause needs to be found. The difference shows up in patterns: where it happens, what sets it off, whether it happens at rest and whether it ever wakes you at night. Your next 3 to 4 entries will start to reveal that.");
-    if (a.missing.length) paras.push(`Two things that would sharpen the picture: ${join(a.missing.slice(0, 2))}.`);
+    if (a.missing.length) paras.push(`Two things worth keeping an eye on, because they help tell the two apart: ${join(a.missing.slice(0, 2))}. You can tell the HidroAlly chat about them any time.`);
   } else if (n <= 3) {
     const rem = Math.max(4 - n, 1);
     const txt: Record<string, string> = {
@@ -388,7 +389,7 @@ function buildClinical(cur: NEp, s: Stats, a: Assessment, st: InsightState): str
     };
     paras.push(`${txt[lean]} Log ${rem} or more episodes and the comparison becomes much sharper.`);
   } else if (lean === "primary_like") {
-    paras.push(`Across ${n} entries, your pattern is consistent with primary hyperhidrosis. What points that way: ${semi(sup.slice(0, 3))}. It isn't dangerous and it doesn't mean you are unwell: the glands are healthy and the nerve signal that switches them on is over-eager. It tends to be lifelong but is very manageable, and your logs show which triggers to tackle first. Only a clinician can confirm it.`);
+    paras.push(`Across ${n} entries, your pattern is ${n < 8 ? "starting to look consistent" : "consistent"} with primary hyperhidrosis. What points that way: ${semi(sup.slice(0, 3))}. It isn't dangerous and it doesn't mean you are unwell: the glands are healthy and the nerve signal that switches them on is over-eager. It tends to be lifelong but is very manageable, and your logs show which triggers to tackle first. Only a clinician can confirm it.`);
   } else if (lean === "mixed") {
     paras.push(`Across ${n} entries the picture is mixed. Signs for primary hyperhidrosis: ${semi(sup.slice(0, 2)) || "a few"}. Details worth checking: ${semi(flg.slice(0, 2))}. Sharing these logs with a doctor is the best way to settle it.`);
   } else if (lean === "check_cause") {
@@ -492,7 +493,7 @@ function buildDryDay(input: EpisodeInput, st: InsightState): InsightResult {
   const footer = { text: "Want a deeper look at your progress? Continue the conversation in the HidroAlly chat.", button: "Continue in HidroAlly Chat" };
   const greeting = input.userName ? `Hi ${input.userName}, this is HidroAlly` : "Hi, this is HidroAlly";
   return {
-    stage: 3, entries: sorted.length, lean: "n/a",
+    stage: 3, entries: sorted.length, lean: "n/a", readingConfidence: "none",
     sections: {
       clinicalAnalysis: { title: "Clinical Analysis", paragraphs: [analysis] },
       immediateRelief: { title: "Maintenance Guidance", subtitle: "", items: relief.map((t, i) => ({ id: `dry:${i}`, area: "", because: "", text: t })) },
@@ -525,6 +526,10 @@ export function generateEpisodeInsights(input: EpisodeInput, state?: InsightStat
   const a = assess(eps, s, input.profile || {});
   const clusters = new Set(current.areas.map(x => CLUSTER[x]).filter(c => c && c !== "any")); if (!clusters.size) clusters.add("all");
 
+  const spanDays = s.stamps.length ? Math.floor((Math.max(...s.stamps.map(d => d.getTime())) - Math.min(...s.stamps.map(d => d.getTime()))) / 864e5) : 0;
+  const confidence: InsightResult["readingConfidence"] =
+    s.n < 4 ? "none" : s.n >= 15 && spanDays >= 14 ? "strong" : s.n >= 8 && spanDays >= 14 ? "moderate" : "early";
+
   let clinical = buildClinical(current, s, a, st);
   let relief = pickRelief(current.areas.length ? current.areas : ["entire body"], current.tids, s, st);
   let life = pickLifestyle(current.tids, s, st);
@@ -544,7 +549,7 @@ export function generateEpisodeInsights(input: EpisodeInput, state?: InsightStat
   const greeting = input.userName ? `Hi ${input.userName}, this is HidroAlly` : "Hi, this is HidroAlly";
   const footer = { text: "Want a deeper look at this episode? Continue the conversation in the HidroAlly chat.", button: "Continue in HidroAlly Chat" };
   return {
-    stage: s.n === 1 ? 1 : s.n <= 3 ? 2 : 3, entries: s.n, lean: a.lean,
+    stage: s.n === 1 ? 1 : s.n <= 3 ? 2 : 3, entries: s.n, lean: a.lean, readingConfidence: confidence,
     sections: {
       clinicalAnalysis: { title: "Clinical Analysis", paragraphs: clinical },
       immediateRelief: { title: "Immediate Relief Strategies", subtitle: "One for each area you logged. Tell us if it helped so we learn what works for you.", items: relief },
