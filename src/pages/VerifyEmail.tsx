@@ -79,7 +79,7 @@ const VerifyEmail = () => {
             <MailCheck className="w-6 h-6" />
           </div>
           <div className="space-y-4">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Check your inbox, Warrior!</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Check your inbox!</h1>
           </div>
           <div className="space-y-4 mt-4">
             <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">

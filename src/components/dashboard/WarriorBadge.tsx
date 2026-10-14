@@ -527,6 +527,37 @@ const WarriorBadge = ({
       {/* ── Badge preview ────────────────────────────────────────────── */}
       <div className="px-5 relative">
         <div className="rounded-2xl overflow-hidden shadow-2xl shadow-purple-900 relative">
+          {/* Confetti particles when unlocked */}
+          {unlocked && (
+            <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
+              {[...Array(24)].map((_, i) => {
+                const colors = ["#ec4899", "#a855f7", "#3b82f6", "#eab308", "#10b981", "#f43f5e"];
+                const color = colors[i % colors.length];
+                const left = (i * 17) % 100;
+                const animDelay = (i * 0.15) % 2;
+                const size = 6 + (i % 5);
+                return (
+                  <div
+                    key={i}
+                    className="absolute animate-bounce"
+                    style={{
+                      top: `${(i * 13) % 85}%`,
+                      left: `${left}%`,
+                      width: `${size}px`,
+                      height: `${size * (i % 2 === 0 ? 1 : 1.8)}px`,
+                      backgroundColor: color,
+                      transform: `rotate(${i * 25}deg)`,
+                      borderRadius: i % 3 === 0 ? "50%" : "2px",
+                      opacity: 0.85,
+                      animationDuration: `${1.5 + (i % 3) * 0.5}s`,
+                      animationDelay: `${animDelay}s`,
+                    }}
+                  />
+                );
+              })}
+            </div>
+          )}
+
           <canvas
             ref={canvasRef}
             className="w-full h-auto block"
@@ -588,17 +619,17 @@ const WarriorBadge = ({
             </div>
           )}
 
-          {/* Unlocked celebration overlay — flashes briefly */}
+          {/* Unlocked celebration badge overlay */}
           {unlocked && (
-            <div className="absolute top-3 right-3">
+            <div className="absolute top-3 right-3 z-20">
               <div
-                className="px-2.5 py-1 rounded-full text-[10px] font-black text-white"
+                className="px-2.5 py-1 rounded-full text-[10px] font-black text-white flex items-center gap-1"
                 style={{
                   background: "linear-gradient(135deg, #7c3aed, #ec4899)",
                   boxShadow: "0 4px 12px rgba(124,58,237,0.5)",
                 }}
               >
-                ✨ Earned
+                🎉 Unlocked!
               </div>
             </div>
           )}
