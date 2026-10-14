@@ -18,6 +18,8 @@ import { speakProfessionally, stopProfessionalSpeech } from '@/utils/webSpeechVo
 import { useEngagement } from '@/hooks/useEngagement';
 import { useHidroAllySpeech } from '@/features/hidroally/useHidroAllySpeech';
 import { useHidroAllyDictation } from '@/features/hidroally/useHidroAllyDictation';
+import { formatHdss, cleanHdssDecimals } from '@/utils/hdssGauger';
+import { normalizeArea, groupBodyArea } from '@/features/insights/insightEngine';
 
 
 interface Message {
@@ -175,13 +177,13 @@ const MessageBubble = ({
             whiteSpace: 'pre-wrap',
           }}
         >
-          {message.content}
+          {cleanHdssDecimals(message.content)}
         </div>
 
         {message.content && (
           <div className="flex items-center gap-1 pl-1">
             <button
-              onClick={() => onCopy(message.content, index)}
+              onClick={() => onCopy(cleanHdssDecimals(message.content), index)}
               className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
               title="Copy"
             >
@@ -473,10 +475,16 @@ const HidroAlly = () => {
         x.count++; x.severities.push(ep.severityLevel);
         triggerCounts.set(label, x);
       });
+      // Group body areas to avoid duplicates and raw keys
+      const seenGroupsInEpisode = new Set<string>();
       ep.bodyAreas.forEach((a: string) => {
-        const x = areaCounts.get(a) || { count: 0, severities: [] };
-        x.count++; x.severities.push(ep.severityLevel);
-        areaCounts.set(a, x);
+        const groupedLabel = groupBodyArea(a);
+        if (!seenGroupsInEpisode.has(groupedLabel)) {
+          seenGroupsInEpisode.add(groupedLabel);
+          const x = areaCounts.get(groupedLabel) || { count: 0, severities: [] };
+          x.count++; x.severities.push(ep.severityLevel);
+          areaCounts.set(groupedLabel, x);
+        }
       });
     });
 
@@ -484,7 +492,7 @@ const HidroAlly = () => {
       .sort((a, b) => b[1].count - a[1].count).slice(0, 5)
       .map(([name, d]) => ({
         name, count: d.count,
-        avgSeverity: (d.severities.reduce((a, b) => a + b, 0) / d.severities.length).toFixed(1),
+        avgSeverity: formatHdss(d.severities.reduce((a, b) => a + b, 0) / d.severities.length).toString(),
         percentage: Math.round((d.count / episodes.length) * 100),
       }));
 
@@ -492,7 +500,7 @@ const HidroAlly = () => {
       .sort((a, b) => b[1].count - a[1].count)
       .map(([area, d]) => ({
         area, count: d.count,
-        avgSeverity: (d.severities.reduce((a, b) => a + b, 0) / d.severities.length).toFixed(1),
+        avgSeverity: formatHdss(d.severities.reduce((a, b) => a + b, 0) / d.severities.length).toString(),
         percentage: Math.round((d.count / episodes.length) * 100),
       }));
 
@@ -504,15 +512,26 @@ const HidroAlly = () => {
       const wEps   = episodes.filter(ep => ep.datetime >= wStart && ep.datetime < wEnd);
       if (wEps.length > 0 || i < 4) {
         weeklyTrends.push({
-          week: format(wStart, 'MMM d'),
+          week: format(wStart, 'd MMM yyyy'),
           count: wEps.length,
           avgSeverity: wEps.length > 0
-            ? (wEps.reduce((s, e) => s + e.severityLevel, 0) / wEps.length).toFixed(1) : '0',
+            ? formatHdss(wEps.reduce((s, e) => s + e.severityLevel, 0) / wEps.length).toString() : 'No episodes',
         });
       }
     }
 
-    return { totalEpisodes: episodes.length, avgSeverity: episodes.length > 0 ? (episodes.reduce((s, e) => s + e.severityLevel, 0) / episodes.length).toFixed(1) : '0', topTriggers, topAreas, weeklyTrends };
+    const overallAvgNum = episodes.length > 0 ? episodes.reduce((s, e) => s + e.severityLevel, 0) / episodes.length : 0;
+    const overallAvg = episodes.length > 0 ? formatHdss(overallAvgNum).toString() : '0';
+
+    // Calculate HDSS range across non-dry episodes
+    const severities = episodes.map(e => e.severityLevel).filter(s => s != null && !isNaN(s));
+    const minSev = severities.length ? Math.min(...severities) : 0;
+    const maxSev = severities.length ? Math.max(...severities) : 0;
+    const rangeText = severities.length > 0 && minSev !== maxSev
+      ? `Typically HDSS ${overallAvg} (ranged ${minSev} to ${maxSev})`
+      : `Typically HDSS ${overallAvg}`;
+
+    return { totalEpisodes: episodes.length, avgSeverity: overallAvg, severityRangeText: rangeText, minSev, maxSev, topTriggers, topAreas, weeklyTrends };
   }, [rawEpisodes]);
 
   const userName = profile?.display_name || user?.email?.split('@')[0] || 'Warrior';
@@ -649,19 +668,22 @@ const HidroAlly = () => {
 
       const episodes = rawEpisodes || [];
       const dateRange = episodes.length > 0
-        ? `${format(new Date(episodes[episodes.length - 1].datetime), 'dd/MM/yyyy')} – ${format(new Date(episodes[0].datetime), 'dd/MM/yyyy')}`
+        ? `${format(new Date(episodes[episodes.length - 1].datetime), 'd MMM yyyy')} – ${format(new Date(episodes[0].datetime), 'd MMM yyyy')}`
         : 'N/A';
 
       doc.text(`Report Period: ${dateRange}`, margin + 5, y + 14);
       doc.text(`Total Episodes Logged: ${dashboardAnalytics.totalEpisodes}`, margin + 5, y + 20);
-      doc.text(`Average HDSS Severity: ${dashboardAnalytics.avgSeverity} / 4`, margin + 5, y + 26);
+      const sevDisplay = dashboardAnalytics.minSev !== dashboardAnalytics.maxSev && dashboardAnalytics.totalEpisodes > 0
+        ? `Typically HDSS ${dashboardAnalytics.avgSeverity} (ranged ${dashboardAnalytics.minSev} to ${dashboardAnalytics.maxSev})`
+        : `Typically HDSS ${dashboardAnalytics.avgSeverity}`;
+      doc.text(`Severity Profile: ${sevDisplay}`, margin + 5, y + 26);
 
       // Clinical Status Logic
       const avg = parseFloat(dashboardAnalytics.avgSeverity);
       let status = '';
-      if (avg < 2.0) status = "Mild — Monitor and maintain lifestyle strategies";
-      else if (avg < 3.0) status = "Moderate — First-line treatment recommended";
-      else if (avg < 3.5) status = "Significant — Prescription treatment clinically indicated. Dermatology referral advised.";
+      if (avg <= 1) status = "Mild — Monitor and maintain lifestyle strategies";
+      else if (avg <= 2) status = "Moderate — First-line treatment recommended";
+      else if (avg <= 3) status = "Significant — Prescription treatment clinically indicated. Dermatology referral advised.";
       else status = "Severe — Urgent dermatology referral recommended. Multiple treatment modalities required.";
 
       doc.setFont('helvetica', 'bold');
@@ -693,7 +715,17 @@ const HidroAlly = () => {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
       const top3Areas = dashboardAnalytics.topAreas.slice(0, 3).map((a: any) => `${a.area} (${a.percentage}%)`).join(', ');
-      const complaintText = `The patient presents with primary focal hyperhidrosis affecting predominantly the ${top3Areas}, with a mean HDSS severity score of ${dashboardAnalytics.avgSeverity} over the documented period. The condition has been tracked across ${dashboardAnalytics.totalEpisodes} individual episodes.`;
+      const declaredType = (profile as any)?.diagnosis_type || (profile as any)?.declaredType || 'Unspecified';
+      const reading = 'Primary-like focal hyperhidrosis pattern';
+      const confidence = 'Moderate';
+
+      const wholeBodyEpCount = episodes.filter(e => e.bodyAreas?.some((ba: string) => normalizeArea(ba) === 'entire body')).length;
+      const wholeBodyPercent = episodes.length > 0 ? Math.round((wholeBodyEpCount / episodes.length) * 100) : 0;
+      const wholeBodyNote = wholeBodyPercent > 0
+        ? ` ${wholeBodyPercent}% of episodes were logged as whole-body sweating, which is worth clinical review for a secondary cause.`
+        : '';
+
+      const complaintText = `Patient-reported diagnosis: ${declaredType}. HidroAlly pattern reading: ${reading} (${confidence}). Predominantly affected areas include ${top3Areas}, with a severity profile of ${sevDisplay.toLowerCase()} across ${dashboardAnalytics.totalEpisodes} individual episodes.${wholeBodyNote}`;
 
       const complaintLines = doc.splitTextToSize(complaintText, contentWidth);
       doc.text(complaintLines, margin, y);
@@ -729,8 +761,17 @@ const HidroAlly = () => {
       });
 
       y += 6;
-      const primaryTrigger = dashboardAnalytics.topTriggers[0]?.name || 'various factors';
-      const triggerInterpret = `Clinical interpretation reveals that ${primaryTrigger} is the primary exacerbating factor, accounting for ${dashboardAnalytics.topTriggers[0]?.percentage || 0}% of reported episodes. This suggests a strong correlation between environmental/emotional stimuli and autonomic over-activity.`;
+      const primaryTriggerObj = dashboardAnalytics.topTriggers[0];
+      const primaryTriggerName = primaryTriggerObj?.name || 'various factors';
+      const topTrigAvgSev = primaryTriggerObj ? parseInt(primaryTriggerObj.avgSeverity, 10) : 0;
+      const overallAvgSev = parseInt(dashboardAnalytics.avgSeverity, 10);
+      const isExacerbatingFactor = topTrigAvgSev >= overallAvgSev + 1;
+
+      const triggerDescriptor = isExacerbatingFactor
+        ? `${primaryTriggerName} is the primary exacerbating factor`
+        : `${primaryTriggerName} is the most frequently logged trigger`;
+
+      const triggerInterpret = `Clinical interpretation reveals that ${triggerDescriptor}, accounting for ${primaryTriggerObj?.percentage || 0}% of reported episodes. This suggests a strong correlation between environmental/emotional stimuli and autonomic over-activity.`;
       const triggerLines = doc.splitTextToSize(triggerInterpret, contentWidth);
       doc.text(triggerLines, margin, y);
       y += (triggerLines.length * 5) + 10;
@@ -771,21 +812,22 @@ const HidroAlly = () => {
       y += 8;
 
       const clinicalNames: Record<string, string> = {
-        'palms': 'Palmar hyperhidrosis',
-        'hands': 'Palmar hyperhidrosis',
-        'soles': 'Plantar hyperhidrosis',
-        'feet': 'Plantar hyperhidrosis',
+        'palms and hands': 'Palmar hyperhidrosis',
+        'feet and soles': 'Plantar hyperhidrosis',
         'underarms': 'Axillary hyperhidrosis',
-        'face': 'Craniofacial hyperhidrosis',
-        'scalp': 'Craniofacial hyperhidrosis',
-        'entire_body': 'Generalized hyperhidrosis',
+        'face and scalp': 'Craniofacial hyperhidrosis',
+        'chest': 'Truncal hyperhidrosis',
+        'back': 'Truncal hyperhidrosis',
+        'groin': 'Inguinal hyperhidrosis',
+        'thighs': 'Lower extremity hyperhidrosis',
+        'entire body': 'Generalized hyperhidrosis',
       };
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
       dashboardAnalytics.topAreas.forEach((a: any, i: number) => {
         const clinName = clinicalNames[a.area.toLowerCase()] || 'Focal hyperhidrosis';
-        doc.text(`${i + 1}. ${a.area.charAt(0).toUpperCase() + a.area.slice(1)} (${clinName}) — ${a.percentage}% of episodes`, margin, y);
+        doc.text(`${i + 1}. ${a.area} (${clinName}) — ${a.percentage}% of episodes`, margin, y);
         y += 7;
       });
       y += 10;
@@ -835,10 +877,20 @@ const HidroAlly = () => {
       doc.setFontSize(9);
       doc.setTextColor(0, 0, 0);
 
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(180, 83, 9); // Amber-700
+      doc.text("For discussion with a dermatologist. Not for self-treatment. AI-generated from the patient's logs.", margin, y);
+      y += 6;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(0, 0, 0);
+
       const refGuides = [
-        "• Topical Aluminum Chloride Hexahydrate: Standard first-line topical modality evaluated for palmoplantar management.",
-        "• Iontophoresis: Non-invasive micro-current water therapy used for focal sweat reduction.",
-        "• Targeted Neuromodulators / Systemic Options: Clinical modalities evaluated strictly under dermatologist discretion based on systemic profile."
+        "• Topical Aluminum Chloride Hexahydrate: Standard first-line topical modality.",
+        "• Iontophoresis: Non-invasive tap-water therapy used for focal sweat reduction.",
+        "• Targeted Anticholinergics / Systemic Options: Clinical modalities evaluated strictly under dermatologist discretion based on systemic profile."
       ];
 
       refGuides.forEach(guide => {
@@ -892,7 +944,7 @@ const HidroAlly = () => {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
       const primaryTrig = dashboardAnalytics.topTriggers[0]?.name || 'idiopathic factors';
-      const synthText = `Based on the patient's objective telemetry profile (${dashboardAnalytics.totalEpisodes} tracking instances, mean HDSS ${dashboardAnalytics.avgSeverity}/4), the clinical data is highly indicative of primary focal hyperhidrosis. The autonomic hyperactivity shows a high correlation with ${primaryTrig} triggers.`;
+      const synthText = `Based on the patient's objective telemetry profile (${dashboardAnalytics.totalEpisodes} tracking instances, ${sevDisplay.toLowerCase()}), the clinical data is highly indicative of primary focal hyperhidrosis. The autonomic hyperactivity shows a high correlation with ${primaryTrig} triggers.`;
       const synthLines = doc.splitTextToSize(synthText, contentWidth);
       doc.text(synthLines, margin, y);
       y += (synthLines.length * 4.5) + 8;
@@ -915,9 +967,8 @@ const HidroAlly = () => {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(8.5);
         const palmRecs = [
-          "• Consider initiating Topical Aluminum Chloride Hexahydrate (20% - 25% in absolute ethanol) solution.",
-          "  Clinical Protocol: Apply to dry surfaces at bedtime for 3–7 consecutive nights until control is achieved, then titrate down to 1–2 times weekly maintenance. Wash off in morning to limit friction-induced eczema.",
-          "• Alternative/Adjunct: Tap-water Iontophoresis (20-minute sessions, 3-4 times weekly until euidrosis, followed by weekly maintenance passes at Giftovate Hub)."
+          "• First-Line Modalities: Topical Aluminum Chloride Hexahydrate solution.",
+          "• Alternative / Adjunct: Tap-water Iontophoresis."
         ];
         palmRecs.forEach(pr => {
           const prLines = doc.splitTextToSize(pr, contentWidth);
@@ -935,8 +986,8 @@ const HidroAlly = () => {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(8.5);
         const faceRecs = [
-          "• Contraindication Warning: Do not use standard high-strength alcoholic Aluminum Chloride or heavy scalp lotions on the face due to extreme risk of severe chemical dermatitis and facial skin mantle destruction.",
-          "• Clinical Protocol: Consider low-concentration Glycopyrrolate topical cream or gel (0.5% - 2.0%) applied carefully to clean, dry facial margins (forehead/upper lip), avoiding eyes and mouth."
+          "• Clinical Note: Avoid high-strength alcoholic solutions on facial skin margins.",
+          "• Treatment Considerations: Topical Glycopyrrolate gel or cream."
         ];
         faceRecs.forEach(fr => {
           const frLines = doc.splitTextToSize(fr, contentWidth);
@@ -954,7 +1005,7 @@ const HidroAlly = () => {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(8.5);
         const scalpRecs = [
-          "• Clinical Protocol: Since this is hair-bearing skin, avoid heavy creams or ointments which cause follicular occlusion. Consider a targeted topical pump spray solution (e.g., Odaban) applied directly to scalp partings at bedtime, or evaluate systemic oral anticholinergics if both face and scalp require concurrent global control."
+          "• Treatment Considerations: Targeted liquid formulations or systemic oral anticholinergics under specialist evaluation."
         ];
         scalpRecs.forEach(sr => {
           const srLines = doc.splitTextToSize(sr, contentWidth);

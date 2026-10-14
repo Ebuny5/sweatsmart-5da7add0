@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useEpisodes } from '@/hooks/useEpisodes';
 import { useEngagement } from '@/hooks/useEngagement';
+import { formatHdss } from '@/utils/hdssGauger';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
@@ -175,7 +176,7 @@ const AIGreeting = ({ profile, hdss, meta, state, onDismiss }: {
   profile: any; hdss: number; meta: SearchMeta | null; state: string; onDismiss: () => void;
 }) => {
   const name = profile?.name?.split(' ')[0] || 'Warrior';
-  const hdssText = hdss > 0 ? `HDSS ${hdss.toFixed(1)} severity` : 'your hyperhidrosis profile';
+  const hdssText = hdss > 0 ? `Typically HDSS ${formatHdss(hdss)}` : 'your hyperhidrosis profile';
   const physCount = meta
     ? (Number(meta.physicalCount) ||
        (Number(meta.curatedCount) || 0) + (Number(meta.facilityOnlyCount) || 0) + (Number(meta.externalCount) || 0))
@@ -658,7 +659,8 @@ const SpecialistRadar = () => {
 
   // ── Share warrior report ────────────────────────────────────────────────
   const handleShare = (doctor: Doctor) => {
-    const msg = `Hi, I'm a patient managing hyperhidrosis. I use HidroAlly to track my condition and would like to share my data before our consultation.\n\nMy HDSS score: ${hdss.toFixed(1)}/4\nEpisode count (recent): ${episodes?.length || 0}\nPrimary concern: Palmar/Plantar hyperhidrosis\n\nI will bring my full HidroAlly Warrior Report to our ${doctor.isTelehealth ? 'virtual' : 'in-person'} appointment.\n\nKind regards`;
+    const hdssRoundVal = formatHdss(hdss);
+    const msg = `Hi, I'm a patient managing hyperhidrosis. I use HidroAlly to track my condition and would like to share my data before our consultation.\n\nMy HDSS score: Typically HDSS ${hdssRoundVal}\nEpisode count (recent): ${episodes?.length || 0}\nPrimary concern: Palmar/Plantar hyperhidrosis\n\nI will bring my full HidroAlly Warrior Report to our ${doctor.isTelehealth ? 'virtual' : 'in-person'} appointment.\n\nKind regards`;
     if (navigator.share) {
       navigator.share({ title: 'HidroAlly Warrior Report', text: msg }).catch(() => {});
     } else {

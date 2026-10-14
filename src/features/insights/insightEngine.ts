@@ -18,7 +18,7 @@ import {
 // ───────────────────────────── Types ─────────────────────────────
 export interface TriggerInput { type?: string; value?: string; label?: string }
 export interface UserProfileInput {
-  /** What the user chose at onboarding. Their own statement, not a diagnosis. */
+  /** What the user chose at onboarding: primary / secondary / not sure. Their own statement, not a diagnosis. */
   declaredType?: "primary" | "secondary" | "unsure" | null;
   onsetAge?: number | null; familyHistory?: boolean | null; nightSweats?: boolean | null;
   onMedication?: boolean | null; conditions?: string[];
@@ -51,6 +51,7 @@ export interface ReliefItem { id: string; area: string; because: string; text: s
 export interface LifestyleItem { id: string; trigger: string; text: string; stat: string | null }
 export interface InsightResult {
   stage: 1 | 2 | 3; entries: number; lean: string;
+  /** none (<4 logs) | early (4-7 logs or <14 days) | moderate (8+ logs over 2+ weeks) | strong (15+ logs over 2+ weeks) */
   readingConfidence: "none" | "early" | "moderate" | "strong";
   sections: {
     clinicalAnalysis: { title: string; paragraphs: string[] };
@@ -122,10 +123,28 @@ function inferClusters(text: string): Set<string> {
   let t = text.toLowerCase().replace(/back of (the |your )?neck/g, "neck").replace(/hand fan|handheld fan|hand towel/g, " ");
   return new Set(Object.entries(KW).filter(([, re]) => re.test(t)).map(([c]) => c));
 }
-const normalizeArea = (a: string) => {
+export const normalizeArea = (a: string) => {
   const x = String(a).trim().toLowerCase().replace(/_/g, " ").replace(/\s+/g, " ");
   return AREA_ALIASES[x] || x;
 };
+
+export function groupBodyArea(rawArea: string): string {
+  const norm = normalizeArea(rawArea);
+  if (["palms", "hands", "fingers", "palm", "hand", "finger", "wrists"].includes(norm)) return "Palms and hands";
+  if (["feet", "soles", "toes", "feet_soles", "feet soles", "foot", "sole", "toe"].includes(norm)) return "Feet and soles";
+  if (["face", "face_scalp", "face scalp", "scalp", "head", "forehead", "cheeks", "temples"].includes(norm)) return "Face and scalp";
+  if (["underarms", "underarm", "armpit", "armpits", "axillary"].includes(norm)) return "Underarms";
+  if (["chest"].includes(norm)) return "Chest";
+  if (["back"].includes(norm)) return "Back";
+  if (["groin"].includes(norm)) return "Groin";
+  if (["thighs", "thigh", "legs", "leg"].includes(norm)) return "Thighs";
+  if (["entire body", "entire_body", "whole body", "full body", "generalized"].includes(norm)) return "Entire body";
+
+  // Fallback: capitalize words and replace underscores
+  return String(rawArea)
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
 const normTrigger = (t: string) => { const s = slug(t); return TRIGGER_ALIASES[s] || s; };
 const triggerText = (t: TriggerInput | string) =>
   typeof t === "string" ? t : (t.label || t.value || t.type || "");
@@ -133,6 +152,8 @@ const triggerText = (t: TriggerInput | string) =>
 // ───────────────────────────── Text helpers ─────────────────────────────
 const join = (xs: string[]) => xs.length <= 1 ? (xs[0] || "") : xs.slice(0, -1).join(", ") + " and " + xs[xs.length - 1];
 const semi = (xs: string[]) => xs.length <= 1 ? (xs[0] || "") : xs.slice(0, -1).join("; ") + "; and " + xs[xs.length - 1];
+/** HDSS is a whole-number 1-4 grade. Averages are always shown rounded (x.5 rounds up). */
+export const hdssRound = (x: number) => Math.min(4, Math.max(1, Math.round(x + 1e-9)));
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const ord = (n: number) => { const m = n % 100; const sfx = m >= 11 && m <= 13 ? "th" : ({ 1: "st", 2: "nd", 3: "rd" } as any)[n % 10] || "th"; return n + sfx; };
 const your = (a: string[]) => "your " + join(a);
@@ -219,10 +240,8 @@ function assess(eps: NEp[], s: Stats, p: UserProfileInput): Assessment {
   }
   const emo = eps.filter(e => e.tids.some(t => ["emotional", "none"].includes(TRIGGER_INDEX[t]?.kind))).length;
   if (n && emo / n >= 0.4) support.push("emotions or no obvious reason set off a good share of your episodes");
-
-  if (p.declaredType === "primary") support.push("you told us your sweating is primary hyperhidrosis");
-  else if (p.declaredType === "secondary") flags.push("you told us your sweating is secondary, so finding its cause stays the priority");
-
+  if (p.declaredType === "primary" || p.diagnosis_type === "primary") support.push("you told us your sweating is primary hyperhidrosis");
+  else if (p.declaredType === "secondary" || p.diagnosis_type === "secondary") flags.push("you told us your sweating is secondary, so finding its cause stays the priority");
   if (p.onsetAge != null) {
     if (p.onsetAge <= 25) support.push("your sweating started before about age 25");
     else if (p.onsetAge >= 40) flags.push("sweating that begins later in adulthood is worth checking for a cause");
@@ -232,7 +251,6 @@ function assess(eps: NEp[], s: Stats, p: UserProfileInput): Assessment {
   else if (p.nightSweats === true) { flags.push("you get night sweats, which are not typical of primary hyperhidrosis"); strong = true; }
   if (p.onMedication === true) flags.push("you take regular medication, and some medicines cause sweating");
   if (p.conditions && p.conditions.length) flags.push(`you have ${join(p.conditions)}, which can affect sweating`);
-
   const seenFlag = new Set<string>();
   for (const e of eps) for (const t of e.tids) {
     const f = TRIGGER_INDEX[t]?.flag;
@@ -305,7 +323,11 @@ function pickLifestyle(tids: string[], s: Stats, st: InsightState): LifestyleIte
     if (n >= 3 && c >= 2) {
       stat = `${tr.label} has been part of ${c} of your ${n} episodes.`;
       const a = s.trigHd[tid];
-      if (a && s.avgHd) stat += ` Episodes with it average HDSS ${a.toFixed(1)}, against ${s.avgHd.toFixed(1)} across all your logs.`;
+      if (a && s.avgHd) {
+        const t = hdssRound(a), o = hdssRound(s.avgHd);
+        stat += t === o ? ` Episodes with it are typically HDSS ${t}, the same as your usual level.`
+                        : ` Episodes with it are typically HDSS ${t}, against HDSS ${o} across all your logs.`;
+      }
     }
     items.push({ id: `${tid}:L${i}`, trigger: tr.label, text: opts[i], stat });
   }
@@ -425,7 +447,7 @@ function buildTracker(s: Stats, st: InsightState, dryDays: number): string[] {
       const d = last.reduce((a, b) => a + b, 0) / 3 - prev.reduce((a, b) => a + b, 0) / prev.length;
       trend = " Your last 3 episodes are " + (d <= -0.4 ? "milder than before." : d >= 0.4 ? "more severe than before." : "about the same as before.");
     }
-    lines.push(`Average severity: HDSS ${s.avgHd.toFixed(1)}.${trend}`);
+    lines.push(`Typical severity: HDSS ${hdssRound(s.avgHd)}.${trend}`);
   }
   if (dryDays > 0) lines.push(`You've also logged ${dryDays} dry day${dryDays !== 1 ? "s" : ""}. Those are what let us see what a good day looks like for you.`);
   const helped = Object.values(st.feedback).filter(v => v === true).length;
@@ -499,7 +521,7 @@ function buildDryDay(input: EpisodeInput, st: InsightState): InsightResult {
       immediateRelief: { title: "Maintenance Guidance", subtitle: "", items: relief.map((t, i) => ({ id: `dry:${i}`, area: "", because: "", text: t })) },
       lifestyle: { title: "Lifestyle Modifications", subtitle: "", intro: null, items: life.map((t, i) => ({ id: `dryL:${i}`, trigger: "", text: t, stat: null })) },
       patternTracker: { title: "Your Pattern Tracker", lines: [header] },
-      care: { title: "HidroAlly Care & Specialist Scheduling", paragraphs: [care] },
+      care: { title: "HidroAlly Care & Specialist Scheduling", paragraphs: care },
     },
     footer, disclaimer: DISCLAIMER,
     emotionalOpener: `${greeting}. Great job tracking an asymptomatic day! Here is your maintenance guidance.`,

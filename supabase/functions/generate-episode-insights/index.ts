@@ -191,7 +191,7 @@ You are the HidroAlly Clinical Insight Engine, an expert digital health consulta
 You will receive a JSON payload with:
 - affected_areas: string[] (e.g., ["Palms", "Soles", "Face", "Axillae", or custom user-defined areas])
 - triggers: string[] (e.g., ["Heat", "Crowded Spaces", "Synthetic Fabrics", "No Identifiable Trigger", or custom user-defined triggers])
-- severity_hdss: number (1 to 4)
+- severity_hdss: number (1 to 4, whole grade from 1 to 4 - NEVER output decimal HDSS values)
 - additional_notes: string (Optional freeform narrative from the user)
 - sensor_data: object (Optional EDA in µS, ambient temperature, UV index)
 

@@ -191,7 +191,7 @@ function analyzeEpisodes(episodes: Episode[]): WarriorInsight[] {
       label: `"${
         trigName.charAt(0).toUpperCase() + trigName.slice(1)
       }" is your #1 driver`,
-      sublabel: `${trigData.count}× · avg HDSS ${trigAvgSev} · ${trigPercent}% of all episodes`,
+      sublabel: `${trigData.count}× · Typically HDSS ${trigAvgSev} · ${trigPercent}% of all episodes`,
       probability: trigPercent,
       probabilityLabel: `Appears in ${trigPercent}% of your logged episodes`,
       bar: "from-amber-400 to-orange-500",
@@ -261,7 +261,7 @@ let detailText = "";
         : improving
           ? `Severity improving — avg ${Math.abs(sevDrift).toFixed(1)} HDSS pts reduction`
           : `Severity stable — consistent across episodes`,
-      sublabel: `Avg HDSS ${Math.round(roundedAvgSev)} (HDSS 1-4 Scale)`,
+      sublabel: `Typically HDSS ${roundedAvgSev}`,
       probability: driftPercent,
       probabilityLabel: worsening
         ? `The escalation is consistent across your last ${Math.min(
