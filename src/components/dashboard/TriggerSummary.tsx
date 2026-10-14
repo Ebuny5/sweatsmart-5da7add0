@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import { useMemo } from "react";
 import { Eye, BarChart3 } from "lucide-react";
+import { formatHdss } from "@/utils/hdssGauger";
 
 interface TriggerSummaryProps {
   triggers: TriggerFrequency[];
@@ -64,7 +65,7 @@ const TriggerSummary: React.FC<TriggerSummaryProps> = ({ triggers, allEpisodes =
         name: triggerLabel.length > 14 ? triggerLabel.substring(0, 14) + '…' : triggerLabel,
         fullName: triggerLabel,
         count: triggerFreq.count,
-        severity: Number((triggerFreq.averageSeverity ?? 0).toFixed(1)),
+        severity: formatHdss(triggerFreq.averageSeverity ?? 0),
         percentage: triggerFreq.percentage ?? 0
       };
     });

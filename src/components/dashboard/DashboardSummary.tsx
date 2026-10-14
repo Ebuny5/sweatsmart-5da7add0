@@ -6,6 +6,7 @@ import {
 } from "recharts";
 import { ProcessedEpisode, TrendData } from "@/types";
 import { Sparkles } from "lucide-react";
+import { formatHdss } from "@/utils/hdssGauger";
 
 interface DashboardSummaryProps {
   weeklyData: TrendData[];
@@ -57,7 +58,7 @@ const DualTooltip = ({ active, payload, label, timeframe }: any) => {
         <div className="flex items-center gap-2">
           <div className="w-2.5 h-2.5 rounded-full bg-pink-500" />
           <span className="text-gray-700">
-            HDSS avg <strong className={Number(sev.value) >= 3 ? "text-amber-600" : "text-sky-600"}>{Number(sev.value).toFixed(1)}</strong>
+            Typically <strong className={Number(sev.value) >= 3 ? "text-amber-600" : "text-sky-600"}>HDSS {formatHdss(Number(sev.value))}</strong>
           </span>
         </div>
       )}
@@ -114,10 +115,10 @@ const generateInsight = (
     const sevDiff     = avgSevToday - avgSevYest;
 
     if (freqDiff < 0)
-      return `🎉 ${Math.abs(freqDiff)} fewer episode${Math.abs(freqDiff) !== 1 ? "s" : ""} today vs yesterday (${todayCount} vs ${yestCount}). ${sevDiff < -0.2 ? `Severity also down by ${Math.abs(sevDiff).toFixed(1)} HDSS — excellent progress!` : "Keep it up, warrior!"}`;
+      return `🎉 ${Math.abs(freqDiff)} fewer episode${Math.abs(freqDiff) !== 1 ? "s" : ""} today vs yesterday (${todayCount} vs ${yestCount}). ${sevDiff < -0.2 ? `Severity also down — excellent progress!` : "Keep it up, warrior!"}`;
     if (freqDiff > 0)
       return `📈 ${freqDiff} more episode${freqDiff !== 1 ? "s" : ""} today vs yesterday (${todayCount} vs ${yestCount}). Check if today's climate or triggers differ — ${total} total tracked.`;
-    return `Same number of episodes today and yesterday (${todayCount} each). Severity ${sevDiff < -0.2 ? `improved by ${Math.abs(sevDiff).toFixed(1)} HDSS` : sevDiff > 0.2 ? `rose by ${sevDiff.toFixed(1)} HDSS` : "is stable"} — ${total} total tracked.`;
+    return `Same number of episodes today and yesterday (${todayCount} each). Severity ${sevDiff < -0.2 ? `improved` : sevDiff > 0.2 ? `increased` : "is stable"} — ${total} total tracked.`;
   }
 
   if (tf === "W") {
@@ -144,16 +145,16 @@ const generateInsight = (
     const avgThis  = thisWeekEps.reduce((s, e) => s + e.severityLevel, 0) / thisCount;
 
     if (prevCount === 0)
-      return `${thisCount} episode${thisCount !== 1 ? "s" : ""} this week (avg HDSS ${avgThis.toFixed(1)}). No data from last week to compare — ${total} total tracked.`;
+      return `${thisCount} episode${thisCount !== 1 ? "s" : ""} this week (Typically HDSS ${formatHdss(avgThis)}). No data from last week to compare — ${total} total tracked.`;
 
     const avgPrev  = prevWeekEps.reduce((s, e) => s + e.severityLevel, 0) / prevCount;
     const sevDiff  = avgThis - avgPrev;
 
     if (freqDiff < 0)
-      return `🎉 ${Math.abs(freqDiff)} fewer episode${Math.abs(freqDiff) !== 1 ? "s" : ""} this week vs last (${thisCount} vs ${prevCount}). ${sevDiff < -0.2 ? `Severity also down ${Math.abs(sevDiff).toFixed(1)} HDSS — great trend!` : "Keep tracking, warrior!"}`;
+      return `🎉 ${Math.abs(freqDiff)} fewer episode${Math.abs(freqDiff) !== 1 ? "s" : ""} this week vs last (${thisCount} vs ${prevCount}). ${sevDiff < -0.2 ? `Severity also lower — great trend!` : "Keep tracking, warrior!"}`;
     if (freqDiff > 0)
       return `📈 ${freqDiff} more episode${freqDiff !== 1 ? "s" : ""} this week vs last (${thisCount} vs ${prevCount}). Review this week's triggers for patterns — ${total} total tracked.`;
-    return `Same episode count this week as last (${thisCount}). Severity ${sevDiff < -0.2 ? `improved ${Math.abs(sevDiff).toFixed(1)} HDSS` : sevDiff > 0.2 ? `rose ${sevDiff.toFixed(1)} HDSS` : "stable"} — ${total} total tracked.`;
+    return `Same episode count this week as last (${thisCount}). Severity ${sevDiff < -0.2 ? `improved` : sevDiff > 0.2 ? `increased` : "stable"} — ${total} total tracked.`;
   }
 
   if (chartData.length >= 2) {
@@ -164,13 +165,13 @@ const generateInsight = (
     const period   = tf === "M" ? "this month vs last month" : "this year vs last year";
 
     if (freqDiff < 0)
-      return `🎉 ${Math.abs(freqDiff)} fewer episode${Math.abs(freqDiff) !== 1 ? "s" : ""} ${period} (${last.count} vs ${prev.count}). ${sevDiff && sevDiff < -0.2 ? `Severity down ${Math.abs(sevDiff).toFixed(1)} HDSS — excellent trend!` : "Keep going!"}`;
+      return `🎉 ${Math.abs(freqDiff)} fewer episode${Math.abs(freqDiff) !== 1 ? "s" : ""} ${period} (${last.count} vs ${prev.count}). ${sevDiff && sevDiff < -0.2 ? `Severity also lower — excellent trend!` : "Keep going!"}`;
     if (freqDiff > 0)
       return `📈 ${freqDiff} more episode${freqDiff !== 1 ? "s" : ""} ${period} (${last.count} vs ${prev.count}). ${total} total tracked.`;
   }
 
   const validSev = allEpisodes.filter(e => e.severityLevel > 0);
-  const avgSev   = validSev.length ? validSev.reduce((s, e) => s + e.severityLevel, 0) / validSev.length : 0;
+  const avgSev   = validSev.length ? formatHdss(validSev.reduce((s, e) => s + e.severityLevel, 0) / validSev.length) : 0;
 
   let consistencyMsg = "";
   if (trackingConsistency > 0) {
@@ -178,7 +179,7 @@ const generateInsight = (
   }
 
   if (avgSev >= 3)
-    return `⚠️ Your average HDSS is ${avgSev.toFixed(1)} — episodes are frequently interfering with daily life. Consider discussing prescription options with your dermatologist. ${total} total tracked.${consistencyMsg}`;
+    return `⚠️ Your typical severity is HDSS ${avgSev} — episodes are frequently interfering with daily life. Consider discussing prescription options with your dermatologist. ${total} total tracked.${consistencyMsg}`;
   return `Pattern is stable in this ${TIMEFRAME_CONFIG[tf].label.toLowerCase()} view. ${total} total episodes tracked — more data will reveal deeper correlations.${consistencyMsg}`;
 };
 
@@ -328,6 +329,7 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ allEpisodes = [], t
                 tickLine={false}
                 axisLine={false}
                 width={22}
+                allowDecimals={false}
                 domain={[1, 4]}
                 ticks={[1, 2, 3, 4]}
                 tick={{ fill: "#ec4899", fontWeight: 700 }}

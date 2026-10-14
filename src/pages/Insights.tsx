@@ -718,7 +718,7 @@ const Insights = () => {
                   </div>
                   <div className="p-2.5 bg-slate-50 rounded-xl text-center border border-slate-100">
                     <span className="text-[9px] text-slate-400 font-bold uppercase block">Avg Severity</span>
-                    <span className="text-xs font-black text-slate-800">HDSS {selectedTriggerModal.avgSeverity} / 4</span>
+                    <span className="text-xs font-black text-slate-800">Typically HDSS {selectedTriggerModal.avgSeverity}</span>
                   </div>
                 </div>
 

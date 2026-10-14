@@ -7,6 +7,7 @@ import {
   Tooltip,
 } from "recharts";
 import { BodyAreaFrequency } from "@/types";
+import { formatHdss } from "@/utils/hdssGauger";
 
 // ── Area emoji map ────────────────────────────────────────────────────────────
 const AREA_EMOJI: Record<string, string> = {
@@ -33,7 +34,7 @@ const CustomTooltip = ({ active, payload }: any) => {
         {d.emoji} {d.fullName}
       </p>
       <p className="text-violet-600 font-semibold">{d.count} episodes</p>
-      <p className="text-gray-400">Avg severity: {d.avgSev.toFixed(1)}</p>
+      <p className="text-gray-400">Typically HDSS {formatHdss(d.avgSev)}</p>
     </div>
   );
 };

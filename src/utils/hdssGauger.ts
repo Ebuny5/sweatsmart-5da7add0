@@ -1,5 +1,6 @@
 import { LogEntry, ProcessedEpisode, HDSSLevel, WeatherData } from "@/types";
 import { calculateSweatRisk } from "./sweatRiskCalculator";
+import { hdssRound } from "@/features/insights/insightEngine";
 
 export interface GaugedHDSS {
   level: number;
@@ -9,13 +10,34 @@ export interface GaugedHDSS {
   isElevated: boolean;
 }
 
+/**
+ * Shared helper to standardise HDSS rounding across the application.
+ * Returns a whole HDSS grade (1 to 4).
+ */
 export const formatHdss = (rawScore: number): number => {
-  // Standard clinical rounding:
-  // 1.0 to 1.49 -> 1
-  // 1.5 to 2.49 -> 2
-  // 2.5 to 3.49 -> 3
-  // 3.5 to 4.00 -> 4
-  return Math.min(4, Math.max(1, Math.round(rawScore)));
+  if (rawScore == null || isNaN(rawScore)) return 1;
+  return hdssRound(rawScore);
+};
+
+/**
+ * Post-processor safety net to replace decimal HDSS occurrences in AI responses or generated text
+ * (e.g. "HDSS 3.4" -> "HDSS 3" or "HDSS 3.5" -> "HDSS 4") before rendering on screen or in reports.
+ */
+export const cleanHdssDecimals = (text: string): string => {
+  if (!text) return text;
+  return text.replace(/HDSS\s*(\d(?:\.\d+)?)/gi, (match, p1) => {
+    const val = parseFloat(p1);
+    if (isNaN(val)) return match;
+    return `HDSS ${hdssRound(val)}`;
+  }).replace(/average severity[:\s]*(\d(?:\.\d+)?)/gi, (match, p1) => {
+    const val = parseFloat(p1);
+    if (isNaN(val)) return match;
+    return `Typical severity: HDSS ${hdssRound(val)}`;
+  }).replace(/mean HDSS severity score of (\d(?:\.\d+)?)/gi, (match, p1) => {
+    const val = parseFloat(p1);
+    if (isNaN(val)) return match;
+    return `mean HDSS severity score of ${hdssRound(val)}`;
+  });
 };
 
 export const HDSS_DESCRIPTIONS: Record<number, string> = {

@@ -18,6 +18,7 @@ import { speakProfessionally, stopProfessionalSpeech } from '@/utils/webSpeechVo
 import { useEngagement } from '@/hooks/useEngagement';
 import { useHidroAllySpeech } from '@/features/hidroally/useHidroAllySpeech';
 import { useHidroAllyDictation } from '@/features/hidroally/useHidroAllyDictation';
+import { formatHdss, cleanHdssDecimals } from '@/utils/hdssGauger';
 
 
 interface Message {
@@ -175,13 +176,13 @@ const MessageBubble = ({
             whiteSpace: 'pre-wrap',
           }}
         >
-          {message.content}
+          {cleanHdssDecimals(message.content)}
         </div>
 
         {message.content && (
           <div className="flex items-center gap-1 pl-1">
             <button
-              onClick={() => onCopy(message.content, index)}
+              onClick={() => onCopy(cleanHdssDecimals(message.content), index)}
               className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
               title="Copy"
             >
@@ -484,7 +485,7 @@ const HidroAlly = () => {
       .sort((a, b) => b[1].count - a[1].count).slice(0, 5)
       .map(([name, d]) => ({
         name, count: d.count,
-        avgSeverity: (d.severities.reduce((a, b) => a + b, 0) / d.severities.length).toFixed(1),
+        avgSeverity: formatHdss(d.severities.reduce((a, b) => a + b, 0) / d.severities.length).toString(),
         percentage: Math.round((d.count / episodes.length) * 100),
       }));
 
@@ -492,7 +493,7 @@ const HidroAlly = () => {
       .sort((a, b) => b[1].count - a[1].count)
       .map(([area, d]) => ({
         area, count: d.count,
-        avgSeverity: (d.severities.reduce((a, b) => a + b, 0) / d.severities.length).toFixed(1),
+        avgSeverity: formatHdss(d.severities.reduce((a, b) => a + b, 0) / d.severities.length).toString(),
         percentage: Math.round((d.count / episodes.length) * 100),
       }));
 
@@ -507,12 +508,23 @@ const HidroAlly = () => {
           week: format(wStart, 'MMM d'),
           count: wEps.length,
           avgSeverity: wEps.length > 0
-            ? (wEps.reduce((s, e) => s + e.severityLevel, 0) / wEps.length).toFixed(1) : '0',
+            ? formatHdss(wEps.reduce((s, e) => s + e.severityLevel, 0) / wEps.length).toString() : '0',
         });
       }
     }
 
-    return { totalEpisodes: episodes.length, avgSeverity: episodes.length > 0 ? (episodes.reduce((s, e) => s + e.severityLevel, 0) / episodes.length).toFixed(1) : '0', topTriggers, topAreas, weeklyTrends };
+    const overallAvgNum = episodes.length > 0 ? episodes.reduce((s, e) => s + e.severityLevel, 0) / episodes.length : 0;
+    const overallAvg = episodes.length > 0 ? formatHdss(overallAvgNum).toString() : '0';
+
+    // Calculate HDSS range across non-dry episodes
+    const severities = episodes.map(e => e.severityLevel).filter(s => s != null && !isNaN(s));
+    const minSev = severities.length ? Math.min(...severities) : 0;
+    const maxSev = severities.length ? Math.max(...severities) : 0;
+    const rangeText = severities.length > 0 && minSev !== maxSev
+      ? `Typically HDSS ${overallAvg} (ranged ${minSev} to ${maxSev})`
+      : `Typically HDSS ${overallAvg}`;
+
+    return { totalEpisodes: episodes.length, avgSeverity: overallAvg, severityRangeText: rangeText, minSev, maxSev, topTriggers, topAreas, weeklyTrends };
   }, [rawEpisodes]);
 
   const userName = profile?.display_name || user?.email?.split('@')[0] || 'Warrior';
@@ -654,14 +666,17 @@ const HidroAlly = () => {
 
       doc.text(`Report Period: ${dateRange}`, margin + 5, y + 14);
       doc.text(`Total Episodes Logged: ${dashboardAnalytics.totalEpisodes}`, margin + 5, y + 20);
-      doc.text(`Average HDSS Severity: ${dashboardAnalytics.avgSeverity} / 4`, margin + 5, y + 26);
+      const sevDisplay = dashboardAnalytics.minSev !== dashboardAnalytics.maxSev && dashboardAnalytics.totalEpisodes > 0
+        ? `Typically HDSS ${dashboardAnalytics.avgSeverity} (ranged ${dashboardAnalytics.minSev} to ${dashboardAnalytics.maxSev})`
+        : `Typically HDSS ${dashboardAnalytics.avgSeverity}`;
+      doc.text(`Severity Profile: ${sevDisplay}`, margin + 5, y + 26);
 
       // Clinical Status Logic
       const avg = parseFloat(dashboardAnalytics.avgSeverity);
       let status = '';
-      if (avg < 2.0) status = "Mild — Monitor and maintain lifestyle strategies";
-      else if (avg < 3.0) status = "Moderate — First-line treatment recommended";
-      else if (avg < 3.5) status = "Significant — Prescription treatment clinically indicated. Dermatology referral advised.";
+      if (avg <= 1) status = "Mild — Monitor and maintain lifestyle strategies";
+      else if (avg <= 2) status = "Moderate — First-line treatment recommended";
+      else if (avg <= 3) status = "Significant — Prescription treatment clinically indicated. Dermatology referral advised.";
       else status = "Severe — Urgent dermatology referral recommended. Multiple treatment modalities required.";
 
       doc.setFont('helvetica', 'bold');
@@ -693,7 +708,7 @@ const HidroAlly = () => {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
       const top3Areas = dashboardAnalytics.topAreas.slice(0, 3).map((a: any) => `${a.area} (${a.percentage}%)`).join(', ');
-      const complaintText = `The patient presents with primary focal hyperhidrosis affecting predominantly the ${top3Areas}, with a mean HDSS severity score of ${dashboardAnalytics.avgSeverity} over the documented period. The condition has been tracked across ${dashboardAnalytics.totalEpisodes} individual episodes.`;
+      const complaintText = `The patient presents with primary focal hyperhidrosis affecting predominantly the ${top3Areas}, with a severity profile of ${sevDisplay.toLowerCase()} over the documented period. The condition has been tracked across ${dashboardAnalytics.totalEpisodes} individual episodes.`;
 
       const complaintLines = doc.splitTextToSize(complaintText, contentWidth);
       doc.text(complaintLines, margin, y);
@@ -892,7 +907,7 @@ const HidroAlly = () => {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
       const primaryTrig = dashboardAnalytics.topTriggers[0]?.name || 'idiopathic factors';
-      const synthText = `Based on the patient's objective telemetry profile (${dashboardAnalytics.totalEpisodes} tracking instances, mean HDSS ${dashboardAnalytics.avgSeverity}/4), the clinical data is highly indicative of primary focal hyperhidrosis. The autonomic hyperactivity shows a high correlation with ${primaryTrig} triggers.`;
+      const synthText = `Based on the patient's objective telemetry profile (${dashboardAnalytics.totalEpisodes} tracking instances, ${sevDisplay.toLowerCase()}), the clinical data is highly indicative of primary focal hyperhidrosis. The autonomic hyperactivity shows a high correlation with ${primaryTrig} triggers.`;
       const synthLines = doc.splitTextToSize(synthText, contentWidth);
       doc.text(synthLines, margin, y);
       y += (synthLines.length * 4.5) + 8;

@@ -1,6 +1,7 @@
 import { useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
+import { formatHdss } from "@/utils/hdssGauger";
 
 import { SeverityLevel } from "@/types";
 import DashboardSummary from "@/components/dashboard/DashboardSummary";
@@ -152,9 +153,10 @@ const Dashboard = () => {
   const totalEpisodes = dashboardData.nonDryEpisodes.length;
 
   const nonDryCount = dashboardData.nonDryEpisodes.length;
-  const avgSeverity = nonDryCount > 0
-    ? (dashboardData.nonDryEpisodes.reduce((sum, e) => sum + e.severityLevel, 0) / nonDryCount).toFixed(1)
-    : "—";
+  const avgSeverityNum = nonDryCount > 0
+    ? dashboardData.nonDryEpisodes.reduce((sum, e) => sum + e.severityLevel, 0) / nonDryCount
+    : null;
+  const avgSeverity = avgSeverityNum !== null ? formatHdss(avgSeverityNum).toString() : "—";
 
   const topTrigger = dashboardData.triggerFrequencies[0]?.name ?? "None yet";
 
@@ -168,9 +170,9 @@ const Dashboard = () => {
   const getHDSSLabel = (avg: string) => {
     const n = parseFloat(avg);
     if (isNaN(n)) return null;
-    if (n <= 1.5) return { label: "HDSS 1 — Mild", color: "text-sky-600", bg: "bg-sky-50" };
-    if (n <= 2.5) return { label: "HDSS 2 — Tolerable", color: "text-blue-600", bg: "bg-blue-50" };
-    if (n <= 3.5) return { label: "HDSS 3 — Frequent", color: "text-indigo-600", bg: "bg-indigo-50" };
+    if (n === 1) return { label: "HDSS 1 — Mild", color: "text-sky-600", bg: "bg-sky-50" };
+    if (n === 2) return { label: "HDSS 2 — Tolerable", color: "text-blue-600", bg: "bg-blue-50" };
+    if (n === 3) return { label: "HDSS 3 — Frequent", color: "text-indigo-600", bg: "bg-indigo-50" };
     return { label: "HDSS 4 — Severe", color: "text-violet-700", bg: "bg-violet-50" };
   };
 
