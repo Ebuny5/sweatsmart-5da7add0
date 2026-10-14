@@ -123,10 +123,28 @@ function inferClusters(text: string): Set<string> {
   let t = text.toLowerCase().replace(/back of (the |your )?neck/g, "neck").replace(/hand fan|handheld fan|hand towel/g, " ");
   return new Set(Object.entries(KW).filter(([, re]) => re.test(t)).map(([c]) => c));
 }
-const normalizeArea = (a: string) => {
+export const normalizeArea = (a: string) => {
   const x = String(a).trim().toLowerCase().replace(/_/g, " ").replace(/\s+/g, " ");
   return AREA_ALIASES[x] || x;
 };
+
+export function groupBodyArea(rawArea: string): string {
+  const norm = normalizeArea(rawArea);
+  if (["palms", "hands", "fingers", "palm", "hand", "finger", "wrists"].includes(norm)) return "Palms and hands";
+  if (["feet", "soles", "toes", "feet_soles", "feet soles", "foot", "sole", "toe"].includes(norm)) return "Feet and soles";
+  if (["face", "face_scalp", "face scalp", "scalp", "head", "forehead", "cheeks", "temples"].includes(norm)) return "Face and scalp";
+  if (["underarms", "underarm", "armpit", "armpits", "axillary"].includes(norm)) return "Underarms";
+  if (["chest"].includes(norm)) return "Chest";
+  if (["back"].includes(norm)) return "Back";
+  if (["groin"].includes(norm)) return "Groin";
+  if (["thighs", "thigh", "legs", "leg"].includes(norm)) return "Thighs";
+  if (["entire body", "entire_body", "whole body", "full body", "generalized"].includes(norm)) return "Entire body";
+
+  // Fallback: capitalize words and replace underscores
+  return String(rawArea)
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
 const normTrigger = (t: string) => { const s = slug(t); return TRIGGER_ALIASES[s] || s; };
 const triggerText = (t: TriggerInput | string) =>
   typeof t === "string" ? t : (t.label || t.value || t.type || "");
