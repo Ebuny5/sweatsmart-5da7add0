@@ -64,6 +64,11 @@ const CLINICAL_KNOWLEDGE: Record<string, { title: string; mechanism: string; ico
     mechanism: "Hyperactive sympathetic discharge via T2-T3 thoracic ganglia targeting the volar hand surfaces.",
     icon: "👋"
   },
+  legs: {
+    title: "Femoral / Lower Extremity Hyperhidrosis",
+    mechanism: "Lower extremity sweating leading to sweat pooling, skin chafing, and gait friction irritation.",
+    icon: "🦵"
+  },
 
   // Truncal / Secondary Zones (Head & Neck Now Separated)
   head: {
@@ -80,6 +85,11 @@ const CLINICAL_KNOWLEDGE: Record<string, { title: string; mechanism: string; ico
     title: "Anterior Truncal Perspiration",
     mechanism: "Broad surface-area sweating often linked to rapid post-exertional cooling, hormonal shifts, or autonomic overcompensation.",
     icon: "🫁"
+  },
+  trunk: {
+    title: "Generalized Truncal Hyperhidrosis",
+    mechanism: "Clothing saturation, core thermal dysregulation, and widespread compensatory sweating across the full torso.",
+    icon: "👕"
   },
   back: {
     title: "Posterior Truncal Sweating",
@@ -295,12 +305,14 @@ const PRIMARY_ZONES = [
   { id: "face", label: "Face", icon: "👤" },
   { id: "scalp", label: "Scalp", icon: "🧢" },
   { id: "hands", label: "Hands", icon: "👋" },
+  { id: "legs", label: "Legs", icon: "🦵" },
 ];
 
 // Head and Neck are now distinct, separate zones
 const TRUNCAL_ZONES = [
   { id: "head", label: "Head", icon: "👤" },
   { id: "neck", label: "Neck", icon: "🧣" },
+  { id: "trunk", label: "Trunk / Full Torso", icon: "👕" },
   { id: "chest", label: "Chest", icon: "🫁" },
   { id: "back", label: "Back", icon: "🥋" },
   { id: "groin", label: "Groin", icon: "🩲" },

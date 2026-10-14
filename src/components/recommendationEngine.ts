@@ -107,6 +107,37 @@ interface NotesIntelligence {
 
 function parseNotes(notes?: string): NotesIntelligence {
   const n = (notes || "").toLowerCase();
+  return {
+    wasCooking: n.includes("cook") || n.includes("kitchen") || n.includes("baking") || n.includes("stove"),
+    wasExercising: n.includes("exercise") || n.includes("workout") || n.includes("gym") || n.includes("run") || n.includes("sport"),
+    wasAtWork: n.includes("work") || n.includes("office") || n.includes("meeting") || n.includes("desk") || n.includes("boss"),
+    wasInPublic: n.includes("public") || n.includes("crowd") || n.includes("bus") || n.includes("train") || n.includes("store") || n.includes("shop"),
+    wasSleeping: n.includes("sleep") || n.includes("bed") || n.includes("woke") || n.includes("night"),
+    wasOutdoors: n.includes("outdoor") || n.includes("outside") || n.includes("walk") || n.includes("sun"),
+    wasEating: n.includes("eat") || n.includes("food") || n.includes("dinner") || n.includes("lunch") || n.includes("meal"),
+
+    poorVentilation: n.includes("ventilation") || n.includes("stuffy") || n.includes("airflow") || n.includes("no ac") || n.includes("no fan"),
+    wasInHeat: n.includes("heat") || n.includes("hot") || n.includes("warm") || n.includes("temperature"),
+    wasWearingHeavyClothing: n.includes("heavy") || n.includes("clothes") || n.includes("jacket") || n.includes("sweater") || n.includes("synthetic"),
+
+    mentionsTightness: n.includes("tight") || n.includes("pressure"),
+    mentionsSwelling: n.includes("swell") || n.includes("puffy"),
+    mentionsTingling: n.includes("tingl") || n.includes("pins and needles"),
+    mentionsNumbness: n.includes("numb"),
+    mentionsSlipping: n.includes("slip") || n.includes("slide") || n.includes("tripping"),
+    mentionsPain: n.includes("pain") || n.includes("hurt") || n.includes("sore"),
+    mentionsSkinWrinkling: n.includes("wrinkl") || n.includes("prun"),
+    mentionsDizziness: n.includes("dizzy") || n.includes("faint") || n.includes("lightheaded"),
+    mentionsNightSweats: n.includes("night sweat") || n.includes("woke up sweat"),
+
+    expressesEmbarrassment: n.includes("embarrass") || n.includes("ashamed") || n.includes("humiliat"),
+    expressesFrustration: n.includes("frustrat") || n.includes("annoy") || n.includes("sick of") || n.includes("hate"),
+    expressesAnxiety: n.includes("anxi") || n.includes("nervous") || n.includes("panic") || n.includes("scared"),
+    expressesHope: n.includes("hope") || n.includes("better") || n.includes("improv"),
+
+    raw: notes || "",
+  };
+}
 
 function pick<T>(arr: T[], seed: number): T {
   if (arr.length === 0) return "" as any;
@@ -196,6 +227,24 @@ function normalizeAnatomy(bodyAreas: string[]): AnatomicalProfile {
 
   const isCraniofacial = hasHead || hasFace || hasScalp;
   const isMultiSite = uniqueParts.length > 1 || isGeneralized;
+
+  return {
+    rawAreas: bodyAreas,
+    cleanDisplayList,
+    hasHead,
+    hasFace,
+    hasScalp,
+    isCraniofacial,
+    isAxillary,
+    isPalmar,
+    isPlantar,
+    isTruncal,
+    isLegs,
+    isGroin,
+    isGeneralized,
+    isMultiSite,
+  };
+}
 
 function getSeverity(s: number): SeverityMeta {
   if (s <= 1) return {
