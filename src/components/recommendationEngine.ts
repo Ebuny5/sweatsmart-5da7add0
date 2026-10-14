@@ -1,29 +1,6 @@
 /**
- * HidroAlly, HidroAlly Recommendation Engine (Definitive Edition)
- * ─────────────────────────────────────────────────────────────────────────────
- * This is the SINGLE engine. Do not create additional engines alongside this.
- *
- * Voice: HidroAlly, warm, clinical, companion-like. Think "brilliant
- * dermatologist who also genuinely cares about you as a warrior."
- *
- * Knowledge base integration:
- *   Ch.7  → Vasodilation-edema: swelling/tightness in palms/feet during episodes
- *   Ch.8  → Secondary paresthesia: numbness/tingling linked to nerve compression
- *   Ch.9  → Plantar fall risk: gait alteration, slippery surface danger
- *   Ch.10 → Aquagenic keratoderma: rapid wrinkling on water contact
- *   Ch.11 → Differential diagnosis: primary vs secondary, erythromelalgia, etc.
- *
- * Hard rules:
- *   1. Never mention body areas the user did not log
- *   2. Never recommend aluminium chloride for facial areas, ever
- *   3. Never output "and X more", list all triggers in full
- *   4. Never use "GP" alone, write "dermatologist or general practitioner (GP)"
- *   5. Never repeat the same phrase across sections in the same report
- *   6. Parse the notes field, it is the richest data the user gives us
- *   7. Vary every output genuinely, no two reports should read the same
- *   8. No emojis on medical warnings or red-flag sections, warm ≠ trivial
- *   9. Output ends with HidroAlly CTA directing user to companion chat
- * ─────────────────────────────────────────────────────────────────────────────
+ * recommendationEngine.ts
+ * Re-exports the new deterministic, per-user insight engine from src/features/insights/insightEngine.ts
  */
 
 export interface TriggerInput {
