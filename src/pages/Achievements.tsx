@@ -16,6 +16,12 @@ const Achievements = () => {
   const nonDryEpisodes = useMemo(() => episodes.filter(e => !e.is_dry_day), [episodes]);
   const hasEpisodes = nonDryEpisodes.length > 0;
 
+  const uniqueDays = useMemo(() => {
+    return new Set(episodes.map(e => new Date(e.datetime).toDateString())).size;
+  }, [episodes]);
+
+  const isUnlocked = episodes.length >= 10 && uniqueDays >= 5;
+
   return (
     <div className="min-h-screen pb-24" style={{ backgroundColor: "#f5f4f7" }}>
       {/* Header */}
@@ -33,6 +39,16 @@ const Achievements = () => {
       </div>
 
       <div className="px-4 py-8 max-w-md mx-auto relative">
+        {isUnlocked && (
+          <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-pink-500 via-purple-600 to-violet-600 text-white text-center shadow-lg animate-pulse">
+            <span className="text-2xl">🎉</span>
+            <h2 className="text-lg font-black mt-1">Congratulations! Your badge is unlocked</h2>
+            <p className="text-xs text-white/90 mt-0.5">
+              You've demonstrated consistency in tracking your journey and building resilience.
+            </p>
+          </div>
+        )}
+
         <div className={!hasEpisodes ? "grayscale blur-[2px] opacity-70 pointer-events-none transition-all duration-500" : ""}>
           <WarriorBadge
             userName={displayName}

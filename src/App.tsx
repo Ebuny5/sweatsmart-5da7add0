@@ -75,11 +75,16 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (authLoading || profileLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          <p className="text-sm text-muted-foreground">Loading HidroAlly...</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-violet-50 to-pink-50">
+        <div className="relative flex items-center justify-center">
+          <div className="absolute w-20 h-20 bg-purple-400/30 rounded-full blur-xl animate-pulse" />
+          <img
+            src="/sweatsmart-logo.png"
+            alt="HidroAlly Loading"
+            className="w-16 h-16 relative z-10 animate-bounce duration-1000 object-contain drop-shadow-[0_0_12px_rgba(168,85,247,0.5)]"
+          />
         </div>
+        <p className="mt-4 text-sm font-semibold text-purple-600 tracking-wide animate-pulse">Loading HidroAlly...</p>
       </div>
     );
   }
