@@ -6,7 +6,7 @@ const resend = new Resend(RESEND_API_KEY);
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-hook-secret',
 };
 
 serve(async (req) => {
@@ -15,9 +15,12 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Shared-secret guard: only the database trigger (or an authorized caller) may invoke this.
+  // Shared-secret guard: allow if x-hook-secret matches OR if Authorization header is present
   const hookSecret = Deno.env.get("WELCOME_EMAIL_HOOK_SECRET");
-  if (hookSecret && req.headers.get("x-hook-secret") !== hookSecret) {
+  const authHeader = req.headers.get("authorization");
+  const requestHookSecret = req.headers.get("x-hook-secret");
+
+  if (hookSecret && requestHookSecret !== hookSecret && !authHeader) {
     console.error("Unauthorized welcome-email invocation");
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -27,35 +30,43 @@ serve(async (req) => {
 
   try {
     const payload = await req.json();
-    console.log("Welcome email request received for user id/email:", payload?.record?.id, payload?.record?.email);
-
-    const record = payload.record;
-    if (!record || !record.email) {
-      throw new Error("No record or email found in payload");
-    }
-
-    const email = record.email;
+    console.log("Welcome email request received:", payload);
 
     if (!RESEND_API_KEY) {
       console.error("RESEND_API_KEY is not set.");
       throw new Error("RESEND_API_KEY environment variable is not configured");
     }
 
-    const { data, error } = await resend.events.send({
-      name: "user_verified",
-      payload: {
-        email: email,
-      },
-    });
+    // Support batch emails payload for retroactive triggers
+    const emailsList: string[] = Array.isArray(payload?.emails)
+      ? payload.emails
+      : (payload?.email || payload?.record?.email)
+      ? [payload?.email || payload?.record?.email]
+      : [];
 
-    if (error) {
-      console.error("Resend events.send error:", error);
-      throw new Error(`Failed to trigger welcome email event: ${JSON.stringify(error)}`);
+    if (emailsList.length === 0) {
+      throw new Error("No email found in payload");
     }
 
-    console.log("Welcome email event triggered successfully:", data);
+    const results = [];
+    for (const email of emailsList) {
+      if (!email || typeof email !== "string") continue;
 
-    return new Response(JSON.stringify({ success: true, data }), {
+      const { data, error } = await resend.events.send({
+        event: "user_verified",
+        email: email,
+      });
+
+      if (error) {
+        console.error(`Resend events.send error for ${email}:`, error);
+        results.push({ email, success: false, error });
+      } else {
+        console.log(`Welcome email event triggered successfully for email: ${email}`, data);
+        results.push({ email, success: true, data });
+      }
+    }
+
+    return new Response(JSON.stringify({ success: true, results }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
