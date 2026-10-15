@@ -6,8 +6,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  ChevronDown, ChevronLeft, ChevronRight, Clock, FileText, HeartPulse, MessageCircle, Minus, Shield, TrendingDown, TrendingUp, X,
+  ChevronDown, ChevronLeft, ChevronRight, Clock, Download, FileText, HeartPulse, MessageCircle, Minus, Shield, TrendingDown, TrendingUp, X,
 } from "lucide-react";
+import { downloadClinicalReport, patientFromProfile } from "@/features/insights/clinicalReportPdf";
 import AppLayout from "@/components/layout/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -280,6 +281,7 @@ const Insights = () => {
   const { trackAction } = useEngagement();
   const [rows, setRows] = useState<any[]>([]);
   const [profile, setProfile] = useState<UserProfileInput>({});
+  const [profileRow, setProfileRow] = useState<any>(null);
   const [helped, setHelped] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState(0);
@@ -306,7 +308,10 @@ const Insights = () => {
         const q = (supabase as any).from("profiles").select("*");
         const { data } = await q.eq("user_id", user.id).maybeSingle();
         const p = data || (await (supabase as any).from("profiles").select("*").eq("id", user.id).maybeSingle()).data;
-        if (p) setProfile({ declaredType: declaredFrom(p.diagnosis_type ?? p.diagnosis ?? p.hyperhidrosis_type) });
+        if (p) {
+          setProfileRow(p);
+          setProfile({ declaredType: declaredFrom(p.diagnosis_type ?? p.diagnosis ?? p.hyperhidrosis_type) });
+        }
       } catch { /* optional */ }
       try { const st = await loadInsightState(user.id); setHelped(Object.entries(st.feedback || {}).filter(([, v]) => v).map(([k]) => k)); } catch { /* optional */ }
       setLoading(false);
@@ -497,11 +502,18 @@ const Insights = () => {
 
           {/* actions */}
           <div className="grid grid-cols-1 gap-3">
-            <button onClick={() => navigate("/hidro-ally", { state: { openReport: true } })}
+            <button onClick={() => {
+              try {
+                downloadClinicalReport({ rows, patient: patientFromProfile(profileRow, user), profile });
+                toast({ title: "Report downloaded", description: "Share it with your dermatologist." });
+              } catch {
+                toast({ title: "Could not create report", description: "Please try again.", variant: "destructive" });
+              }
+            }}
               className="rounded-[28px] p-4 flex items-center gap-3 text-left text-white shadow-lg" style={{ background: "linear-gradient(135deg,#0f766e,#0891b2)" }}>
               <FileText className="h-6 w-6 shrink-0" />
               <div className="flex-1"><p className="font-semibold text-base">Doctor report</p><p className="text-sm opacity-90">Your history, ready to share with a dermatologist.</p></div>
-              <ChevronRight className="h-5 w-5" />
+              <Download className="h-5 w-5" />
             </button>
             <button onClick={() => navigate("/hidro-ally")}
               className="rounded-[28px] p-4 flex items-center gap-3 text-left shadow-lg" style={{ background: "linear-gradient(135deg,#fde68a,#fbcfe8)", color: INK }}>

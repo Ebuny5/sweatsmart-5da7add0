@@ -97,6 +97,9 @@ const TRIGGER_ALIASES: Record<string, string> = {
   herbal: "supplements_herbal", menopause: "hormonal_menopause", hormonal: "hormonal_menopause",
   fever: "fever_infection", infection: "fever_infection", insulin: "insulin_diabetes_meds",
   diabetes_meds: "insulin_diabetes_meds", bp_meds: "blood_pressure_meds",
+  transitional_temperature: "temp_shift", transitional_temp: "temp_shift", temperature_shift: "temp_shift", temp_change: "temp_shift",
+  crowded_spaces: "crowded_space", synthetic_fabric: "synthetic_fabrics", bright_light: "bright_lights", loud_noise: "loud_noises",
+  heavy_meal: "heavy_meals", hot_drink: "hot_drinks", spicy_foods: "spicy_food",
 };
 export const FOCAL = new Set(["palms", "soles", "feet", "face", "scalp", "hands", "underarms"]);
 const TRUNCAL = new Set(["head", "neck", "chest", "back", "groin", "thighs", "entire body"]);
