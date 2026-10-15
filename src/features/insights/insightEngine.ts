@@ -22,7 +22,6 @@ export interface UserProfileInput {
   declaredType?: "primary" | "secondary" | "unsure" | null;
   onsetAge?: number | null; familyHistory?: boolean | null; nightSweats?: boolean | null;
   onMedication?: boolean | null; conditions?: string[];
-  diagnosis_type?: string | null;
 }
 export interface EpisodeInput {
   severity: number;                       // HDSS 1 to 4
@@ -89,7 +88,7 @@ function cloneState(s?: Partial<InsightState> | null): InsightState {
 
 // ───────────────────────────── Lookups ─────────────────────────────
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
-const TRIGGER_INDEX: Record<string, (typeof TRIGGERS)[number]> = Object.fromEntries(TRIGGERS.map(t => [t.id, t]));
+export const TRIGGER_INDEX: Record<string, (typeof TRIGGERS)[number]> = Object.fromEntries(TRIGGERS.map(t => [t.id, t]));
 const TRIGGER_ALIASES: Record<string, string> = {
   hot_temperature: "hot_temp", humidity: "high_humidity", poor_airflow: "poor_airflow_no_ventilation",
   no_ventilation: "poor_airflow_no_ventilation", anger: "anger_frustration", frustration: "anger_frustration",
@@ -99,9 +98,9 @@ const TRIGGER_ALIASES: Record<string, string> = {
   fever: "fever_infection", infection: "fever_infection", insulin: "insulin_diabetes_meds",
   diabetes_meds: "insulin_diabetes_meds", bp_meds: "blood_pressure_meds",
 };
-const FOCAL = new Set(["palms", "soles", "feet", "face", "scalp", "hands", "underarms"]);
+export const FOCAL = new Set(["palms", "soles", "feet", "face", "scalp", "hands", "underarms"]);
 const TRUNCAL = new Set(["head", "neck", "chest", "back", "groin", "thighs", "entire body"]);
-const CLUSTER: Record<string, string> = {
+export const CLUSTER: Record<string, string> = {
   face: "head_neck", head: "head_neck", scalp: "head_neck", neck: "head_neck", palms: "hands", hands: "hands",
   soles: "feet", feet: "feet", underarms: "underarms", chest: "torso", back: "torso", groin: "groin_thighs",
   thighs: "groin_thighs", "entire body": "all",
@@ -110,6 +109,7 @@ const AREA_ALIASES: Record<string, string> = {
   underarm: "underarms", armpit: "underarms", armpits: "underarms", axillary: "underarms", foot: "feet",
   palm: "palms", hand: "hands", sole: "soles", entire_body: "entire body", "whole body": "entire body",
   "full body": "entire body", generalized: "entire body",
+  "feet soles": "feet", "face scalp": "face", "scalp face": "face", toes: "feet", toe: "feet", fingers: "hands", finger: "hands",
 };
 const KW: Record<string, RegExp> = {
   head_neck: /\b(face|facial|forehead|temples?|cheeks?|scalp|neck|nose|lip|hat|headwear)\b/,
@@ -128,23 +128,10 @@ export const normalizeArea = (a: string) => {
   return AREA_ALIASES[x] || x;
 };
 
-export function groupBodyArea(rawArea: string): string {
-  const norm = normalizeArea(rawArea);
-  if (["palms", "hands", "fingers", "palm", "hand", "finger", "wrists"].includes(norm)) return "Palms and hands";
-  if (["feet", "soles", "toes", "feet_soles", "feet soles", "foot", "sole", "toe"].includes(norm)) return "Feet and soles";
-  if (["face", "face_scalp", "face scalp", "scalp", "head", "forehead", "cheeks", "temples"].includes(norm)) return "Face and scalp";
-  if (["underarms", "underarm", "armpit", "armpits", "axillary"].includes(norm)) return "Underarms";
-  if (["chest"].includes(norm)) return "Chest";
-  if (["back"].includes(norm)) return "Back";
-  if (["groin"].includes(norm)) return "Groin";
-  if (["thighs", "thigh", "legs", "leg"].includes(norm)) return "Thighs";
-  if (["entire body", "entire_body", "whole body", "full body", "generalized"].includes(norm)) return "Entire body";
-
-  // Fallback: capitalize words and replace underscores
-  return String(rawArea)
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-}
+export const groupBodyArea = (a: string): string => {
+  const norm = normalizeArea(a);
+  return CLUSTER[norm] || norm || a;
+};
 const normTrigger = (t: string) => { const s = slug(t); return TRIGGER_ALIASES[s] || s; };
 const triggerText = (t: TriggerInput | string) =>
   typeof t === "string" ? t : (t.label || t.value || t.type || "");
@@ -159,7 +146,7 @@ const ord = (n: number) => { const m = n % 100; const sfx = m >= 11 && m <= 13 ?
 const your = (a: string[]) => "your " + join(a);
 const GLOSS = GLOSSARY.map(([k, p, m]) => ({ k, re: new RegExp(p, "i"), m }));
 
-function explain(text: string, seen: Set<string>): string {
+export function explain(text: string, seen: Set<string>): string {
   for (const { k, re, m } of GLOSS) {
     if (seen.has(k)) continue;
     const hit = re.exec(text);
@@ -179,9 +166,9 @@ const mostCommon = (r: Record<string, number>): Array<[string, number]> =>
   Object.entries(r).sort((a, b) => b[1] - a[1]);
 
 // ───────────────────────────── Episodes & stats ─────────────────────────────
-interface NEp { areas: string[]; tids: string[]; labels: Record<string, string>; hdss: number; ts: Date | null }
+export interface NEp { areas: string[]; tids: string[]; labels: Record<string, string>; hdss: number; ts: Date | null }
 
-function toNEp(raw: any): NEp {
+export function toNEp(raw: any): NEp {
   const rawAreas: any[] = raw.bodyAreas || raw.body_areas || raw.areas || [];
   const rawTrig: any[] = raw.triggers || [];
   const labels: Record<string, string> = {}; const tids: string[] = [];
@@ -199,13 +186,13 @@ function toNEp(raw: any): NEp {
 }
 const pod = (d: Date) => { const h = d.getHours(); return h >= 5 && h < 12 ? "morning" : h >= 12 && h < 17 ? "afternoon" : h >= 17 && h < 21 ? "evening" : "night"; };
 
-interface Stats {
+export interface Stats {
   n: number; labels: Record<string, string>; areaC: Record<string, number>; trigC: Record<string, number>;
   pairC: Record<string, number>; clusterTrig: Record<string, number>; hd: number[]; avgHd: number | null;
   trigHd: Record<string, number | null>; stamps: Date[]; podC: Record<string, number>;
 }
 const SEP = "||";
-function buildStats(eps: NEp[]): Stats {
+export function buildStats(eps: NEp[]): Stats {
   const labels: Record<string, string> = {}; const areaC: Record<string, number> = {}; const trigC: Record<string, number> = {};
   const pairC: Record<string, number> = {}; const clusterTrig: Record<string, number> = {}; const podC: Record<string, number> = {};
   for (const e of eps) {
@@ -227,8 +214,8 @@ function buildStats(eps: NEp[]): Stats {
 const labelOf = (s: Stats, tid: string) => s.labels[tid] || TRIGGER_INDEX[tid]?.label || tid;
 
 // ───────────────────────────── Primary vs secondary ─────────────────────────────
-interface Assessment { lean: "too_early" | "check_cause" | "mixed" | "primary_like" | "unclear"; support: string[]; flags: string[]; missing: string[] }
-function assess(eps: NEp[], s: Stats, p: UserProfileInput): Assessment {
+export interface Assessment { lean: "too_early" | "check_cause" | "mixed" | "primary_like" | "unclear"; support: string[]; flags: string[]; missing: string[] }
+export function assess(eps: NEp[], s: Stats, p: UserProfileInput): Assessment {
   const n = s.n; const support: string[] = []; const flags: string[] = []; let strong = false;
   let fc = 0, tc = 0;
   for (const [a, c] of Object.entries(s.areaC)) { if (FOCAL.has(a)) fc += c; if (TRUNCAL.has(a)) tc += c; }
@@ -240,8 +227,8 @@ function assess(eps: NEp[], s: Stats, p: UserProfileInput): Assessment {
   }
   const emo = eps.filter(e => e.tids.some(t => ["emotional", "none"].includes(TRIGGER_INDEX[t]?.kind))).length;
   if (n && emo / n >= 0.4) support.push("emotions or no obvious reason set off a good share of your episodes");
-  if (p.declaredType === "primary" || p.diagnosis_type === "primary") support.push("you told us your sweating is primary hyperhidrosis");
-  else if (p.declaredType === "secondary" || p.diagnosis_type === "secondary") flags.push("you told us your sweating is secondary, so finding its cause stays the priority");
+  if (p.declaredType === "primary") support.push("you told us your sweating is primary hyperhidrosis");
+  else if (p.declaredType === "secondary") flags.push("you told us your sweating is secondary, so finding its cause stays the priority");
   if (p.onsetAge != null) {
     if (p.onsetAge <= 25) support.push("your sweating started before about age 25");
     else if (p.onsetAge >= 40) flags.push("sweating that begins later in adulthood is worth checking for a cause");
@@ -521,7 +508,7 @@ function buildDryDay(input: EpisodeInput, st: InsightState): InsightResult {
       immediateRelief: { title: "Maintenance Guidance", subtitle: "", items: relief.map((t, i) => ({ id: `dry:${i}`, area: "", because: "", text: t })) },
       lifestyle: { title: "Lifestyle Modifications", subtitle: "", intro: null, items: life.map((t, i) => ({ id: `dryL:${i}`, trigger: "", text: t, stat: null })) },
       patternTracker: { title: "Your Pattern Tracker", lines: [header] },
-      care: { title: "HidroAlly Care & Specialist Scheduling", paragraphs: care },
+      care: { title: "HidroAlly Care & Specialist Scheduling", paragraphs: [care] },
     },
     footer, disclaimer: DISCLAIMER,
     emotionalOpener: `${greeting}. Great job tracking an asymptomatic day! Here is your maintenance guidance.`,
@@ -551,7 +538,6 @@ export function generateEpisodeInsights(input: EpisodeInput, state?: InsightStat
   const spanDays = s.stamps.length ? Math.floor((Math.max(...s.stamps.map(d => d.getTime())) - Math.min(...s.stamps.map(d => d.getTime()))) / 864e5) : 0;
   const confidence: InsightResult["readingConfidence"] =
     s.n < 4 ? "none" : s.n >= 15 && spanDays >= 14 ? "strong" : s.n >= 8 && spanDays >= 14 ? "moderate" : "early";
-
   let clinical = buildClinical(current, s, a, st);
   let relief = pickRelief(current.areas.length ? current.areas : ["entire body"], current.tids, s, st);
   let life = pickLifestyle(current.tids, s, st);
