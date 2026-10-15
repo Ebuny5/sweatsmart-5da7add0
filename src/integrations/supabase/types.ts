@@ -402,15 +402,20 @@ export type Database = {
           avatar: string | null
           avatar_type: string | null
           biological_sex: string | null
+          conditions: string[] | null
           country: string | null
           created_at: string
           diagnosis_type: string | null
           display_name: string | null
+          family_history: string | null
           gender: string | null
           gender_description: string | null
           gender_identity: string | null
           id: string
           is_profile_complete: boolean
+          night_sweats: string | null
+          on_medication: boolean | null
+          onset_bracket: string | null
           updated_at: string
           user_id: string
         }
@@ -419,15 +424,20 @@ export type Database = {
           avatar?: string | null
           avatar_type?: string | null
           biological_sex?: string | null
+          conditions?: string[] | null
           country?: string | null
           created_at?: string
           diagnosis_type?: string | null
           display_name?: string | null
+          family_history?: string | null
           gender?: string | null
           gender_description?: string | null
           gender_identity?: string | null
           id?: string
           is_profile_complete?: boolean
+          night_sweats?: string | null
+          on_medication?: boolean | null
+          onset_bracket?: string | null
           updated_at?: string
           user_id: string
         }
@@ -436,15 +446,20 @@ export type Database = {
           avatar?: string | null
           avatar_type?: string | null
           biological_sex?: string | null
+          conditions?: string[] | null
           country?: string | null
           created_at?: string
           diagnosis_type?: string | null
           display_name?: string | null
+          family_history?: string | null
           gender?: string | null
           gender_description?: string | null
           gender_identity?: string | null
           id?: string
           is_profile_complete?: boolean
+          night_sweats?: string | null
+          on_medication?: boolean | null
+          onset_bracket?: string | null
           updated_at?: string
           user_id?: string
         }

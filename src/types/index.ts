@@ -136,6 +136,11 @@ export interface Profile {
   diagnosis_type?: string;
   country?: string;
   is_profile_complete?: boolean;
+  onset_bracket?: string;
+  family_history?: string;
+  night_sweats?: string;
+  on_medication?: boolean;
+  conditions?: string[];
   avatar?: string;
   avatar_type?: 'emoji' | 'image';
   gender?: string;
