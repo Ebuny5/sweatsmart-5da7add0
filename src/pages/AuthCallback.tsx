@@ -83,25 +83,18 @@ const AuthCallback = () => {
             .maybeSingle();
           const profile = profileRaw as any;
 
-          // Check if this is a first-time Google Auth login that missed the email trigger
-          if (profile && !profile.has_received_welcome) {
+          // Check if user has not received welcome email yet
+          if (user?.email && (!profile || !profile.has_received_welcome)) {
             try {
-              console.log('Triggering welcome email for new user...');
+              console.log('Triggering welcome email for verified user...');
               // Update flag immediately so we don't trigger it twice
               await supabase
                 .from('profiles')
                 .update({ has_received_welcome: true } as any)
                 .eq('user_id', user.id);
 
-              // We simulate the webhook payload for the edge function since the
-              // database trigger might not fire for OAuth inserts properly or is bypassed.
-              // We don't send the x-hook-secret header since it's an environment variable on the server,
-              // but we are an authenticated user calling the function directly.
-              // Note: The edge function should probably skip the x-hook-secret check if the user is authenticated
-              // but we can just pass a dummy one if it strictly requires it, or better yet, since it's an edge function
-              // invoked by supabase-js, it includes the Auth header which we could verify, but we'll try it as is.
               await supabase.functions.invoke('send-welcome-email', {
-                body: { record: { id: user.id, email: user.email } }
+                body: { email: user.email, record: { id: user.id, email: user.email } }
               });
             } catch (emailErr) {
               console.error('Failed to send welcome email:', emailErr);
