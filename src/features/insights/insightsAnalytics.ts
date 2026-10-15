@@ -18,6 +18,8 @@ import {
   type NEp, type UserProfileInput,
 } from "./insightEngine";
 
+export type { UserProfileInput } from "./insightEngine";
+
 // ───────────────────────────── Types ─────────────────────────────
 export type Mood = "calm" | "moderate" | "intense";
 export interface RankedTrigger {
