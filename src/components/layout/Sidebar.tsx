@@ -13,6 +13,11 @@ import {
   Settings,
   Sparkles,
   MapPin,
+  Heart,
+  HelpCircle,
+  Mail,
+  ClipboardList,
+  Medal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -63,6 +68,15 @@ const menuItems = [
     iconBg: "bg-fuchsia-100",
   },
   {
+    path: "/achievements",
+    icon: Medal,
+    label: "Achievements",
+    activeGradient: "from-yellow-400 to-amber-500",
+    activeBg: "bg-yellow-50",
+    activeText: "text-yellow-700",
+    iconBg: "bg-yellow-100",
+  },
+  {
     path: "/climate",
     icon: CloudRainWind,
     label: "Climate Alert",
@@ -90,7 +104,7 @@ const menuItems = [
     iconBg: "bg-teal-100",
   },
   {
-    path: "/hyper-ai",
+    path: "/hidro-ally",
     icon: Sparkles,
     label: "HidroAlly",
     activeGradient: "from-yellow-400 to-amber-500",
@@ -108,9 +122,36 @@ const menuItems = [
     iconBg: "bg-emerald-100",
   },
   {
-    path: "/contact",
-    icon: MessageSquare,
+    path: "/survey",
+    icon: ClipboardList,
+    label: "Survey",
+    activeGradient: "from-violet-400 to-purple-500",
+    activeBg: "bg-violet-50",
+    activeText: "text-violet-700",
+    iconBg: "bg-violet-100",
+  },
+  {
+    path: "/feedback",
+    icon: Heart,
     label: "Feedback",
+    activeGradient: "from-blue-400 to-indigo-500",
+    activeBg: "bg-blue-50",
+    activeText: "text-blue-700",
+    iconBg: "bg-blue-100",
+  },
+  {
+    path: "/faqs",
+    icon: HelpCircle,
+    label: "FAQs",
+    activeGradient: "from-rose-400 to-pink-500",
+    activeBg: "bg-rose-50",
+    activeText: "text-rose-700",
+    iconBg: "bg-rose-100",
+  },
+  {
+    path: "/contact",
+    icon: Mail,
+    label: "Contact",
     activeGradient: "from-violet-400 to-purple-500",
     activeBg: "bg-violet-50",
     activeText: "text-violet-700",
@@ -130,22 +171,6 @@ const menuItems = [
 const Sidebar: React.FC = () => {
   return (
     <aside className="w-64 flex flex-col bg-white border-r border-purple-100 shadow-sm">
-
-      {/* ── Sidebar logo header ───────────────────────────────────────── */}
-      <div className="bg-gradient-to-br from-violet-600 via-purple-500 to-pink-500 p-5">
-        <div className="flex items-center gap-3">
-          <div className="relative h-10 w-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
-            <span className="text-white text-xl font-black">S</span>
-            <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-amber-400 border-2 border-white" />
-          </div>
-          <div>
-            <h2 className="text-white text-base font-black tracking-tight leading-none">SweatSmart</h2>
-            <p className="text-purple-200 text-[10px] font-medium mt-0.5">Hyperhidrosis Tracker</p>
-          </div>
-        </div>
-        {/* Rainbow stripe */}
-        <div className="h-0.5 mt-4 rounded-full bg-gradient-to-r from-white/40 via-amber-300/60 to-white/20" />
-      </div>
 
       {/* ── Nav items ─────────────────────────────────────────────────── */}
       <nav className="flex-1 p-3 overflow-y-auto">
@@ -199,7 +224,7 @@ const Sidebar: React.FC = () => {
       <div className="h-0.5 bg-gradient-to-r from-violet-400 via-pink-400 to-amber-400" />
       <div className="p-4">
         <div className="rounded-xl bg-gradient-to-br from-violet-50 to-pink-50 border border-purple-100 p-3 text-center">
-          <p className="text-xs font-bold text-purple-700">💧 Hyperhidrosis Warrior</p>
+          <p className="text-xs font-bold text-purple-700">🏅 HidroAlly Hyperhidrosis Companion</p>
           <p className="text-[10px] text-gray-500 mt-0.5">Track · Understand · Manage</p>
         </div>
       </div>

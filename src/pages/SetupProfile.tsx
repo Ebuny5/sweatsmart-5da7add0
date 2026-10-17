@@ -1,97 +1,108 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import AppLayout from "@/components/layout/AppLayout";
-import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { audioAlertPlayer } from "@/utils/audioAlertPlayer";
 import { notificationManager } from "@/services/NotificationManager";
-import { User, Sparkles, MapPin, Bell, CheckCircle2 } from "lucide-react";
+import { audioAlertPlayer } from "@/utils/audioAlertPlayer";
+import { markPermissionsAsked, werePermissionsAsked } from "@/utils/onboardingStatus";
+import { Sparkles, MapPin, Bell, CheckCircle2, Loader2 } from "lucide-react";
 
-type Step = "name" | "location" | "notifications" | "voice";
+type Status = "unknown" | "enabled" | "blocked" | "not-now";
+type Step = "location" | "notifications" | "done";
 
+const queryPermission = async (name: "geolocation" | "notifications"): Promise<PermissionState | null> => {
+  try {
+    if (!navigator.permissions?.query) return null;
+    const res = await navigator.permissions.query({ name: name as PermissionName });
+    return res.state;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * One-time device permissions step for brand-new users.
+ * Name comes from sign-up / Google, voice is always the female alert voice,
+ * so neither is asked here. Already-granted permissions are skipped automatically.
+ */
 const SetupProfile = () => {
-  const [step, setStep] = useState<Step>("name");
-  const [displayName, setDisplayName] = useState("");
-  const [gender, setGender] = useState<"female" | "male">("female");
-  const [locationGranted, setLocationGranted] = useState(false);
-  const [notifGranted, setNotifGranted] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  const [step, setStep] = useState<Step>("location");
+  const [locationStatus, setLocationStatus] = useState<Status>("unknown");
+  const [notifStatus, setNotifStatus] = useState<Status>("unknown");
+  const [busy, setBusy] = useState(false);
 
-  const saveName = async () => {
-    const trimmed = displayName.trim();
-    if (!trimmed || !user) return;
-    setIsLoading(true);
-    try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ display_name: trimmed })
-        .eq("user_id", user.id);
-      if (error) {
-        await supabase
-          .from("profiles")
-          .upsert({ user_id: user.id, display_name: trimmed }, { onConflict: "user_id" });
-      }
-      await supabase.auth.updateUser({ data: { display_name: trimmed } });
-      setStep("location");
-    } catch (err) {
-      console.error(err);
-      toast({ title: "Error saving name", variant: "destructive" });
-    } finally {
-      setIsLoading(false);
-    }
+  const goHome = () => {
+    if (user) markPermissionsAsked(user.id);
+    navigate("/home", { replace: true });
   };
+
+  // Detect what is already enabled so we never re-ask or mislabel it.
+  useEffect(() => {
+    if (loading) return;
+    if (!user) { navigate("/login", { replace: true }); return; }
+    if (werePermissionsAsked(user.id)) { navigate("/home", { replace: true }); return; }
+    audioAlertPlayer.setGender("female");
+
+    (async () => {
+      const geo = await queryPermission("geolocation");
+      const notifGranted = typeof Notification !== "undefined" && Notification.permission === "granted";
+      const loc: Status = geo === "granted" ? "enabled" : "unknown";
+      const notif: Status = notifGranted ? "enabled" : "unknown";
+      setLocationStatus(loc);
+      setNotifStatus(notif);
+      if (loc === "enabled" && notif === "enabled") goHome();
+      else if (loc === "enabled") setStep("notifications");
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, user]);
 
   const requestLocation = () => {
     if (!navigator.geolocation) {
-      setStep("notifications");
+      setLocationStatus("blocked");
+      setStep(notifStatus === "enabled" ? "done" : "notifications");
       return;
     }
+    setBusy(true);
     navigator.geolocation.getCurrentPosition(
       () => {
-        setLocationGranted(true);
-        setStep("notifications");
+        setLocationStatus("enabled");
+        setBusy(false);
+        setStep(notifStatus === "enabled" ? "done" : "notifications");
       },
-      () => {
-        toast({
-          title: "Location skipped",
-          description: "You can enable it later in settings.",
-        });
-        setStep("notifications");
+      async (err) => {
+        // A slow GPS fix is NOT a refusal — check the real permission state.
+        const state = await queryPermission("geolocation");
+        const granted = state === "granted" || err.code !== err.PERMISSION_DENIED;
+        setLocationStatus(granted ? "enabled" : "blocked");
+        setBusy(false);
+        setStep(notifStatus === "enabled" ? "done" : "notifications");
       },
-      { timeout: 10000 },
+      { timeout: 15000, maximumAge: 600000, enableHighAccuracy: false },
     );
   };
 
   const requestNotifications = async () => {
+    setBusy(true);
     try {
       const granted = await notificationManager.requestPermission();
-      setNotifGranted(granted);
-    } catch (err) {
-      console.error("Error requesting notification permissions:", err);
+      const actual = typeof Notification !== "undefined" ? Notification.permission === "granted" : granted;
+      setNotifStatus(granted || actual ? "enabled" : "blocked");
+    } catch {
+      setNotifStatus("blocked");
     }
-    setStep("voice");
+    setBusy(false);
+    setStep("done");
   };
 
-  const finish = () => {
-    audioAlertPlayer.setGender(gender);
-    toast({
-      title: `Welcome, ${displayName.trim()}! 🎉`,
-      description: "Your warrior profile is ready.",
-    });
-    navigate("/home", { replace: true });
-  };
+  const label = (s: Status) =>
+    s === "enabled" ? "✓ Enabled" : s === "blocked" ? "Off — enable anytime in Settings" : "Not now";
 
   return (
-    <AppLayout isAuthenticated={false}>
+    <AppLayout isAuthenticated={true}>
       <div className="flex justify-center items-center min-h-[80vh] p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center space-y-3">
@@ -99,59 +110,26 @@ const SetupProfile = () => {
               <Sparkles className="h-8 w-8 text-white" />
             </div>
             <CardTitle className="text-2xl font-black">
-              {step === "name" && "Welcome, Warrior! 💧"}
               {step === "location" && "Enable location"}
               {step === "notifications" && "Enable notifications"}
-              {step === "voice" && "Pick your alert voice"}
+              {step === "done" && "You're all set 💧"}
             </CardTitle>
             <CardDescription className="text-sm leading-relaxed">
-              {step === "name" && "What should we call you on your Warrior Badge?"}
-              {step === "location" && "We need your location to monitor real climate conditions in your area."}
-              {step === "notifications" && "Allow notifications so we can alert you about high sweat-risk conditions and log reminders."}
-              {step === "voice" && "Choose the voice used for spoken alerts. You can change this later in Settings."}
+              {step === "location" && "We use your location to monitor real climate conditions in your area."}
+              {step === "notifications" && "Get climate risk alerts and 8-hour check-in reminders, even when the app is closed."}
+              {step === "done" && "Your HidroAlly companion is ready."}
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-5">
-            {step === "name" && (
-              <div className="space-y-3">
-                <Label htmlFor="displayName" className="font-semibold">
-                  Your name or nickname
-                </Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="displayName"
-                    type="text"
-                    placeholder="e.g. Lafidot, Sarah, Dr. Smith"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    className="pl-10"
-                    maxLength={50}
-                    autoFocus
-                  />
-                </div>
-                <Button
-                  onClick={saveName}
-                  disabled={isLoading || !displayName.trim()}
-                  className="w-full"
-                >
-                  {isLoading ? "Saving..." : "Continue →"}
-                </Button>
-              </div>
-            )}
-
+          <CardContent className="space-y-4">
             {step === "location" && (
               <div className="space-y-4 text-center">
                 <MapPin className="h-12 w-12 mx-auto text-primary" />
-                <p className="text-sm text-muted-foreground">
-                  Real-time temperature, humidity and UV from your area power every alert.
-                </p>
-                <Button onClick={requestLocation} className="w-full">
-                  Allow location
+                <Button onClick={requestLocation} disabled={busy} className="w-full min-h-14">
+                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Allow location"}
                 </Button>
-                <Button variant="ghost" onClick={() => setStep("notifications")} className="w-full">
-                  Skip
+                <Button variant="ghost" disabled={busy} onClick={() => { setLocationStatus("not-now"); setStep(notifStatus === "enabled" ? "done" : "notifications"); }} className="w-full min-h-14">
+                  Not now
                 </Button>
               </div>
             )}
@@ -159,60 +137,25 @@ const SetupProfile = () => {
             {step === "notifications" && (
               <div className="space-y-4 text-center">
                 <Bell className="h-12 w-12 mx-auto text-primary" />
-                <p className="text-sm text-muted-foreground">
-                  Climate alerts and 6-hour log reminders are delivered through notifications — even when the app is closed.
-                </p>
-                <Button onClick={requestNotifications} className="w-full">
-                  Allow notifications
+                <Button onClick={requestNotifications} disabled={busy} className="w-full min-h-14">
+                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Allow notifications"}
                 </Button>
-                <Button variant="ghost" onClick={() => setStep("voice")} className="w-full">
-                  Skip
+                <Button variant="ghost" disabled={busy} onClick={() => { setNotifStatus("not-now"); setStep("done"); }} className="w-full min-h-14">
+                  Not now
                 </Button>
               </div>
             )}
 
-            {step === "voice" && (
+            {step === "done" && (
               <div className="space-y-4">
-                <RadioGroup
-                  value={gender}
-                  onValueChange={(v) => setGender(v as "female" | "male")}
-                  className="space-y-2"
-                >
-                  <label className="flex items-center gap-3 rounded-lg border p-3 cursor-pointer">
-                    <RadioGroupItem value="female" id="g-female" />
-                    <span className="flex-1">
-                      <span className="font-semibold block">Female voice</span>
-                      <span className="text-xs text-muted-foreground">Default — full coverage of all alert levels.</span>
-                    </span>
-                  </label>
-                  <label className="flex items-center gap-3 rounded-lg border p-3 cursor-pointer">
-                    <RadioGroupItem value="male" id="g-male" />
-                    <span className="flex-1">
-                      <span className="font-semibold block">Male voice</span>
-                      <span className="text-xs text-muted-foreground">Available for low / reminder / check-in. Other levels use female.</span>
-                    </span>
-                  </label>
-                </RadioGroup>
-
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => {
-                    audioAlertPlayer.setGender(gender);
-                    audioAlertPlayer.playAlert("checkin");
-                  }}
-                >
-                  Preview voice
-                </Button>
-
-                <Button onClick={finish} className="w-full">
+                <div className="rounded-lg border p-3 text-sm space-y-1">
+                  <p>Location: <span className="font-semibold">{label(locationStatus)}</span></p>
+                  <p>Notifications: <span className="font-semibold">{label(notifStatus)}</span></p>
+                </div>
+                <Button onClick={goHome} className="w-full min-h-14">
                   <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Finish setup
+                  Go to my dashboard
                 </Button>
-
-                <p className="text-xs text-muted-foreground text-center">
-                  Location: {locationGranted ? "✓ enabled" : "skipped"} · Notifications: {notifGranted ? "✓ enabled" : "skipped"}
-                </p>
               </div>
             )}
           </CardContent>
