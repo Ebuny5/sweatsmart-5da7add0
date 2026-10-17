@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useProfile } from "@/hooks/useProfile";
 import { useEpisodes } from "@/hooks/useEpisodes";
+import { consistency } from "@/features/insights/analyticsSeries";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { NativeBiometric } from "@capgo/capacitor-native-biometric";
@@ -317,29 +318,7 @@ const Profile = () => {
   const totalCount = episodes ? episodes.length : 0;
 
   // Calendar week tracking consistency: unique days logged in the past 7 days out of 7
-  const calculateTrackingConsistency = () => {
-    if (!episodes || episodes.length === 0) return 0;
-
-    const toKey = (d: Date) =>
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
-    const now = Date.now();
-    const windowKeys = new Set<string>();
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(now - i * 86400000);
-      windowKeys.add(toKey(d));
-    }
-
-    const loggedDays = new Set<string>();
-    for (const ep of episodes) {
-      const key = toKey(new Date(ep.datetime));
-      if (windowKeys.has(key)) loggedDays.add(key);
-    }
-
-    return Math.round((loggedDays.size / 7) * 100);
-  };
-
-  const trackingConsistencyPercentage = calculateTrackingConsistency();
+  const trackingConsistencyPercentage = consistency(episodes || [], 7).pct;
   const currentGenderOption = GENDER_OPTIONS.find(g => g.value === selectedGender);
 
   return (

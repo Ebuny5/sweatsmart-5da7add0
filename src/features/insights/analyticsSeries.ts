@@ -72,7 +72,7 @@ export function buildCalendar(rows: any[], weeks = 26, now = new Date()): CalCel
   return cols;
 }
 
-/** Share of the last 30 days with at least one entry (episode or dry day). */
+/** Share of the last N days (default 30) with at least one entry (episode or dry day). */
 export function consistency(rows: any[], days = 30, now = new Date()) {
   const from = addDays(startOfDay(now), -(days - 1)), set = new Set<string>();
   rows.forEach(r => { const t = timeOf(r); if (t && t >= from && t < addDays(startOfDay(now), 1)) set.add(keyOf(t)); });
