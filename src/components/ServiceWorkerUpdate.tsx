@@ -13,22 +13,16 @@ const ServiceWorkerUpdate = () => {
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
-    // Check if we just updated (prevent immediate re-prompt)
-    const lastUpdate = localStorage.getItem(SW_UPDATE_KEY);
-    const justUpdated = lastUpdate && (Date.now() - parseInt(lastUpdate, 10)) < SW_UPDATE_COOLDOWN;
-    
-    if (justUpdated) {
-      console.log('SW: Recently updated, skipping update check');
-      return;
-    }
-
     const checkForUpdates = async () => {
       try {
         const reg = await navigator.serviceWorker.getRegistration();
         if (!reg) return;
         
         setRegistration(reg);
-        
+
+        const lastUpdate = localStorage.getItem(SW_UPDATE_KEY);
+        const justUpdated = lastUpdate && (Date.now() - parseInt(lastUpdate, 10)) < SW_UPDATE_COOLDOWN;
+
         // Only show prompt if there's a waiting worker AND we haven't just updated
         if (reg.waiting && !justUpdated) {
           setShowUpdatePrompt(true);
@@ -48,45 +42,60 @@ const ServiceWorkerUpdate = () => {
         
         reg.addEventListener('updatefound', handleUpdateFound);
 
-        // Listen for controller change - but only reload ONCE
-        const handleControllerChange = () => {
-          if (hasReloaded.current) return;
-          hasReloaded.current = true;
-          
-          // Mark that we just updated
-          localStorage.setItem(SW_UPDATE_KEY, Date.now().toString());
-          console.log('SW: New service worker activated, reloading...');
-          window.location.reload();
-        };
-        
-        navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
-        
-        return () => {
-          reg.removeEventListener('updatefound', handleUpdateFound);
-          navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
-        };
+        // Check for updates dynamically
+        reg.update().catch((err) => console.debug('SW reg.update debug:', err));
       } catch (error) {
         console.error('Error checking for SW updates:', error);
       }
     };
 
+    // Listen for controller change - reload ONCE
+    const handleControllerChange = () => {
+      if (hasReloaded.current) return;
+      hasReloaded.current = true;
+
+      localStorage.setItem(SW_UPDATE_KEY, Date.now().toString());
+      console.log('SW: New service worker activated, reloading...');
+      window.location.reload();
+    };
+
+    navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
+
     checkForUpdates();
 
-    // Check for updates less frequently (every 15 minutes instead of 5)
+    // Check on window focus (e.g. switching back to app)
+    const handleFocus = () => {
+      checkForUpdates();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    // Check for updates every 5 minutes
     const interval = setInterval(() => {
       navigator.serviceWorker.getRegistration().then(reg => {
         if (reg) reg.update();
       });
-    }, 15 * 60 * 1000);
+    }, 5 * 60 * 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+      clearInterval(interval);
+    };
   }, []);
 
   const handleUpdate = () => {
+    localStorage.setItem(SW_UPDATE_KEY, Date.now().toString());
     if (registration?.waiting) {
-      // Mark update time before triggering
-      localStorage.setItem(SW_UPDATE_KEY, Date.now().toString());
       registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      // Fallback reload if controllerchange takes time
+      setTimeout(() => {
+        if (!hasReloaded.current) {
+          hasReloaded.current = true;
+          window.location.reload();
+        }
+      }, 500);
+    } else {
+      window.location.reload();
     }
     setShowUpdatePrompt(false);
   };
@@ -99,7 +108,7 @@ const ServiceWorkerUpdate = () => {
   if (!showUpdatePrompt) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-50 animate-in slide-in-from-bottom-4">
+    <div className="fixed bottom-20 left-4 right-4 md:bottom-6 md:left-auto md:right-6 md:w-96 z-[100] animate-in slide-in-from-bottom-4">
       <div className="bg-primary text-primary-foreground p-4 rounded-lg shadow-lg">
         <div className="flex items-center gap-3">
           <RefreshCw className="h-5 w-5" />
