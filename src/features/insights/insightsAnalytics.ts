@@ -18,8 +18,6 @@ import {
   type NEp, type UserProfileInput,
 } from "./insightEngine";
 
-export type { UserProfileInput } from "./insightEngine";
-
 // ───────────────────────────── Types ─────────────────────────────
 export type Mood = "calm" | "moderate" | "intense";
 export interface RankedTrigger {
@@ -87,7 +85,7 @@ function prep(row: any): NEp {
   return toNEp({
     bodyAreas: asArray(row.body_areas ?? row.bodyAreas),
     triggers: asArray(row.triggers).map(trigLabel).filter(Boolean),
-    severity: row.severity, datetime: episodeTime(row),
+    severity: row.severity ?? row.severityLevel, datetime: episodeTime(row),
   });
 }
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
@@ -160,7 +158,7 @@ export function buildInsightsViewModel(rows: any[], profile: UserProfileInput = 
   const clusters = areas.map(a => a.cluster);
 
   // ── dry days, trend, weekly ──
-  const dryKeys = new Set(dryRows.map(r => dayKey(r.date ?? r.created_at)).filter(Boolean) as string[]);
+  const dryKeys = new Set(dryRows.map(r => dayKey(r.date ?? r.datetime ?? r.created_at)).filter(Boolean) as string[]);
   const keyOf = (d: Date) => dayKey(d) as string;
   let streak = 0;
   for (let i = 0; i < 90; i++) { const d = new Date(now.getTime() - i * DAY); if (dryKeys.has(keyOf(d))) streak++; else if (i > 0) break; }

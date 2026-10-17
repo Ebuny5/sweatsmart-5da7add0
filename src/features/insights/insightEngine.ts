@@ -421,7 +421,7 @@ function buildTracker(s: Stats, st: InsightState, dryDays: number): string[] {
     const t = s.stamps.map(d => d.getTime());
     const days = Math.floor((Math.max(...t) - Math.min(...t)) / 86400000);
     const weeks = Math.max(1, Math.ceil(days / 7));
-    lines.push(`${n} episodes logged across ${weeks} week${weeks !== 1 ? "s" : ""} (about ${(n / weeks).toFixed(1)} per week).`);
+    lines.push(`${n} episodes logged across ${weeks} week${weeks !== 1 ? "s" : ""} (about ${Math.round(n / weeks)} per week).`);
   } else lines.push(`${n} episodes logged so far.`);
   lines.push("Most affected areas: " + join(mostCommon(s.areaC).slice(0, 3).map(([x, c]) => `${x} (${c})`)) + ".");
   const tt = mostCommon(s.trigC).slice(0, 3);

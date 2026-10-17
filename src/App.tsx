@@ -167,6 +167,11 @@ const AppRoutes = () => {
         <Dashboard />
 
     } />
+    <Route path="/analytics" element={
+
+        <Dashboard />
+
+    } />
     <Route path="/log-episode" element={
 
         <LogEpisode />

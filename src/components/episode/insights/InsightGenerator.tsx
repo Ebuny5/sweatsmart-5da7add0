@@ -11,7 +11,7 @@ import { ProcessedEpisode } from '@/types';
 import {
   Thermometer, Heart, Brain, Droplets, AlertTriangle,
   Activity, Clock, Zap, Wind, ChevronDown, ChevronUp,
-  Shield, Download
+  Download
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { format } from 'date-fns';
@@ -44,9 +44,6 @@ interface clinicalInsight {
 const triggerValue = (t: any): string =>
   (typeof t === 'string' ? t : t?.label || t?.value || t?.type || '').toLowerCase();
 
-const triggerType = (t: any): string =>
-  (typeof t === 'string' ? 'environmental' : t?.type || 'environmental').toLowerCase();
-
 const hasKeyword = (text: string, ...words: string[]): boolean =>
   words.some(w => text.includes(w));
 
@@ -70,13 +67,10 @@ function generateInsights(episode: ProcessedEpisode): clinicalInsight[] {
   const isSocial   = hasKeyword(allTriggerText, 'crowd', 'social', 'public', 'speak', 'embarrass', 'interaction');
   const isAntic    = hasKeyword(allTriggerText, 'anticipat');
   const isDietary  = hasKeyword(allTriggerText, 'spicy', 'caffeine', 'alcohol', 'hot drink', 'energy', 'meal', 'gustatory');
-  const isMeds     = hasKeyword(allTriggerText, 'ssri', 'antidepressant', 'opioid', 'nsaid', 'medication', 'insulin', 'supplement');
-  const isPhysical = hasKeyword(allTriggerText, 'exercise', 'physical', 'sleep', 'night', 'hormonal', 'illness');
 
   // Body area flags
   const hasPalms    = areas.some(a => a.toLowerCase().includes('palm'));
   const hasSoles    = areas.some(a => a.toLowerCase().includes('sole') || a.toLowerCase().includes('feet') || a.toLowerCase().includes('foot'));
-  const hasAxillae  = areas.some(a => a.toLowerCase().includes('arm') || a.toLowerCase().includes('under'));
   const hasFace     = areas.some(a => a.toLowerCase().includes('face') || a.toLowerCase().includes('scalp') || a.toLowerCase().includes('head'));
   const isPalmoplantar = hasPalms && hasSoles;
 
@@ -99,22 +93,22 @@ function generateInsights(episode: ProcessedEpisode): clinicalInsight[] {
     : 'Never Noticeable';
 
   const severityMechanism = severity >= 4
-    ? `At this level, your body's "cool down" system is firing at maximum intensity. Your brain is sending signals down the Sympathetic Chain with such force that it results in a massive excess of the acetylcholine signal at the gland site. Your "software" (nervous system) is overdriving your functionally normal "hardware" (sweat glands). This high severity level (HDSS 4) is a clear sign that it's time to seek specialist help from a dermatologist.`
+    ? `At this level, your body's "cool down" system is firing at maximum intensity. Your brain is sending signals down the Sympathetic Chain with such force that it results in a massive excess of sweat signals at the gland site. Your nervous system is overdriving your sweat glands. This high severity level (HDSS 4) is a clear sign that it's time to seek specialist help from a dermatologist.`
     : severity === 3
-    ? `This is a clinical tipping point (HDSS 3) where sweating frequently interferes with your life. Your "software" (nervous system) is overdriving your functionally normal "hardware" (sweat glands) with a much lower threshold than usual. The sympathetic ganglia responsible for this area are firing more frequently than required, sending excessive acetylcholine signals to the glands.`
-    : `This episode shows your body was triggered but not completely overwhelmed (HDSS 1-2). Your "software" (nervous system) sent extra signals down the sympathetic chain, but the acetylcholine signal remained within a semi-manageable range. The goal is to identify the neural trigger—emotional or thermal—to prevent escalation.`;
+    ? `This is a clinical tipping point (HDSS 3) where sweating frequently interferes with your life. Your nervous system is overdriving your sweat glands with a much lower threshold than usual. The sympathetic pathways responsible for this area are firing more frequently than required.`
+    : `This episode shows your body was triggered but not completely overwhelmed (HDSS 1-2). Your nervous system sent extra signals down the sympathetic chain, but remained within a semi-manageable range. The goal is to identify the neural trigger—emotional or thermal—to prevent escalation.`;
 
   const severityImmediate = severity >= 4
-    ? `Get out of the triggering environment immediately. Run cold water over your wrists and the back of your neck. These "pulse points" help cool your core temperature quickly and tell your brain to ease up on the sweat signals.`
+    ? `Get out of the triggering environment immediately. Run cold water over your wrists and the back of your neck. These "pulse points" help cool your core temperature quickly and tell your brain to ease up on sweat signals.`
     : severity === 3
-    ? `Move to a cooler or quieter spot. Try the 4-7-8 breathing technique (breathe in for 4, hold for 7, out for 8). This simple trick helps calm your nervous system and stops the "sweat signal" in its tracks.`
+    ? `Move to a cooler or quieter spot. Try slow, steady breathing (breathe in for 4 seconds, out for 6). This helps calm your nervous system and eases the sweat signal.`
     : `Try not to worry too much about the episode—worrying can actually make the sweating worse. Use a simple grounding exercise like naming 5 things you can see to pull your brain out of the sweat-stress loop.`;
 
   const severityClinical = severity >= 4
-    ? `Since your sweating is intolerable, you're a good candidate for prescription options like Botox injections, specialized wipes (Qbrexza), or a permanent underarm treatment called miraDry. A dermatologist can help you decide which one is right for you.`
+    ? `Since your sweating is intolerable (HDSS 4), bringing your episode logs to a dermatologist is recommended. They can evaluate specialized treatment options suited to your health profile.`
     : severity === 3
-    ? `At this level, prescription-strength antiperspirants (containing 20% aluminium chloride) applied at night are usually the first step. You might also want to ask a doctor about oral medications or water-bath treatments (iontophoresis).`
-    : `Over-the-counter clinical-strength antiperspirants are often enough for this level. Make sure to apply them to completely dry skin right before bed for the best results.`;
+    ? `At HDSS 3, clinical-strength topicals applied at night to dry skin are typically a starting point. Consider discussing advanced options with a physician.`
+    : `Over-the-counter clinical-strength topicals applied to completely dry skin at bedtime can help manage mild to moderate flare-ups.`;
 
   insights.push({
     id: 'severity',
@@ -129,7 +123,7 @@ function generateInsights(episode: ProcessedEpisode): clinicalInsight[] {
     summary: severity >= 4
       ? `This was a peak-severity episode, meaning your body is sending out its strongest sweat signals.`
       : severity === 3
-      ? `This episode frequently interfered with your day, showing your "on switch" for sweat is quite sensitive.`
+      ? `This episode frequently interfered with your day, showing your sweat response is quite sensitive.`
       : `A moderate episode where your body reacted to a trigger, but stayed manageable.`,
     mechanism: severityMechanism,
     immediate: severityImmediate,
@@ -155,18 +149,18 @@ function generateInsights(episode: ProcessedEpisode): clinicalInsight[] {
     if (isHeat) {
       trigTitle = 'Trigger — Heat & Humidity';
       trigProb = 'Probability: 90% Hypothalamus (Thermal) / 10% Baseline Autonomic';
-      trigMechanism = `When it's hot, your hypothalamus (body thermostat) tells your sweat glands to kick in. But when it's humid (above 70%), that sweat can't evaporate, so your body just keeps producing more in a frustrating loop. It's essentially a "failed mission" where the brain continues to send the acetylcholine signal through the sympathetic chain to achieve a cooling effect that the air won't allow.`;
-      trigImmediate = `Use a fan! Moving air across your skin helps that sweat evaporate even when it's humid. Target your neck and wrists for the fastest relief.`;
-      trigSelfManagement = `Try "pre-cooling" by taking a cool shower before you head into a hot environment. This gives your body a longer "buffer" before the hypothalamus feels the need to start sweating.`;
-      trigClinical = `If heat always sets you off, Aluminium Chloride 20% clinical-strength antiperspirant applied at night is your best first defense. It works by temporarily blocking the sweat ducts so the acetylcholine signal has nowhere to go.`;
+      trigMechanism = `When it's hot, your hypothalamus (body thermostat) tells your sweat glands to kick in. When humidity is high, sweat cannot evaporate efficiently, so your body continues to signal for more cooling.`;
+      trigImmediate = `Use a fan! Moving air across your skin helps sweat evaporate even when humid. Target your neck and wrists for fast relief.`;
+      trigSelfManagement = `Try pre-cooling by taking a cool shower before entering a hot environment to give your body a cooling buffer.`;
+      trigClinical = `Applying clinical-strength antiperspirant to clean, dry skin at night can help create a protective barrier for thermal triggers.`;
       trigIcon = <Thermometer className="h-5 w-5" />;
     } else if (isStress || isAntic) {
       trigTitle = isAntic ? 'Trigger — Anticipation' : 'Trigger — Stress & Anxiety';
       trigProb = 'Probability: 80% Amygdala (Emotional) / 20% Hypothalamus (Thermal)';
-      trigMechanism = `Your amygdala (the brain's alarm system) is directly connected to your sweat glands via the sympathetic chain. In hyperhidrosis, this pathway is "hyper-sensitized," firing the sweat signal faster than you can even consciously feel anxious. This is why you might start sweating *before* a big event—your brain is "preparing" the hardware for a situation the software remembers as being stressful.`;
-      trigImmediate = `The 4-7-8 breathing trick is your best friend here. Breathe in for 4 seconds, hold for 7, and out for 8. Doing this just 3 times can "reset" your nervous system by activating the Vagus Nerve and quiet the sweat signal.`;
-      trigSelfManagement = `Practice your breathing exercises when you're *not* stressed. If your body is already familiar with this Vagus Nerve reset, it will work much faster when an episode actually starts.`;
-      trigClinical = `If stress is your main driver, a doctor might suggest a low-dose oral medication (anticholinergic) taken only for high-stakes events. These work by blocking the acetylcholine signal at the gland site during that specific window.`;
+      trigMechanism = `Stress triggers a physical response in the nervous system. In hyperhidrosis, this pathway is sensitized, sending signals quickly when feeling anxious or anticipating an event.`;
+      trigImmediate = `Practice tactical slow exhalations: breathe in for 4 seconds, hold briefly, and exhale for 6 seconds. Doing this a few times helps ease the nervous system.`;
+      trigSelfManagement = `Practice breathing exercises when calm so your body naturally turns to them during stressful moments.`;
+      trigClinical = `If stress is a primary driver, consult a dermatologist to discuss event-based management options.`;
       trigIcon = <Brain className="h-5 w-5" />;
       trigHeader = 'from-purple-500 to-violet-500';
       trigAccent = 'border-l-purple-500';
@@ -175,10 +169,10 @@ function generateInsights(episode: ProcessedEpisode): clinicalInsight[] {
     } else if (isSocial) {
       trigTitle = 'Trigger — Social Settings';
       trigProb = 'Probability: 75% Amygdala (Social) / 25% Ambiance (Thermal)';
-      trigMechanism = `Social interaction triggers a physical stress response in the Amygdala. Your sympathetic nervous system has learned to associate social situations with sweating, so it fires the signal through the sympathetic chain automatically. It's like a neural reflex that has become a bit too well-trained over time, overdriving your glands even when you feel socially comfortable.`;
-      trigImmediate = `Try the 5-4-3-2-1 grounding method: find 5 things you can see, 4 you can touch, 3 you can hear, 2 you can smell, and 1 you can taste. This pulls your brain out of the "social alarm" mode and back into the parasympathetic "rest and digest" state.`;
-      trigSelfManagement = `Try small social interactions first to "re-train" the neural pathway that these situations aren't threats. Over time, your body's sympathetic response will learn to stay calmer in larger groups.`;
-      trigClinical = `Many people find that a combination of therapy (to manage the software/worry) and medical treatment like Botox (to block the hardware/sweat) works best. When you stop the physical sweating, the social alarm often starts to fade too.`;
+      trigMechanism = `Social interactions can trigger an automatic nervous system response. Over time, sweating in social settings can become a learned physical reflex.`;
+      trigImmediate = `Try sensory grounding: name 5 objects around you or touch a cool surface to draw focus away from anxiety.`;
+      trigSelfManagement = `Arrive slightly early to new environments so you can settle in comfortably before crowd density builds.`;
+      trigClinical = `Many people find that combining stress management strategies with clinical treatments discussed with a doctor brings the best relief.`;
       trigIcon = <Heart className="h-5 w-5" />;
       trigHeader = 'from-pink-500 to-rose-400';
       trigAccent = 'border-l-pink-500';
@@ -187,10 +181,10 @@ function generateInsights(episode: ProcessedEpisode): clinicalInsight[] {
     } else if (isDietary) {
       trigTitle = 'Trigger — Food & Drink';
       trigProb = 'Probability: 70% Gustatory Stimuli / 30% Sympathetic Sensitivity';
-      trigMechanism = `Spicy foods contain capsaicin that tricks your brain's thermal receptors into thinking you're overheating. Caffeine dials up your body's baseline sympathetic "alert" level, making it much easier for your sweat glands to be triggered by the acetylcholine signal. This is a direct chemical reaction in your neural pathway, not a sign of poor health.`;
-      trigImmediate = `Sip cold water slowly after eating something spicy. This helps cool down the "heat receptors" in your mouth and can ease the sympathetic signal to your face and scalp.`;
-      trigSelfManagement = `Keep a log of which foods push you over the edge. You might find that one cup of coffee is fine, but a second one is what pushes the sympathetic nervous system to over-fire.`;
-      trigClinical = `If specific foods always cause facial sweating (Gustatory Hyperhidrosis), newer prescription gels like Sofdra can be applied locally to block those signals without affecting your entire body's cooling system.`;
+      trigMechanism = `Certain foods and hot beverages stimulate thermal or nervous receptors, sending immediate sweating signals to facial or upper body sweat glands.`;
+      trigImmediate = `Sip cold water slowly after warm or spicy items to help cool local thermal receptors.`;
+      trigSelfManagement = `Keep a journal of dietary items to identify specific ingredients or coffee limits that trigger sweating.`;
+      trigClinical = `If dietary triggers consistently cause facial sweating, mention gustatory sweating to a dermatologist for targeted topical options.`;
       trigIcon = <Droplets className="h-5 w-5" />;
       trigHeader = 'from-green-500 to-emerald-500';
       trigAccent = 'border-l-green-500';
@@ -199,10 +193,10 @@ function generateInsights(episode: ProcessedEpisode): clinicalInsight[] {
     } else {
       trigTitle = 'Logged Trigger';
       trigProb = 'Probability: Mixed Autonomic Triggering';
-      trigMechanism = `Whatever the trigger, the result is the same: your brain sent a "start sweating" signal to your glands through the sympathetic chain. In hyperhidrosis, this signal is just much louder (more acetylcholine) and easier to set off than in other people. The goal is to figure out if your triggers are mostly thermal (Hypothalamus) or emotional (Amygdala).`;
-      trigImmediate = `If you can, step away from the trigger. Even a 5-minute break in a cool spot helps your nervous system shift from sympathetic (fight/flight) to parasympathetic (rest/digest).`;
-      trigSelfManagement = `Keep logging this trigger! After a few more entries, our pattern analysis can tell you for sure if it's a consistent driver for your specific neural pathway.`;
-      trigClinical = `If this trigger consistently causes high-severity episodes, it's worth mentioning to a dermatologist. They can help you find a treatment that specifically targets the acetylcholine signal at the gland site.`;
+      trigMechanism = `Your logged trigger stimulated your body's sweat response. In hyperhidrosis, this response is more active than usual.`;
+      trigImmediate = `Step into a cool, well-ventilated area for a brief reset when possible.`;
+      trigSelfManagement = `Continue logging triggers to build a clear picture for your next physician review.`;
+      trigClinical = `If this trigger consistently causes severe episodes, bring your logs to a dermatologist for a tailored treatment plan.`;
     }
 
     insights.push({
@@ -236,25 +230,25 @@ function generateInsights(episode: ProcessedEpisode): clinicalInsight[] {
 
     if (isPalmoplantar) {
       areaTitle = 'Pattern — Hands & Feet';
-      areaProb = 'Classification: Primary Focal Hyperhidrosis (PHH)';
-      areaMechanism = `Sweating on both your hands and feet (Palmoplantar) is a classic PHH pattern. These areas are mostly controlled by the sympathetic nervous system's reaction to emotion rather than heat. This means your hands and feet are reacting to neural signals from the sympathetic chain with millisecond speed. It's a 'software' over-firing issue, not a sign of any other health problem.`;
-      areaImmediate = `For your palms: press them firmly against a cool, dry surface. For your feet: try to get some air moving over them as soon as it's safe to do so.`;
-      areaSelf = `Consider iontophoresis (water-bath treatment). It's one of the most effective ways to treat hands and feet, works for about 80-90% of people by using a gentle current to "quiet" the sweat glands.`;
-      areaClinical = `The treatment ladder usually goes: (1) Aluminium chloride 20% (Certain Dri); (2) Iontophoresis; (3) Botox. All of these work by blocking the acetylcholine signal that tells your glands to produce moisture.`;
+      areaProb = 'Classification: Primary Focal Pattern';
+      areaMechanism = `Sweating on both hands and feet is a common primary focal pattern, heavily influenced by nervous system responses. It is a localized signal sensitivity rather than an underlying health issue.`;
+      areaImmediate = `Press palms against a dry, cool surface or ventilate feet when safe to do so.`;
+      areaSelf = `Explore non-invasive physical barriers and breathable footwear designed for moisture management.`;
+      areaClinical = `Ask a dermatologist about medical treatments suitable for lower extremities and palms, such as specialized topicals or tap-water therapy.`;
     } else if (hasFace) {
       areaTitle = 'Pattern — Face & Scalp';
-      areaProb = 'Classification: Craniofacial Hyperhidrosis';
-      areaMechanism = `Facial sweating is often driven by a combination of thermal signals and emotional stress. The 'shame loop'—where worrying about sweating triggers more sweat—is a documented sympathetic response. Your face also has a direct reflex to certain foods (Gustatory). Breaking this requires blocking the local acetylcholine signal.`;
-      areaImmediate = `Use oil-blotting papers to soak up moisture. A quick mist of cool water can help "reset" the local skin temperature receptors and tell the brain to ease up.`;
-      areaSelf = `Avoid known food triggers before big events. Carry cooling wipes to use discreetly if you feel the sympathetic chain starting to fire in your face.`;
-      areaClinical = `For facial sweating, Sofdra or Qbrexza wipes are excellent. They block the acetylcholine signal locally without the systemic side effects of oral medications.`;
+      areaProb = 'Classification: Craniofacial Pattern';
+      areaMechanism = `Facial sweating is often linked to thermal sensitivity and emotional stress. Gentle, non-greasy approaches protect skin while managing moisture.`;
+      areaImmediate = `Use a gentle cloth to absorb excess moisture and mist with cool water to soothe thermal receptors.`;
+      areaSelf = `Avoid heavy oil-based creams before outdoor activities or high-temperature settings.`;
+      areaClinical = `For facial hyperhidrosis, non-greasy medical gels or topicals prescribed by a dermatologist provide targeted action without blocking pores.`;
     } else {
       areaTitle = `Pattern — ${areas[0]}`;
-      areaProb = 'Classification: Focal Hyperhidrosis';
-      areaMechanism = `The area you're tracking has a high concentration of eccrine sweat glands. In your case, the sympathetic ganglia responsible for this area are over-firing, sending a signal that is "turned up too high." Focused treatments that target the local acetylcholine receptors are usually the most effective for this pattern.`;
-      areaImmediate = `Cool the area with a wet cloth or fan. This sends a "cooling" signal back to the hypothalamus, which can sometimes override the sympathetic "sweat" signal.`;
-      areaSelf = `Focus your tracking on this area. Notice if specific fabrics (like cotton, which stays wet) make the episode feel worse compared to moisture-wicking bamboo or wool.`;
-      areaClinical = `Targeted treatments like Botox or miraDry (for underarms) are excellent for focal patterns because they stop the sweating in just one area by permanently or temporarily disabling the sweat glands' ability to receive the acetylcholine signal.`;
+      areaProb = 'Classification: Focal Area Pattern';
+      areaMechanism = `The area you are tracking has a high concentration of sweat glands reacting to localized nervous signals.`;
+      areaImmediate = `Cool the area with a damp cloth or soft airflow to signal temperature reduction to the brain.`;
+      areaSelf = `Track which fabric weaves (such as breathable merino or technical fabrics) feel most comfortable during flare-ups.`;
+      areaClinical = `Dermatologists offer several targeted therapies for specific focal zones to reduce localized sweat production.`;
     }
 
     insights.push({
@@ -267,7 +261,7 @@ function generateInsights(episode: ProcessedEpisode): clinicalInsight[] {
       badgeText: 'Area Analysis',
       title: areaTitle,
       probability: areaProb,
-      summary: `Sweating in your ${areas.join(', ')} follows a known pattern. Here's what that means for your treatment options.`,
+      summary: `Sweating in your ${areas.join(', ')} follows a recognized pattern. Here is what that means for management.`,
       mechanism: areaMechanism,
       immediate: areaImmediate,
       selfManagement: areaSelf,
@@ -287,12 +281,12 @@ function generateInsights(episode: ProcessedEpisode): clinicalInsight[] {
       badgeColor: 'bg-slate-100 text-slate-800',
       badgeText: 'Timing Note',
       title: 'Nighttime Sweating',
-      probability: 'This is an important pattern to discuss with a doctor',
-      summary: `Primary hyperhidrosis usually stops during sleep. If you're sweating heavily at night, it's worth looking into other causes.`,
-      mechanism: `Normal hyperhidrosis usually "goes to sleep" when you do because your nervous system is at rest. If you're waking up drenched, it could be related to medications, your thyroid, or blood sugar levels. It doesn't necessarily mean anything is wrong, but it's a pattern that doctors like to investigate.`,
-      immediate: `Drink some water—sweating at night can make you dehydrated. Note if you were actually asleep when it started or just resting.`,
-      selfManagement: `Keep a special note of these nighttime episodes. If it happens 3 or more times in a month, definitely schedule a check-up with your GP.`,
-      clinicalNote: `When you see your doctor, specifically ask for a "blood panel" to rule out thyroid issues or other common causes of night sweats. Don't let it be dismissed as just "normal" sweating without a quick check.`,
+      probability: 'Worth discussing with a healthcare professional',
+      summary: `Primary hyperhidrosis typically diminishes during sleep. Sweating during sleep is worth bringing to a doctor's attention.`,
+      mechanism: `Because autonomic sweating usually quietens during deep sleep, persistent nocturnal episodes can sometimes relate to secondary factors like medication or systemic health.`,
+      immediate: `Sip cool water to stay hydrated and note whether sweating occurred while asleep or during wakeful hours.`,
+      selfManagement: `Keep a log of nighttime episodes. If occurring regularly, schedule a routine consultation with your GP.`,
+      clinicalNote: `Ask your physician to evaluate potential secondary causes or lab panels during your next check-up.`,
       evidenceTag: `Nocturnal Pattern Note`,
     });
   } else if (isMorning && isStress) {
@@ -304,13 +298,13 @@ function generateInsights(episode: ProcessedEpisode): clinicalInsight[] {
       bgColor: 'bg-amber-50/40',
       badgeColor: 'bg-amber-100 text-amber-800',
       badgeText: 'Timing Note',
-      title: 'The Morning Rush',
-      probability: 'Your body\'s natural morning rhythm likely played a role',
-      summary: `Mornings are a "high-risk" time for sweating because your stress hormones naturally peak right after you wake up.`,
-      mechanism: `Your body's natural "wake up" chemicals (like cortisol) peak between 6 and 9 AM. These chemicals are direct triggers for your sweat glands. When you combine that with the stress of a new day, it's very common for warriors to have their toughest episodes in the morning.`,
-      immediate: `Give yourself 10 minutes of "quiet time" right after waking up before you check your phone or start your routine. A quick face wash with cool water can also help "reset" your system.`,
-      selfManagement: `If you're using a prescription antiperspirant, applying it *the night before* is crucial. It gives the treatment time to work so it's ready for that morning peak.`,
-      clinicalNote: `Some people find that taking a low-dose oral medication right after waking up (or even the night before) can provide perfect coverage for the morning hours without needing to take it all day long.`,
+      title: 'Morning Rhythm',
+      probability: 'Natural morning body rhythms likely played a role',
+      summary: `Mornings coincide with natural surges in wakefulness hormones, which can lower your sweating threshold.`,
+      mechanism: `Your body's natural waking cycle increases alertness, which can coincide with morning preparations and lower the threshold for sweat signaling.`,
+      immediate: `Allow 5 to 10 quiet minutes upon waking before starting a hectic routine or checking urgent messages.`,
+      selfManagement: `If using clinical topicals, applying them the evening before allows proper absorption prior to morning activity.`,
+      clinicalNote: `Discuss morning symptom patterns with your dermatologist to time treatments effectively.`,
       evidenceTag: `Morning Rhythm Analysis`,
     });
   }
@@ -326,12 +320,12 @@ function generateInsights(episode: ProcessedEpisode): clinicalInsight[] {
       badgeColor: 'bg-teal-100 text-teal-800',
       badgeText: 'Follow-up',
       title: notesHasSwell ? 'Swelling & Tightness' : 'Pain & Discomfort',
-      probability: 'This is a common secondary effect of severe episodes',
-      summary: `You mentioned ${notesHasSwell ? 'swelling or tightness' : 'pain'}—this is a real physical effect that happens when your body's "cool down" system over-fires.`,
-      mechanism: `When you sweat heavily, your blood vessels also open up to help release heat. This can cause extra fluid to build up in your fingers or toes, leading to that "puffy" or tight feeling. It's not a separate disease—it's just a side effect of the intense sweating episode.`,
-      immediate: `If your hands or feet feel swollen, try elevating them above your heart level for a few minutes. A cool (not ice-cold) compress can also help reduce the swelling.`,
-      selfManagement: `Log how long the swelling lasts. If it stays for more than 2 hours after the sweating stops, that's something you should definitely mention to your doctor.`,
-      clinicalNote: `Make sure to mention this swelling to your doctor. It helps prove that your sweating is causing real physical changes in your body, which makes the case for getting advanced treatments approved by insurance.`,
+      probability: 'A recognized physical response during intense episodes',
+      summary: `You noted ${notesHasSwell ? 'swelling or tightness' : 'discomfort'}—this can occur as blood vessels dilate during heat dissipation.`,
+      mechanism: `During heavy sweating, localized skin blood vessels dilate to release heat, which can temporarily cause fluid retention or tightness in hands or feet.`,
+      immediate: `Elevate hands or feet slightly and apply a cool, damp compress to reduce localized puffiness.`,
+      selfManagement: `Note how long swelling lasts after sweating stops. Share these details if it persists beyond two hours.`,
+      clinicalNote: `Documenting physical symptoms helps your doctor understand the full impact on your daily life.`,
       evidenceTag: `Physical Complication Note`,
     });
   }
@@ -346,13 +340,13 @@ function generateInsights(episode: ProcessedEpisode): clinicalInsight[] {
       bgColor: 'bg-rose-50/40',
       badgeColor: 'bg-rose-100 text-rose-800',
       badgeText: 'Warrior Support',
-      title: 'The Emotional Weight',
-      probability: 'You are not alone—most warriors feel this same weight',
-      summary: `What you're feeling isn't a weakness. Living with this condition is genuinely exhausting, and it's okay to acknowledge that.`,
-      mechanism: `Studies show that hyperhidrosis has a huge impact on quality of life—sometimes even more than severe skin conditions like psoriasis. The constant "worry loop" (worrying about sweating, which causes more sweating) is a documented medical part of the condition, not a personality flaw.`,
-      immediate: `Take a deep breath and remind yourself: your sweat glands are normal. It's just a signal glitch. You are not "disgusting" or "weird"—you're fighting a recognized medical condition.`,
-      selfManagement: `Connecting with others who have hyperhidrosis can be life-changing. Check out the International Hyperhidrosis Society (sweathelp.org) for stories and support from people who truly get it.`,
-      clinicalNote: `If you're feeling really down or avoiding social life because of this, please tell your doctor. They can provide support for the emotional side of the condition alongside the medical treatments. Both are equally important.`,
+      title: 'Emotional Well-being',
+      probability: 'Your feelings are valid and shared by many warriors',
+      summary: `Living with heavy sweating can be taxing. Recognizing its impact is an important step in managing your health.`,
+      mechanism: `Hyperhidrosis carries a documented emotional load. Worrying about sweating can amplify autonomic responses, making ongoing support valuable.`,
+      immediate: `Remind yourself that hyperhidrosis is a recognized physical condition, not a personal flaw.`,
+      selfManagement: `Connecting with support communities or patient advocacy groups (like the International Hyperhidrosis Society) offers helpful resources.`,
+      clinicalNote: `Do not hesitate to discuss quality-of-life impacts with your physician alongside physical symptoms.`,
       evidenceTag: `Warrior Wellness Note`,
     });
   }
@@ -402,7 +396,7 @@ const InsightCard: React.FC<{ insight: clinicalInsight }> = ({ insight }) => {
       pdf.setFontSize(8); pdf.setFont('helvetica', 'italic');
       pdf.text('This report is for educational reference. Please discuss these insights with a healthcare professional.', margin, y);
 
-      pdf.save('HidroAlly Analysis & Reccomendation.pdf');
+      pdf.save('HidroAlly_Analysis_And_Recommendation.pdf');
       toast({ title: 'Report exported', description: 'Your PDF is ready.' });
     } catch {
       toast({ title: 'Export failed', variant: 'destructive' });

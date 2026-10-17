@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { consistency } from "@/features/insights/analyticsSeries";
 
 export type EngagementActionType =
   | "episodes_logged"
@@ -114,27 +115,19 @@ export function useEngagement() {
   const fetchLogs = useCallback(async () => {
     if (!user) return;
     try {
-      const today = new Date();
-      const startDate = new Date();
-      startDate.setDate(today.getDate() - 28);
-      const startStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
-
-      const { data, error } = await supabase
-        .from("user_engagement_logs")
+      const { data: epData, error: epError } = await supabase
+        .from("episodes")
         .select("*")
-        .eq("user_id", user.id)
-        .gte("date", startStr);
+        .eq("user_id", user.id);
 
-      if (error) {
-        console.error("Error fetching engagement logs:", error);
-        return;
+      if (!epError && epData) {
+        const c7 = consistency(epData, 7);
+        setConsistencyPercentage(c7.pct);
       }
-
-      calculateConsistency(data || []);
     } catch (e) {
       console.error(e);
     }
-  }, [user, calculateConsistency]);
+  }, [user]);
 
   useEffect(() => {
     fetchLogs();
