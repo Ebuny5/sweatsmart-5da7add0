@@ -30,9 +30,6 @@ export interface ReportContent {
 const KIND_LABEL: Record<string, string> = {
   thermal: "Environmental", emotional: "Emotional", physical: "Lifestyle / physical", systemic: "Medication / health", none: "No clear trigger",
 };
-const AREA_MEDICAL: Record<string, string> = {
-  head_neck: "craniofacial", hands: "palmar", feet: "plantar", underarms: "axillary", torso: "truncal", groin_thighs: "inguinal / thigh", all: "generalized",
-};
 const fmtDate = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 const pc = (x: number) => `${Math.round(x * 100)}%`;
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
@@ -71,7 +68,7 @@ export function buildReportContent(args: { rows: any[]; patient: PatientInfo; pr
     `Patient-reported diagnosis: ${args.patient.diagnosis || "not stated"}. HidroAlly pattern reading: ${reading}.`,
     `Most affected areas: ${top3}. ${typ} across ${vm.n} logged episodes.`,
   ];
-  const wholeBody = vm.areas.find(a => a.cluster === "all");
+  const wholeBody = vm.areas.find(a => a.key === "whole_body");
   const nightShare = vm.windows.find(w => w.key === "night")?.share ?? 0;
   const reviewPoints: string[] = [];
   if (wholeBody) reviewPoints.push(`${pc(wholeBody.share)} of episodes were logged as whole-body sweating, which is worth clinical review for a secondary cause.`);
@@ -106,7 +103,7 @@ export function buildReportContent(args: { rows: any[]; patient: PatientInfo; pr
     : vm.timedCount < 6 ? "Time of day: not enough timed episodes to show a pattern." : "Time of day: no window clearly stands out.";
 
   // areas
-  const areaRows = vm.areas.map(a => [a.label, AREA_MEDICAL[a.cluster] || "", pc(a.share)]);
+  const areaRows = vm.areas.map(a => [a.label, `${a.count} of ${vm.n} episodes (${pc(a.share)})`]);
 
   // self-care from the strategy library (top triggers)
   const selfCare: string[] = [];
@@ -115,7 +112,7 @@ export function buildReportContent(args: { rows: any[]; patient: PatientInfo; pr
   });
   selfCare.push("If a prescription or clinical-strength topical is already in use, moisturise treated areas on non-treatment nights to protect the skin barrier.");
 
-  const guide = buildGuide({ clusters: vm.clusters, grade: vm.typical, lean: vm.pattern.lean });
+  const guide = buildGuide({ areas: vm.areas, grade: vm.typical, lean: vm.pattern.lean });
 
   const facts = [
     `${vm.n} flare-up episodes and ${vm.dry.total} dry days logged between ${fmtDate(first)} and ${fmtDate(last)}.`,
@@ -214,7 +211,7 @@ export function renderClinicalReport(c: ReportContent): jsPDF {
   para(c.timeNote, { size: 9.5, color: GREY });
 
   section("SECTION 4: AFFECTED AREAS");
-  table(["Area", "Medical term", "Share of episodes"], c.areaRows.map(r => [r[0], r[1] ? `${r[1]} hyperhidrosis` : "", r[2]]), [190, 190, CW - 380]);
+  table(["Area (as you logged it)", "Episodes involving it"], c.areaRows, [230, CW - 230]);
 
   section("SECTION 5: SELF-CARE FROM THE PATIENT'S TRIGGERS");
   bullets(c.selfCare);

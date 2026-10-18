@@ -101,18 +101,19 @@ const TRIGGER_ALIASES: Record<string, string> = {
   crowded_spaces: "crowded_space", synthetic_fabric: "synthetic_fabrics", bright_light: "bright_lights", loud_noise: "loud_noises",
   heavy_meal: "heavy_meals", hot_drink: "hot_drinks", spicy_foods: "spicy_food",
 };
-export const FOCAL = new Set(["palms", "soles", "feet", "face", "scalp", "hands", "underarms"]);
+export const FOCAL = new Set(["palms", "soles", "feet", "face", "scalp", "hands", "underarms", "face and scalp", "feet and soles", "fingers", "toes"]);
 const TRUNCAL = new Set(["head", "neck", "chest", "back", "groin", "thighs", "entire body"]);
 export const CLUSTER: Record<string, string> = {
   face: "head_neck", head: "head_neck", scalp: "head_neck", neck: "head_neck", palms: "hands", hands: "hands",
   soles: "feet", feet: "feet", underarms: "underarms", chest: "torso", back: "torso", groin: "groin_thighs",
   thighs: "groin_thighs", "entire body": "all",
+  "face and scalp": "head_neck", "feet and soles": "feet", fingers: "hands", toes: "feet",
 };
 const AREA_ALIASES: Record<string, string> = {
   underarm: "underarms", armpit: "underarms", armpits: "underarms", axillary: "underarms", foot: "feet",
-  palm: "palms", hand: "hands", sole: "soles", entire_body: "entire body", "whole body": "entire body",
-  "full body": "entire body", generalized: "entire body",
-  "feet soles": "feet", "face scalp": "face", "scalp face": "face", toes: "feet", toe: "feet", fingers: "hands", finger: "hands",
+  palm: "palms", hand: "hands", sole: "soles", toe: "toes", finger: "fingers",
+  entire_body: "entire body", "whole body": "entire body", "full body": "entire body", generalized: "entire body",
+  "feet soles": "feet and soles", "face scalp": "face and scalp", "scalp face": "face and scalp",
 };
 const KW: Record<string, RegExp> = {
   head_neck: /\b(face|facial|forehead|temples?|cheeks?|scalp|neck|nose|lip|hat|headwear)\b/,
@@ -126,16 +127,11 @@ function inferClusters(text: string): Set<string> {
   let t = text.toLowerCase().replace(/back of (the |your )?neck/g, "neck").replace(/hand fan|handheld fan|hand towel/g, " ");
   return new Set(Object.entries(KW).filter(([, re]) => re.test(t)).map(([c]) => c));
 }
-export const normalizeArea = (a: string) => {
+const normalizeArea = (a: string) => {
   const x = String(a).trim().toLowerCase().replace(/_/g, " ").replace(/\s+/g, " ");
   return AREA_ALIASES[x] || x;
 };
-
-export const groupBodyArea = (a: string): string => {
-  const norm = normalizeArea(a);
-  return CLUSTER[norm] || norm || a;
-};
-const normTrigger = (t: string) => { const s = slug(t); return TRIGGER_ALIASES[s] || s; };
+export const normTrigger = (t: string) => { const s = slug(t); return TRIGGER_ALIASES[s] || s; };
 const triggerText = (t: TriggerInput | string) =>
   typeof t === "string" ? t : (t.label || t.value || t.type || "");
 
@@ -421,7 +417,7 @@ function buildTracker(s: Stats, st: InsightState, dryDays: number): string[] {
     const t = s.stamps.map(d => d.getTime());
     const days = Math.floor((Math.max(...t) - Math.min(...t)) / 86400000);
     const weeks = Math.max(1, Math.ceil(days / 7));
-    lines.push(`${n} episodes logged across ${weeks} week${weeks !== 1 ? "s" : ""} (about ${Math.round(n / weeks)} per week).`);
+    lines.push(`${n} episodes logged across ${weeks} week${weeks !== 1 ? "s" : ""} (about ${(n / weeks).toFixed(1)} per week).`);
   } else lines.push(`${n} episodes logged so far.`);
   lines.push("Most affected areas: " + join(mostCommon(s.areaC).slice(0, 3).map(([x, c]) => `${x} (${c})`)) + ".");
   const tt = mostCommon(s.trigC).slice(0, 3);

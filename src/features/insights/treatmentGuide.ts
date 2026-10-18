@@ -38,44 +38,35 @@ const CAUSE_FIRST: TreatmentOption = {
   ask: "Which tests or medicine reviews should I have first?",
 };
 
+const MILD_ANTIPERSPIRANT: TreatmentOption = { ...ANTIPERSPIRANT, plain: "Often used on more sensitive skin too, but at a gentler strength, because strong products can irritate. Your dermatologist will choose what suits you." };
+const TOPICAL_MEDICINE: TreatmentOption = {
+  name: "Medicated cream or wipes",
+  plain: "Products that block the nerve signal in the skin where they are used. For some areas they are used off-label, meaning outside the product's official approval, so ask your dermatologist.",
+  ask: "Could a topical medicine like this work for this area, and how is it used safely?",
+};
+const NERVE_SURGERY: TreatmentOption = { name: "Nerve surgery (last resort)", plain: "An operation on the nerves that trigger sweating. It is considered only when everything else has failed, because it can cause new sweating in other parts of the body.", ask: "What are the risks, and who would do this safely near me?" };
+const HEAT_TREATMENT: TreatmentOption = { name: "In-clinic heat treatments", plain: "Procedures that use energy to reduce the sweat glands under the arms. They are done by a trained clinician, and not every clinic offers them.", ask: "Is this offered near me, and what is the recovery like?" };
+const WIPES: TreatmentOption = { name: "Medicated wipes or creams", plain: "Products that block the nerve signal in the skin where they are applied. Availability differs a lot between countries.", ask: "Is a product like this available here, and would it suit me?" };
+
+/** One guide per area the patient actually logged (keys match canonArea). */
+const G = (title: string, intro: string, options: TreatmentOption[]): AreaGuide => ({ cluster: title, title, intro, options });
 export const AREA_GUIDES: Record<string, AreaGuide> = {
-  hands: {
-    cluster: "hands", title: "Palms & hands",
-    intro: "For palms, doctors usually start with an antiperspirant and often move to iontophoresis if that is not enough.",
-    options: [
-      ANTIPERSPIRANT, IONTO("hands"), BOTOX("Injections in the palms can be uncomfortable."), TABLETS,
-      { name: "Nerve surgery (last resort)", plain: "An operation on the nerves that trigger sweating. It is considered only when everything else has failed, because it can cause new sweating in other parts of the body.", ask: "What are the risks, and who would do this safely near me?" },
-    ],
-  },
-  feet: {
-    cluster: "feet", title: "Feet & soles",
-    intro: "For feet, the same first steps as for the hands are usually discussed.",
-    options: [ANTIPERSPIRANT, IONTO("feet"), BOTOX("Injections in the soles can be uncomfortable."), TABLETS],
-  },
-  underarms: {
-    cluster: "underarms", title: "Underarms",
-    intro: "Underarms have the widest choice of options, so it is worth asking what is available locally.",
-    options: [
-      ANTIPERSPIRANT,
-      { name: "Medicated wipes or creams", plain: "Products that block the nerve signal in the skin where they are applied. Availability differs a lot between countries.", ask: "Is a product like this available here, and would it suit me?" },
-      BOTOX("It is one of the better-studied uses of this treatment."),
-      { name: "In-clinic heat treatments", plain: "Procedures that use energy to reduce the sweat glands under the arms. They are done by a trained clinician, and not every clinic offers them.", ask: "Is this offered near me, and what is the recovery like?" },
-      TABLETS,
-    ],
-  },
-  head_neck: {
-    cluster: "head_neck", title: "Face, head & neck",
-    intro: "Facial skin is more sensitive than the skin elsewhere, so your dermatologist will usually choose gentler versions of treatments or a different route.",
-    options: [
-      { ...ANTIPERSPIRANT, plain: "Often used on the face too, but at a gentler strength, because strong products can irritate facial skin. Your dermatologist will choose what suits you." },
-      { name: "Medicated cream or wipes", plain: "Products that block the nerve signal in the skin where they are used. For the face they are often used off-label, meaning outside the product's official approval, so ask your dermatologist.", ask: "Could a topical medicine like this work for my face, and how is it used safely?" },
-      BOTOX("On the face, your doctor will explain the specific risks."),
-      TABLETS,
-    ],
-  },
-  torso: { cluster: "torso", title: "Chest & back", intro: "Sweating here is common in heat, so doctors usually look for causes first.", options: [CAUSE_FIRST, ANTIPERSPIRANT] },
-  groin_thighs: { cluster: "groin_thighs", title: "Groin & thighs", intro: "Sweating here is common in heat and from friction, so doctors usually look for causes first.", options: [CAUSE_FIRST, ANTIPERSPIRANT] },
-  all: { cluster: "all", title: "Whole body", intro: "Sweating all over the body is usually checked for a cause before any treatment is chosen.", options: [CAUSE_FIRST] },
+  palms: G("Palms", "For the palms, doctors usually start with an antiperspirant and often move to iontophoresis if that is not enough.", [ANTIPERSPIRANT, IONTO("hands"), BOTOX("Injections in the palms can be uncomfortable."), TABLETS, NERVE_SURGERY]),
+  hands: G("Hands", "For the hands, the same first steps as for the palms are usually discussed.", [ANTIPERSPIRANT, IONTO("hands"), BOTOX("Injections in the hands can be uncomfortable."), TABLETS]),
+  fingers: G("Fingers", "Sweating on the fingers is usually treated like palm sweating.", [ANTIPERSPIRANT, IONTO("hands"), BOTOX("Injections near the fingers can be uncomfortable."), TABLETS]),
+  feet_soles: G("Feet & soles", "For the feet, the same first steps as for the hands are usually discussed.", [ANTIPERSPIRANT, IONTO("feet"), BOTOX("Injections in the soles can be uncomfortable."), TABLETS]),
+  toes: G("Toes", "Sweating between the toes is usually treated like foot sweating.", [ANTIPERSPIRANT, IONTO("feet"), TABLETS]),
+  underarms: G("Underarms", "Underarms have the widest choice of options, so it is worth asking what is available locally.", [ANTIPERSPIRANT, WIPES, BOTOX("It is one of the better-studied uses of this treatment."), HEAT_TREATMENT, TABLETS]),
+  face: G("Face", "Facial skin is more sensitive than the skin elsewhere, so your dermatologist will usually choose gentler versions of treatments or a different route.", [MILD_ANTIPERSPIRANT, TOPICAL_MEDICINE, BOTOX("On the face, your doctor will explain the specific risks."), TABLETS]),
+  face_scalp: G("Face & scalp", "Facial skin is sensitive, and the scalp has hair, so your dermatologist will choose products that suit each.", [MILD_ANTIPERSPIRANT, TOPICAL_MEDICINE, BOTOX("On the face and forehead, your doctor will explain the specific risks."), TABLETS]),
+  scalp: G("Scalp", "The scalp has hair, so your dermatologist will choose products that work on hair-bearing skin.", [TOPICAL_MEDICINE, BOTOX("On the scalp and forehead, your doctor will explain the specific risks."), TABLETS]),
+  head: G("Head", "Your dermatologist will choose gentler products for the skin of the head.", [TOPICAL_MEDICINE, BOTOX("Your doctor will explain the specific risks for this area."), TABLETS]),
+  neck: G("Neck", "The skin of the neck is thin and can be sensitive.", [MILD_ANTIPERSPIRANT, TOPICAL_MEDICINE, TABLETS]),
+  chest: G("Chest", "Sweating here is common in heat, so doctors usually look for causes first.", [CAUSE_FIRST, ANTIPERSPIRANT]),
+  back: G("Back", "Sweating here is common in heat, so doctors usually look for causes first.", [CAUSE_FIRST, ANTIPERSPIRANT]),
+  groin: G("Groin", "Sweating here is common in heat and from friction, so doctors usually look for causes first.", [CAUSE_FIRST, ANTIPERSPIRANT]),
+  thighs: G("Thighs", "Sweating here is common in heat and from friction, so doctors usually look for causes first.", [CAUSE_FIRST, ANTIPERSPIRANT]),
+  whole_body: G("Whole body", "Sweating all over the body is usually checked for a cause before any treatment is chosen.", [CAUSE_FIRST]),
 };
 
 export const TELL_YOUR_DERMATOLOGIST = [
@@ -94,16 +85,15 @@ export interface Guide {
   mode: "options" | "cause_first";
   tier: string; areas: AreaGuide[];
 }
-export function buildGuide(args: { clusters: string[]; grade: number | null; lean: string }): Guide {
-  const { clusters, grade, lean } = args;
-  const pick = clusters.filter(c => AREA_GUIDES[c]).slice(0, 3);
-  const areas = (pick.length ? pick : ["all"]).map(c => AREA_GUIDES[c]);
+export function buildGuide(args: { areas: { key: string; label: string }[]; grade: number | null; lean: string }): Guide {
+  const { areas, grade, lean } = args;
   if (lean === "check_cause") {
-    return { mode: "cause_first", areas: [AREA_GUIDES.all],
+    return { mode: "cause_first", areas: [AREA_GUIDES.whole_body],
       tier: "Your logs have details worth checking for an underlying cause. A doctor will usually look for that first, before choosing a treatment." };
   }
+  const logged = areas.filter(a => AREA_GUIDES[a.key]).slice(0, 4).map(a => AREA_GUIDES[a.key]);
   const tier = !grade ? "These are options to know about before a dermatologist visit."
     : grade >= 3 ? "At HDSS 3 or 4, sweating is getting in the way of daily life, which is when a dermatologist visit is worth booking."
     : "At this level, self-care and a standard antiperspirant are usually the first steps. These are options to know about in case it gets worse.";
-  return { mode: "options", tier, areas };
+  return { mode: "options", tier: logged.length ? `${tier} The options below are only for the areas you have logged.` : tier, areas: logged };
 }
