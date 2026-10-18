@@ -199,21 +199,35 @@ function Drivers({ vm }: { vm: InsightsVM }) {
   );
 }
 
-// ── Affected areas: exactly as the patient logged them. Tap one for care, prevention and what to do in the moment ──
+// ── Affected areas: one coloured shape per area, ranked most to least. Tap a shape for care tips. ──
+const AREA_CLIPS: { clip: string; pad?: number }[] = [
+  { clip: "polygon(50% 0%, 100% 100%, 0% 100%)", pad: 14 },           // triangle
+  { clip: "circle(50% at 50% 50%)" },                                   // circle
+  { clip: "polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)" }, // hexagon
+  { clip: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)" },             // diamond
+  { clip: "polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)" },   // pentagon
+  { clip: "inset(0 round 18px)" },                                      // rounded square
+];
+const AREA_COLORS = ["#db2777", "#7c3aed", "#0d9488", "#0284c7", "#ea580c", "#4d7c0f", "#e11d48", "#0891b2"];
 function AreasPanel({ vm, onPick }: { vm: InsightsVM; onPick: (i: number) => void }) {
-  const max = Math.max(1, ...vm.areas.map(a => a.count));
+  const list = vm.areas.slice(0, 8);
   return (
     <Panel>
-      <PanelTitle sub="Ranked by how often each area appears in your logs. Tap one for how to care for it.">Affected areas</PanelTitle>
-      <ul className="space-y-3.5 p-0">
-        {vm.areas.slice(0, 8).map((a, i) => (
-          <li key={a.key} className="list-none">
-            <button onClick={() => onPick(i)} className="w-full text-left">
-              <div className="flex items-baseline justify-between gap-2 text-[16px] font-medium"><span>{a.label}</span><span className="text-sm font-semibold shrink-0">{plural(a.count, "episode")}</span></div>
-              <div className="h-3 rounded-full bg-teal-100 mt-1.5 overflow-hidden"><div className="h-full rounded-full" style={{ width: `${(a.count / max) * 100}%`, background: i === 0 ? "#db2777" : i === 1 ? "#7c3aed" : "#0d9488" }} /></div>
+      <PanelTitle sub="Your most affected areas, from most to least. Tap a shape to learn how to care for it.">Affected areas</PanelTitle>
+      <div className="grid grid-cols-2 gap-3">
+        {list.map((a, i) => {
+          const color = AREA_COLORS[i % AREA_COLORS.length], shape = AREA_CLIPS[i % AREA_CLIPS.length], size = i < 2 ? 68 : 52;
+          return (
+            <button key={a.key} onClick={() => onPick(i)} className="rounded-[24px] p-4 text-left flex flex-col items-start gap-2 active:scale-[.98] transition-transform"
+              style={{ background: color + "14", border: `1.5px solid ${color}40` }}>
+              <span className="flex items-center justify-center text-white font-semibold text-xl" style={{ width: size, height: size, background: color, clipPath: shape.clip, paddingTop: shape.pad ?? 0 }}>{i + 1}</span>
+              <span className="block font-semibold text-[17px] leading-tight" style={{ color: INK }}>{a.label}</span>
+              <span className="text-sm leading-snug" style={{ color: "#3f6f6c" }}>{a.count} of {vm.n} episodes</span>
+              <span className="text-xs font-semibold" style={{ color }}>Tap for care tips</span>
             </button>
-          </li>))}
-      </ul>
+          );
+        })}
+      </div>
     </Panel>
   );
 }
