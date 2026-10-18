@@ -14,7 +14,7 @@
  *  - Areas are merged with the same grouping the engine uses.
  */
 import {
-  assess, buildStats, CLUSTER, explain, hdssRound, toNEp, TRIGGER_INDEX,
+  assess, buildStats, explain, hdssRound, toNEp, TRIGGER_INDEX,
   type NEp, type UserProfileInput,
 } from "./insightEngine";
 
@@ -25,7 +25,7 @@ export interface RankedTrigger {
   score: number; topArea: string | null; topWindow: string | null;
 }
 export interface WindowStat { key: string; label: string; short: string; count: number; share: number }
-export interface AreaStat { cluster: string; label: string; count: number; share: number }
+export interface AreaStat { key: string; label: string; count: number; share: number }
 export interface WeekPoint { label: string; count: number; grade: number | null }
 export interface DayDot { key: string; kind: "dry" | "episode" | "none"; grade: number | null }
 export interface InsightsVM {
@@ -38,7 +38,7 @@ export interface InsightsVM {
   triggerConfidence: "early" | "building" | "solid";
   noClearShare: number;
   windows: WindowStat[]; peak: WindowStat | null; timedCount: number;
-  areas: AreaStat[]; clusters: string[];
+  areas: AreaStat[];
   trend: { kind: "better" | "worse" | "steady" | "unknown"; text: string; last14: number; prev14: number };
   weekly: WeekPoint[];
   dry: { total: number; streak: number; last7: number; last30: number };
@@ -51,10 +51,25 @@ export interface InsightsVM {
 }
 
 // ───────────────────────────── Row helpers ─────────────────────────────
-const AREA_LABEL: Record<string, string> = {
-  head_neck: "Head & face", hands: "Palms & hands", feet: "Feet & soles", underarms: "Underarms",
-  torso: "Chest & back", groin_thighs: "Groin & thighs", all: "Whole body",
+export const AREA_LABELS: Record<string, string> = {
+  face: "Face", face_scalp: "Face & scalp", scalp: "Scalp", head: "Head", neck: "Neck", palms: "Palms", hands: "Hands", fingers: "Fingers",
+  feet_soles: "Feet & soles", toes: "Toes", underarms: "Underarms", chest: "Chest", back: "Back", groin: "Groin", thighs: "Thighs", whole_body: "Whole body",
 };
+const AREA_MAP: Record<string, string> = {
+  face: "face", "face scalp": "face_scalp", "face and scalp": "face_scalp", "scalp face": "face_scalp", scalp: "scalp", head: "head", neck: "neck",
+  palm: "palms", palms: "palms", hand: "hands", hands: "hands", finger: "fingers", fingers: "fingers",
+  feet: "feet_soles", foot: "feet_soles", sole: "feet_soles", soles: "feet_soles", "feet soles": "feet_soles", "feet and soles": "feet_soles",
+  toe: "toes", toes: "toes", underarm: "underarms", underarms: "underarms", armpit: "underarms", armpits: "underarms", axillary: "underarms",
+  chest: "chest", back: "back", groin: "groin", thigh: "thighs", thighs: "thighs",
+  "entire body": "whole_body", "whole body": "whole_body", "full body": "whole_body", generalized: "whole_body", generalised: "whole_body",
+};
+/** The area exactly as the patient logged it. Only spelling variants (palm/palms) and feet+soles share a key. */
+export function canonArea(raw: any): { key: string; label: string } | null {
+  const s = String(raw ?? "").trim().toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ");
+  if (!s) return null;
+  const key = AREA_MAP[s] ?? s.replace(/ /g, "_");
+  return { key, label: AREA_LABELS[key] ?? s.replace(/\b\w/g, c => c.toUpperCase()) };
+}
 const DAY = 864e5;
 
 const validDate = (v: any): Date | null => {
@@ -81,12 +96,13 @@ const trigLabel = (t: any): string => {
   if (typeof t === "string") { try { const o = JSON.parse(t); return o?.label || o?.value || t; } catch { return t; } }
   return t?.label || t?.value || "";
 };
-function prep(row: any): NEp {
-  return toNEp({
+function prep(row: any): NEp & { canon: string[] } {
+  const canon = Array.from(new Set(asArray(row.body_areas ?? row.bodyAreas).map(canonArea).filter(Boolean).map(a => a!.key)));
+  return { ...toNEp({
     bodyAreas: asArray(row.body_areas ?? row.bodyAreas),
     triggers: asArray(row.triggers).map(trigLabel).filter(Boolean),
     severity: row.severity ?? row.severityLevel, datetime: episodeTime(row),
-  });
+  }), canon };
 }
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
 export const plain = (text: string) => explain(text, new Set());
@@ -104,7 +120,7 @@ const windowOf = (d: Date) => WINDOWS.find(w => w.test(d.getHours()))!;
 export function buildInsightsViewModel(rows: any[], profile: UserProfileInput = {}, now = new Date()): InsightsVM {
   const flareRows = rows.filter(r => !r.is_dry_day);
   const dryRows = rows.filter(r => r.is_dry_day);
-  const eps: NEp[] = flareRows.map(prep).sort((a, b) => (a.ts?.getTime() ?? 0) - (b.ts?.getTime() ?? 0));
+  const eps = flareRows.map(prep).sort((a, b) => (a.ts?.getTime() ?? 0) - (b.ts?.getTime() ?? 0));
   const n = eps.length;
   const grades = eps.map(e => e.hdss).filter(Boolean);
   const typical = grades.length ? hdssRound(mean(grades)) : null;
@@ -117,7 +133,7 @@ export function buildInsightsViewModel(rows: any[], profile: UserProfileInput = 
   eps.forEach(e => e.tids.forEach(t => {
     const r = per.get(t) || { count: 0, sev: [], areas: {}, wins: {} };
     r.count++; if (e.hdss) r.sev.push(e.hdss);
-    e.areas.forEach(a => { const c = CLUSTER[a] || "other"; r.areas[c] = (r.areas[c] || 0) + 1; });
+    e.canon.forEach(k => { r.areas[k] = (r.areas[k] || 0) + 1; });
     if (e.ts) { const w = windowOf(e.ts).short; r.wins[w] = (r.wins[w] || 0) + 1; }
     per.set(t, r);
   }));
@@ -130,7 +146,7 @@ export function buildInsightsViewModel(rows: any[], profile: UserProfileInput = 
     return {
       id, label: TRIGGER_INDEX[id]?.label || labels[id] || id, count: r.count, share,
       typical: hdssRound(m || 1), score: share * (1 + 0.5 * Math.max(0, m - overallMean)),
-      topArea: ta ? (AREA_LABEL[ta[0]] || null) : null, topWindow: tw ? tw[0] : null,
+      topArea: ta ? (AREA_LABELS[ta[0]] || ta[0].replace(/_/g, " ")) : null, topWindow: tw ? tw[0] : null,
     };
   }).sort((a, b) => b.score - a.score || b.count - a.count || a.label.localeCompare(b.label));
   const cands = triggers.filter(t => t.id !== "no_clear_trigger");
@@ -149,13 +165,12 @@ export function buildInsightsViewModel(rows: any[], profile: UserProfileInput = 
   const best = [...windows].sort((a, b) => b.count - a.count)[0];
   const peak = timed.length >= 6 && best.share >= 0.4 && best.count >= 3 ? best : null;
 
-  // ── body areas (merged groups, counted once per episode) ──
+  // ── affected areas: exactly what the patient logged, counted once per episode ──
   const ac: Record<string, number> = {};
-  eps.forEach(e => new Set(e.areas.map(a => CLUSTER[a]).filter(Boolean)).forEach(c => { ac[c] = (ac[c] || 0) + 1; }));
-  const areas: AreaStat[] = Object.entries(ac).map(([cluster, count]) => ({
-    cluster, label: AREA_LABEL[cluster] || cluster, count, share: n ? count / n : 0,
-  })).sort((a, b) => b.count - a.count);
-  const clusters = areas.map(a => a.cluster);
+  eps.forEach(e => e.canon.forEach(k => { ac[k] = (ac[k] || 0) + 1; }));
+  const areas: AreaStat[] = Object.entries(ac).map(([key, count]) => ({
+    key, label: AREA_LABELS[key] ?? key.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()), count, share: n ? count / n : 0,
+  })).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
 
   // ── dry days, trend, weekly ──
   const dryKeys = new Set(dryRows.map(r => dayKey(r.date ?? r.datetime ?? r.created_at)).filter(Boolean) as string[]);
@@ -223,7 +238,7 @@ export function buildInsightsViewModel(rows: any[], profile: UserProfileInput = 
   }
   return {
     n, typical, range, hero: { headline, sub, mood }, ripples: [...eps].reverse().slice(0, 10).map(e => e.hdss || 1),
-    triggers, leader, triggerConfidence, noClearShare, windows, peak, timedCount: timed.length, areas, clusters,
+    triggers, leader, triggerConfidence, noClearShare, windows, peak, timedCount: timed.length, areas,
     trend: { kind, text, last14: l14.length, prev14: p14.length }, weekly, dry, dots, pattern,
   };
 }

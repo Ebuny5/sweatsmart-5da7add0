@@ -11,6 +11,7 @@ import { Calendar, Search, Filter, ChevronRight, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { SeverityLevel } from "@/types";
 import { useEpisodes } from "@/hooks/useEpisodes";
+import { canonArea } from "@/features/insights/insightsAnalytics";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -220,14 +221,14 @@ const History = () => {
                       </div>
                       
                       <div className="flex flex-wrap gap-1 sm:gap-2 mb-2">
-                        {episode.bodyAreas.slice(0, 3).map((area) => (
-                          <Badge key={area} variant="secondary" className="text-xs">
-                            {area}
+                        {Array.from(new Set(episode.bodyAreas.map(a => canonArea(a)?.label).filter(Boolean))).slice(0, 3).map((areaLabel) => (
+                          <Badge key={areaLabel as string} variant="secondary" className="text-xs">
+                            {areaLabel as string}
                           </Badge>
                         ))}
-                        {episode.bodyAreas.length > 3 && (
+                        {Array.from(new Set(episode.bodyAreas.map(a => canonArea(a)?.label).filter(Boolean))).length > 3 && (
                           <Badge variant="secondary" className="text-xs">
-                            +{episode.bodyAreas.length - 3} more
+                            +{Array.from(new Set(episode.bodyAreas.map(a => canonArea(a)?.label).filter(Boolean))).length - 3} more
                           </Badge>
                         )}
                       </div>

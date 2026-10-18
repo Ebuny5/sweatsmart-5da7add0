@@ -19,7 +19,7 @@ import { useEngagement } from '@/hooks/useEngagement';
 import { useHidroAllySpeech } from '@/features/hidroally/useHidroAllySpeech';
 import { useHidroAllyDictation } from '@/features/hidroally/useHidroAllyDictation';
 import { formatHdss, cleanHdssDecimals } from '@/utils/hdssGauger';
-import { normalizeArea, groupBodyArea } from '@/features/insights/insightEngine';
+import { canonArea } from '@/features/insights/insightsAnalytics';
 import { downloadClinicalReport, patientFromProfile, declaredTypeFrom } from '@/features/insights/clinicalReportPdf';
 
 
@@ -476,15 +476,18 @@ const HidroAlly = () => {
         x.count++; x.severities.push(ep.severityLevel);
         triggerCounts.set(label, x);
       });
-      // Group body areas to avoid duplicates and raw keys
+      // Group body areas using canonArea to avoid duplicates and raw keys
       const seenGroupsInEpisode = new Set<string>();
       ep.bodyAreas.forEach((a: string) => {
-        const groupedLabel = groupBodyArea(a);
-        if (!seenGroupsInEpisode.has(groupedLabel)) {
-          seenGroupsInEpisode.add(groupedLabel);
-          const x = areaCounts.get(groupedLabel) || { count: 0, severities: [] };
-          x.count++; x.severities.push(ep.severityLevel);
-          areaCounts.set(groupedLabel, x);
+        const canon = canonArea(a);
+        if (canon) {
+          const groupedLabel = canon.label;
+          if (!seenGroupsInEpisode.has(groupedLabel)) {
+            seenGroupsInEpisode.add(groupedLabel);
+            const x = areaCounts.get(groupedLabel) || { count: 0, severities: [] };
+            x.count++; x.severities.push(ep.severityLevel);
+            areaCounts.set(groupedLabel, x);
+          }
         }
       });
     });

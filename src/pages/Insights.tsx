@@ -6,9 +6,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  ChevronDown, ChevronLeft, ChevronRight, Clock, Download, FileText, HeartPulse, MessageCircle, Minus, Shield, TrendingDown, TrendingUp, X,
+  ChevronDown, ChevronLeft, ChevronRight, Clock, FileText, HeartPulse, MessageCircle, Minus, Shield, TrendingDown, TrendingUp, X, Download,
 } from "lucide-react";
-import { downloadClinicalReport, patientFromProfile } from "@/features/insights/clinicalReportPdf";
 import AppLayout from "@/components/layout/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,7 +18,10 @@ import { loadInsightState } from "@/features/insights/insightState";
 import {
   buildInsightsViewModel, plain, typicalText, type InsightsVM, type RankedTrigger,
 } from "@/features/insights/insightsAnalytics";
+import { downloadClinicalReport, patientFromProfile } from "@/features/insights/clinicalReportPdf";
 import { buildGuide, GUIDE_SOURCES, TELL_YOUR_DERMATOLOGIST } from "@/features/insights/treatmentGuide";
+import { AREA_CARE, AREA_CARE_DEFAULT } from "@/features/insights/areaCare";
+import { GRADE_COLOR, GRADE_NAME, DRY_COLOR, describeRow, groupByDay } from "@/features/insights/analyticsSeries";
 
 // ───────────────────────────── Look & feel ─────────────────────────────
 const DISPLAY = "'Fraunces', Georgia, serif";
@@ -34,7 +36,6 @@ const ICONS: Record<string, string> = {
   nicotine: "🚬", blood_pressure_meds: "💊", insulin_diabetes_meds: "💉", new_medication: "💊", supplements_herbal: "🌿",
   hormonal_menopause: "🌸", fever_infection: "🤒",
 };
-const GRADE_COLOR = ["#99f6e4", "#2dd4bf", "#fbbf24", "#fb7185"]; // grade 1..4
 const MOOD: Record<string, string> = {
   calm: "linear-gradient(135deg,#5eead4 0%,#22d3ee 55%,#2dd4bf 100%)",
   moderate: "linear-gradient(135deg,#2dd4bf 0%,#14b8a6 45%,#fbbf24 120%)",
@@ -123,31 +124,7 @@ function Orb({ vm, scanning, step, onPick }: { vm: InsightsVM; scanning: boolean
   );
 }
 
-function BodyMap({ vm }: { vm: InsightsVM }) {
-  const share = (c: string) => vm.areas.find(a => a.cluster === c)?.share ?? 0;
-  const topC = vm.areas[0]?.cluster;
-  const fill = (c: string) => (c === topC ? `rgba(244,63,94,${0.35 + 0.65 * share(c)})` : `rgba(13,148,136,${0.12 + 0.88 * share(c)})`);
-  return (
-    <svg viewBox="0 0 120 250" className="w-[120px] shrink-0" role="img" aria-label="Body map of where you sweat">
-      <circle cx="60" cy="26" r="19" fill={fill("head_neck")} />
-      <rect x="52" y="44" width="16" height="12" rx="5" fill={fill("head_neck")} />
-      <rect x="36" y="56" width="48" height="74" rx="18" fill={fill("torso")} />
-      <ellipse cx="34" cy="68" rx="8" ry="11" fill={fill("underarms")} />
-      <ellipse cx="86" cy="68" rx="8" ry="11" fill={fill("underarms")} />
-      <rect x="18" y="62" width="12" height="62" rx="6" fill="rgba(13,148,136,.10)" />
-      <rect x="90" y="62" width="12" height="62" rx="6" fill="rgba(13,148,136,.10)" />
-      <circle cx="24" cy="132" r="9" fill={fill("hands")} />
-      <circle cx="96" cy="132" r="9" fill={fill("hands")} />
-      <rect x="38" y="130" width="44" height="36" rx="14" fill={fill("groin_thighs")} />
-      <rect x="40" y="164" width="18" height="62" rx="9" fill="rgba(13,148,136,.10)" />
-      <rect x="62" y="164" width="18" height="62" rx="9" fill="rgba(13,148,136,.10)" />
-      <ellipse cx="49" cy="238" rx="12" ry="7" fill={fill("feet")} />
-      <ellipse cx="71" cy="238" rx="12" ry="7" fill={fill("feet")} />
-    </svg>
-  );
-}
-
-function Sparkline({ vm }: { vm: InsightsVM }) {
+function Sparkline({ vm, onPick }: { vm: InsightsVM; onPick: (i: number) => void }) {
   const W = 300, H = 110, L = 22, R = 8, T = 10, B = 22;
   const x = (i: number) => L + (i * (W - L - R)) / (vm.weekly.length - 1);
   const y = (g: number) => T + ((4 - g) * (H - T - B)) / 3;
@@ -160,10 +137,99 @@ function Sparkline({ vm }: { vm: InsightsVM }) {
           <text x="0" y={y(g) + 4} fontSize="12" fill="#3f6f6c">{g}</text></g>
       ))}
       <path d={path} fill="none" stroke="#0d9488" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-      {pts.map((p, i) => p && <circle key={i} cx={p.x} cy={p.y} r="5" fill={GRADE_COLOR[p.g - 1]} stroke="#fff" strokeWidth="2" />)}
+      {pts.map((p, i) => p && (<g key={i} onClick={() => onPick(i)} style={{ cursor: "pointer" }}><circle cx={p.x} cy={p.y} r="14" fill="transparent" /><circle cx={p.x} cy={p.y} r="6" fill={GRADE_COLOR[p.g - 1]} stroke="#fff" strokeWidth="2" /></g>))}
       <text x={L} y={H - 4} fontSize="12" fill="#3f6f6c">{vm.weekly[0].label}</text>
       <text x={W - R} y={H - 4} fontSize="12" fill="#3f6f6c" textAnchor="end">Now</text>
     </svg>
+  );
+}
+
+
+const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
+const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
+
+function Popup({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-5" style={{ background: "rgba(11,59,58,.40)" }} onClick={onClose}>
+      <div className="w-full max-w-sm max-h-[80vh] overflow-y-auto rounded-[28px] bg-white p-5 shadow-2xl" style={{ fontFamily: BODY, color: INK }} onClick={e => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <h4 className="text-xl font-semibold leading-snug" style={{ fontFamily: DISPLAY }}>{title}</h4>
+          <button onClick={onClose} aria-label="Close" className="p-1.5 rounded-full bg-teal-50 shrink-0"><X className="h-4 w-4" /></button>
+        </div>
+        <div className="text-[15px] leading-relaxed space-y-2.5">{children}</div>
+        <button onClick={onClose} className="mt-4 w-full py-3 rounded-2xl text-white font-semibold" style={{ background: "#0f766e" }}>Got it</button>
+      </div>
+    </div>
+  );
+}
+
+// ── What sets it off: one coloured shape per trigger, with the reason it ranks and 2 things to do before it strikes ──
+const SHAPES = ["50%", "30%", "14px", "50% 50% 14px 14px", "42% 58% 60% 40% / 50% 40% 60% 50%", "20% 80% 20% 80%"];
+const DRIVER_COLORS = ["#0d9488", "#7c3aed", "#db2777", "#0284c7", "#ea580c", "#4d7c0f"];
+function Drivers({ vm }: { vm: InsightsVM }) {
+  const list = vm.triggers.filter(t => t.id !== "no_clear_trigger").slice(0, 5);
+  const [open, setOpen] = useState<string | null>(list[0]?.id ?? null);
+  if (!list.length) return null;
+  return (
+    <Panel>
+      <PanelTitle sub="Your top triggers, why each one ranks where it does, and what to do before it strikes.">What sets it off</PanelTitle>
+      <ul className="space-y-3 p-0">
+        {list.map((t, i) => {
+          const def = TRIGGER_INDEX[t.id], color = DRIVER_COLORS[i % DRIVER_COLORS.length], isOpen = open === t.id, prev = list[i - 1];
+          const why = `Ranked #${i + 1} because it appeared in ${t.count} of your ${vm.n} episodes (${pct(t.share)})${prev && prev.count === t.count ? `, the same as ${prev.label}.` : "."}`;
+          const advice = def ? def.lifestyle.slice(0, 2) : ["Note what you were doing and how long before the sweating started.", "Look for a pattern across your next few logs."];
+          return (
+            <li key={t.id} className="list-none">
+              <button onClick={() => setOpen(isOpen ? null : t.id)} className="w-full flex items-center gap-3 text-left" aria-expanded={isOpen}>
+                <span className="w-12 h-12 flex items-center justify-center text-2xl shrink-0" style={{ background: color, borderRadius: SHAPES[i % SHAPES.length] }}>{ICONS[t.id] || "💧"}</span>
+                <span className="flex-1 min-w-0"><span className="block font-semibold text-[16px] leading-snug">{t.label}</span><span className="block text-sm" style={{ color: "#3f6f6c" }}>#{i + 1} · {plural(t.count, "episode")}</span></span>
+                <ChevronDown className={`h-5 w-5 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} style={{ color }} />
+              </button>
+              {isOpen && (
+                <div className="mt-2 ml-[60px] rounded-2xl p-3.5 space-y-2" style={{ background: color + "14", borderLeft: `4px solid ${color}` }}>
+                  <p className="text-[15px] leading-relaxed">{why}</p>
+                  <p className="text-xs font-semibold" style={{ color }}>Before it happens</p>
+                  {advice.map((a, k) => <p key={k} className="text-[15px] leading-relaxed"><b style={{ color }}>{k + 1}.</b> {plain(a)}</p>)}
+                </div>)}
+            </li>
+          );
+        })}
+      </ul>
+    </Panel>
+  );
+}
+
+// ── Affected areas: exactly as the patient logged them. Tap one for care, prevention and what to do in the moment ──
+function AreasPanel({ vm, onPick }: { vm: InsightsVM; onPick: (i: number) => void }) {
+  const max = Math.max(1, ...vm.areas.map(a => a.count));
+  return (
+    <Panel>
+      <PanelTitle sub="Ranked by how often each area appears in your logs. Tap one for how to care for it.">Affected areas</PanelTitle>
+      <ul className="space-y-3.5 p-0">
+        {vm.areas.slice(0, 8).map((a, i) => (
+          <li key={a.key} className="list-none">
+            <button onClick={() => onPick(i)} className="w-full text-left">
+              <div className="flex items-baseline justify-between gap-2 text-[16px] font-medium"><span>{a.label}</span><span className="text-sm font-semibold shrink-0">{plural(a.count, "episode")}</span></div>
+              <div className="h-3 rounded-full bg-teal-100 mt-1.5 overflow-hidden"><div className="h-full rounded-full" style={{ width: `${(a.count / max) * 100}%`, background: i === 0 ? "#db2777" : i === 1 ? "#7c3aed" : "#0d9488" }} /></div>
+            </button>
+          </li>))}
+      </ul>
+    </Panel>
+  );
+}
+function AreaSheet({ vm, index, onClose }: { vm: InsightsVM; index: number; onClose: () => void }) {
+  const a = vm.areas[index], care = AREA_CARE[a.key] ?? AREA_CARE_DEFAULT;
+  const sections: [string, string[], string][] = [["Daily care", care.care, "#0d9488"], ["Before it happens", care.prevent, "#7c3aed"], ["When it happens", care.manage, "#db2777"]];
+  return (
+    <Popup title={`${a.label}: how to care for it`} onClose={onClose}>
+      <p style={{ color: "#3f6f6c" }}>Logged in {a.count} of your {vm.n} episodes (#{index + 1} most affected).</p>
+      {sections.map(([t, items, color]) => (
+        <div key={t} className="rounded-2xl p-3.5" style={{ background: color + "14", borderLeft: `4px solid ${color}` }}>
+          <p className="text-xs font-semibold mb-1" style={{ color }}>{t}</p>
+          {items.map((x, k) => <p key={k} className="mb-1"><b style={{ color }}>{k + 1}.</b> {x}</p>)}
+        </div>))}
+      {care.note && <p className="text-sm font-medium">{care.note}</p>}
+    </Popup>
   );
 }
 
@@ -224,7 +290,7 @@ function TriggerSheet({ vm, index, setIndex, helped }: { vm: InsightsVM; index: 
 // ── Treatment Discussion Guide ──
 function TreatmentCard({ vm }: { vm: InsightsVM }) {
   const [open, setOpen] = useState(false);
-  const g = useMemo(() => buildGuide({ clusters: vm.clusters, grade: vm.typical, lean: vm.pattern.lean }), [vm]);
+  const g = useMemo(() => buildGuide({ areas: vm.areas, grade: vm.typical, lean: vm.pattern.lean }), [vm]);
   return (
     <Panel>
       <button className="w-full flex items-center gap-3 text-left" onClick={() => setOpen(!open)} aria-expanded={open}>
@@ -287,6 +353,8 @@ const Insights = () => {
   const [step, setStep] = useState(0);
   const [scanning, setScanning] = useState(true);
   const [sheet, setSheet] = useState<number | null>(null);
+  const [areaSheet, setAreaSheet] = useState<number | null>(null);
+  const [pop, setPop] = useState<{ title: string; body: React.ReactNode } | null>(null);
 
   useEffect(() => { trackAction("growth_radar_views"); }, [trackAction]);
   useEffect(() => {
@@ -308,10 +376,7 @@ const Insights = () => {
         const q = (supabase as any).from("profiles").select("*");
         const { data } = await q.eq("user_id", user.id).maybeSingle();
         const p = data || (await (supabase as any).from("profiles").select("*").eq("id", user.id).maybeSingle()).data;
-        if (p) {
-          setProfileRow(p);
-          setProfile({ declaredType: declaredFrom(p.diagnosis_type ?? p.diagnosis ?? p.hyperhidrosis_type) });
-        }
+        if (p) { setProfile({ declaredType: declaredFrom(p.diagnosis_type ?? p.diagnosis ?? p.hyperhidrosis_type) }); setProfileRow(p); }
       } catch { /* optional */ }
       try { const st = await loadInsightState(user.id); setHelped(Object.entries(st.feedback || {}).filter(([, v]) => v).map(([k]) => k)); } catch { /* optional */ }
       setLoading(false);
@@ -319,6 +384,7 @@ const Insights = () => {
   }, [user, toast]);
 
   const vm = useMemo(() => buildInsightsViewModel(rows, profile), [rows, profile]);
+  const byDay = useMemo(() => groupByDay(rows), [rows]);
 
   // short, truthful intro (real counts), only on first open
   useEffect(() => {
@@ -401,83 +467,64 @@ const Insights = () => {
           <div className="lg-scroll -mx-4 px-4 flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2">
             {cards.map(c => (
               <button key={c.key} onClick={c.onClick} disabled={!c.onClick}
-                className="snap-center shrink-0 w-[78%] max-w-[320px] min-h-[190px] rounded-[28px] p-5 text-left shadow-lg flex flex-col active:scale-[.98] transition-transform"
+                className="snap-center shrink-0 w-[62%] max-w-[250px] min-h-[150px] rounded-[24px] p-4 text-left shadow-lg flex flex-col active:scale-[.98] transition-transform"
                 style={{ background: c.bg, color: c.fg }}>
                 <Eyebrow light={c.fg === "#fff"}>{c.eyebrow}</Eyebrow>
-                <h3 className="text-2xl font-semibold leading-tight mt-1" style={{ fontFamily: DISPLAY }}>{c.title}</h3>
-                {c.big && <span className="text-5xl font-semibold mt-2 leading-none" style={{ fontFamily: DISPLAY }}>{c.big}</span>}
-                <p className="text-[15px] leading-snug mt-auto pt-3 opacity-95">{c.line}</p>
+                <h3 className="text-xl font-semibold leading-tight mt-1" style={{ fontFamily: DISPLAY }}>{c.title}</h3>
+                {c.big && <span className="text-4xl font-semibold mt-1.5 leading-none" style={{ fontFamily: DISPLAY }}>{c.big}</span>}
+                <p className="text-sm leading-snug mt-auto pt-2 opacity-95">{c.line}</p>
               </button>
             ))}
           </div>
 
-          {/* trigger ranking */}
-          <Panel>
-            <PanelTitle sub={vm.leader ? undefined : "No single trigger clearly leads yet, so here is what you log most."}>Your triggers</PanelTitle>
-            <ul className="space-y-3">
-              {vm.triggers.slice(0, 5).map((t, i) => (
-                <li key={t.id}>
-                  <button onClick={() => setSheet(i)} className="w-full text-left">
-                    <div className="flex items-center justify-between text-[15px] font-medium">
-                      <span>{ICONS[t.id] || "💧"} {t.label}</span><span className="text-sm" style={{ color: "#3f6f6c" }}>{t.count}× · {pct(t.share)}</span>
-                    </div>
-                    <div className="h-3 rounded-full bg-teal-100 mt-1.5 overflow-hidden"><div className="h-full rounded-full" style={{ width: pct(t.share), background: GRADE_COLOR[t.typical - 1] }} /></div>
-                  </button>
-                </li>
-              ))}
-            </ul>
-            <p className="text-sm mt-3" style={{ color: "#3f6f6c" }}>
-              Bar colour shows how severe these episodes usually are. {vm.noClearShare >= 0.2 ? `${pct(vm.noClearShare)} of your episodes had no clear trigger, which is common in primary hyperhidrosis. ` : ""}
-              {vm.triggerConfidence === "early" ? "Early reading, based on few logs." : vm.triggerConfidence === "building" ? "Reading is building." : "Solid reading."}
-            </p>
-          </Panel>
+          <Drivers vm={vm} />
 
-          {/* where + when */}
-          <Panel>
-            <PanelTitle sub="Share of your episodes that involved each area">Where it happens</PanelTitle>
-            <div className="flex gap-4 items-center">
-              <BodyMap vm={vm} />
-              <ul className="flex-1 space-y-2.5">
-                {vm.areas.slice(0, 5).map((a, i) => (
-                  <li key={a.cluster}>
-                    <div className="flex justify-between text-[15px] font-medium"><span>{a.label}</span><span>{pct(a.share)}</span></div>
-                    <div className="h-2.5 rounded-full bg-teal-100 overflow-hidden"><div className="h-full rounded-full" style={{ width: pct(a.share), background: i === 0 ? "#fb7185" : "#14b8a6" }} /></div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </Panel>
+          <AreasPanel vm={vm} onPick={setAreaSheet} />
 
           <Panel>
-            <PanelTitle sub={vm.peak ? `Your peak: ${vm.peak.short.toLowerCase()}` : vm.timedCount < 6 ? "Needs a few more logs with a time" : "No window clearly stands out"}>Time of day</PanelTitle>
+            <PanelTitle sub={vm.peak ? `Your peak: ${vm.peak.short.toLowerCase()}. Tap a bar for details.` : vm.timedCount < 6 ? "Needs a few more logs with a time" : "No window clearly stands out. Tap a bar for details."}>Time of day</PanelTitle>
             <div className="grid grid-cols-4 gap-2 items-end h-28">
               {vm.windows.map(w => (
-                <div key={w.key} className="flex flex-col items-center justify-end h-full gap-1">
+                <button key={w.key} onClick={() => setPop({ title: w.label, body: (<>
+                  <p><b>{w.count} of your {vm.timedCount} timed episodes</b> ({pct(w.share)}) happened in the {w.short.toLowerCase()}.</p>
+                  <p>{vm.peak?.key === w.key ? "This is your peak window. Plan cooling steps 30 to 60 minutes before it." : w.count === Math.max(...vm.windows.map(x => x.count)) && w.count > 0 ? "Your busiest window, but not by enough to call it a clear pattern yet." : "Fewer episodes here than in your busiest window."}</p></>) })}
+                  className="flex flex-col items-center justify-end h-full gap-1">
                   <span className="text-sm font-semibold">{w.count}</span>
-                  <div className="w-full rounded-xl" style={{ height: `${Math.max(8, w.share * 100)}%`, background: vm.peak?.key === w.key ? "#8b5cf6" : "#99f6e4" }} />
+                  <div className="w-full rounded-xl" style={{ height: `${Math.max(8, w.share * 100)}%`, background: vm.peak?.key === w.key ? "#7c3aed" : "#5eead4" }} />
                   <span className="text-xs" style={{ color: "#3f6f6c" }}>{w.short}</span>
-                </div>
+                </button>
               ))}
             </div>
           </Panel>
 
           <Panel>
-            <PanelTitle sub={typicalText(vm)}>Severity over 8 weeks</PanelTitle>
-            <Sparkline vm={vm} />
+            <PanelTitle sub={`${typicalText(vm)}. Tap a dot for details.`}>Severity over 8 weeks</PanelTitle>
+            <Sparkline vm={vm} onPick={i => { const w = vm.weekly[i]; setPop({ title: `Week of ${w.label}`, body: (<>
+              <p><b>{plural(w.count, "episode")}</b> logged, typically <b>HDSS {w.grade}</b> ({GRADE_NAME[(w.grade || 1) - 1].toLowerCase()}).</p>
+              <p>Each dot is that week's typical severity grade. The higher the dot, the harder the week.</p></>) }); }} />
             <div className="flex items-center gap-2 mt-2 text-[15px]"><TrendIcon className="h-5 w-5 text-teal-700" />{vm.trend.text}</div>
           </Panel>
 
           <Panel>
-            <PanelTitle sub={`${vm.dry.total} dry days logged · ${vm.dry.streak}-day streak`}>Last 14 days</PanelTitle>
+            <PanelTitle sub={`${vm.dry.total} dry days logged · ${vm.dry.streak}-day streak. Tap a day for details.`}>Last 14 days</PanelTitle>
             <div className="grid grid-cols-7 gap-2">
               {vm.dots.map(d => (
-                <div key={d.key} title={d.key} className="aspect-square rounded-full flex items-center justify-center text-xs font-semibold"
-                  style={{ background: d.kind === "dry" ? "#5eead4" : d.kind === "episode" ? GRADE_COLOR[(d.grade || 1) - 1] : "#e5efee", color: INK }}>
+                <button key={d.key} aria-label={d.key} onClick={() => {
+                  const rs = byDay.get(d.key) ?? [], label = new Date(d.key + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" });
+                  setPop({ title: label, body: d.kind === "none" ? <p>No entry this day. You did not log an episode or a dry day.</p> : (<>
+                    <p>{d.kind === "dry" ? "Dry day: you logged no sweating." : `The worst episode was HDSS ${d.grade} (${GRADE_NAME[(d.grade || 1) - 1].toLowerCase()}).`}</p>
+                    {rs.filter((r: any) => !r.is_dry_day).map((r: any, i: number) => { const e = describeRow(r); return (
+                      <div key={i} className="rounded-xl bg-teal-50 p-3"><p className="font-semibold">{e.when} · HDSS {e.grade}</p>
+                        {e.areas.length > 0 && <p><span className="text-xs font-semibold" style={{ color: "#0f766e" }}>Affected areas</span><br />{e.areas.join(", ")}</p>}
+                        {e.triggers.length > 0 && <p><span className="text-xs font-semibold" style={{ color: "#7c3aed" }}>Triggers</span><br />{e.triggers.join(", ")}</p>}</div>); })}</>) });
+                }}
+                  className="aspect-square rounded-full flex items-center justify-center text-sm font-semibold"
+                  style={{ background: d.kind === "dry" ? DRY_COLOR : d.kind === "episode" ? GRADE_COLOR[(d.grade || 1) - 1] : "#e5efee", color: d.kind === "dry" || (d.grade ?? 0) >= 3 ? "#fff" : INK }}>
                   {d.kind === "episode" ? d.grade : d.kind === "dry" ? "✓" : ""}
-                </div>
+                </button>
               ))}
             </div>
-            <p className="text-sm mt-2" style={{ color: "#3f6f6c" }}>Numbers are that day's worst HDSS grade. A tick is a dry day.</p>
+            <p className="text-sm mt-2" style={{ color: "#3f6f6c" }}>A number is that day's worst HDSS grade. A green tick is a dry day.</p>
           </Panel>
 
           {/* pattern reading */}
@@ -502,14 +549,7 @@ const Insights = () => {
 
           {/* actions */}
           <div className="grid grid-cols-1 gap-3">
-            <button onClick={() => {
-              try {
-                downloadClinicalReport({ rows, patient: patientFromProfile(profileRow, user), profile });
-                toast({ title: "Report downloaded", description: "Share it with your dermatologist." });
-              } catch {
-                toast({ title: "Could not create report", description: "Please try again.", variant: "destructive" });
-              }
-            }}
+            <button onClick={() => { try { downloadClinicalReport({ rows, patient: patientFromProfile(profileRow, user), profile }); toast({ title: "Report downloaded", description: "Share it with your dermatologist." }); } catch { toast({ title: "Could not create report", description: "Please try again.", variant: "destructive" }); } }}
               className="rounded-[28px] p-4 flex items-center gap-3 text-left text-white shadow-lg" style={{ background: "linear-gradient(135deg,#0f766e,#0891b2)" }}>
               <FileText className="h-6 w-6 shrink-0" />
               <div className="flex-1"><p className="font-semibold text-base">Doctor report</p><p className="text-sm opacity-90">Your history, ready to share with a dermatologist.</p></div>
@@ -527,6 +567,8 @@ const Insights = () => {
       )}
 
       {sheet !== null && vm.triggers[sheet] && <TriggerSheet vm={vm} index={sheet} setIndex={setSheet} helped={helped} />}
+      {areaSheet !== null && vm.areas[areaSheet] && <AreaSheet vm={vm} index={areaSheet} onClose={() => setAreaSheet(null)} />}
+      {pop && <Popup title={pop.title} onClose={() => setPop(null)}>{pop.body}</Popup>}
     </>
   );
 };

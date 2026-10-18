@@ -7,9 +7,14 @@
  *  - dry days kept separate from episode counts (no shared axis)
  */
 import { hdssRound } from "./insightEngine";
-import { episodeTime } from "./insightsAnalytics";
+import { episodeTime, canonArea } from "./insightsAnalytics";
+import { TRIGGER_INDEX, normTrigger } from "./insightEngine";
 
 export type Period = "days" | "weeks" | "months";
+/** HDSS colours used on every screen: 1 sky, 2 yellow, 3 pink, 4 red. Dry day = green. */
+export const GRADE_COLOR = ["#7dd3fc", "#fbbf24", "#ec4899", "#dc2626"];
+export const GRADE_NAME = ["Never noticeable", "Tolerable", "Barely tolerable", "Intolerable"];
+export const DRY_COLOR = "#22c55e";
 export interface Bucket {
   key: string; label: string; sub: string; full: string; start: Date; end: Date;
   count: number; byGrade: [number, number, number, number]; typical: number | null; dry: number; rows: any[];
@@ -54,25 +59,32 @@ export function buildBuckets(rows: any[], period: Period, now = new Date()): Buc
     out[i].rows.push(r);
     if (r.is_dry_day) out[i].dry++; else { const g = gradeOf(r); out[i].count++; out[i].byGrade[g - 1]++; grades[i].push(g); }
   });
+  out.forEach(b => b.rows.sort((a, c) => (timeOf(a)?.getTime() ?? 0) - (timeOf(c)?.getTime() ?? 0)));
   out.forEach((b, i) => { b.typical = grades[i].length ? hdssRound(grades[i].reduce((a, c) => a + c, 0) / grades[i].length) : null; });
   return out;
 }
 
-export interface CalCell { key: string; kind: "dry" | "episode" | "none" | "future"; grade: number | null }
+export interface CalCell { key: string; date: Date; kind: "dry" | "episode" | "none" | "future"; grade: number | null; rows: any[] }
 /** 26 weeks, Monday to Sunday columns, oldest first. */
+export function groupByDay(rows: any[]): Map<string, any[]> {
+  const m = new Map<string, any[]>();
+  rows.forEach(r => { const t = timeOf(r); if (!t) return; const k = keyOf(t); (m.get(k) ?? m.set(k, []).get(k)!).push(r); });
+  m.forEach(v => v.sort((a, c) => (timeOf(a)?.getTime() ?? 0) - (timeOf(c)?.getTime() ?? 0)));
+  return m;
+}
 export function buildCalendar(rows: any[], weeks = 26, now = new Date()): CalCell[][] {
-  const worst = new Map<string, number>(), dry = new Set<string>();
-  rows.forEach(r => { const t = timeOf(r); if (!t) return; const k = keyOf(t);
-    if (r.is_dry_day) dry.add(k); else worst.set(k, Math.max(worst.get(k) ?? 0, gradeOf(r))); });
-  const today = startOfDay(now), first = addDays(mondayOf(now), -7 * (weeks - 1)), cols: CalCell[][] = [];
+  const byDay = groupByDay(rows), today = startOfDay(now), first = addDays(mondayOf(now), -7 * (weeks - 1)), cols: CalCell[][] = [];
   for (let w = 0; w < weeks; w++) { const col: CalCell[] = [];
-    for (let d = 0; d < 7; d++) { const day = addDays(first, w * 7 + d), k = keyOf(day);
-      col.push(day > today ? { key: k, kind: "future", grade: null } : worst.has(k) ? { key: k, kind: "episode", grade: worst.get(k)! } : dry.has(k) ? { key: k, kind: "dry", grade: null } : { key: k, kind: "none", grade: null }); }
+    for (let d = 0; d < 7; d++) { const day = addDays(first, w * 7 + d), k = keyOf(day), rs = byDay.get(k) ?? [];
+      const eps = rs.filter(r => !r.is_dry_day);
+      col.push(day > today ? { key: k, date: day, kind: "future", grade: null, rows: [] }
+        : eps.length ? { key: k, date: day, kind: "episode", grade: Math.max(...eps.map(gradeOf)), rows: rs }
+        : rs.length ? { key: k, date: day, kind: "dry", grade: null, rows: rs } : { key: k, date: day, kind: "none", grade: null, rows: [] }); }
     cols.push(col); }
   return cols;
 }
 
-/** Share of the last N days (default 30) with at least one entry (episode or dry day). */
+/** Share of the last 30 days with at least one entry (episode or dry day). */
 export function consistency(rows: any[], days = 30, now = new Date()) {
   const from = addDays(startOfDay(now), -(days - 1)), set = new Set<string>();
   rows.forEach(r => { const t = timeOf(r); if (t && t >= from && t < addDays(startOfDay(now), 1)) set.add(keyOf(t)); });
@@ -88,35 +100,39 @@ export function timeGrid(rows: any[]) {
   return { grid, timed, max: Math.max(1, ...grid.flat()) };
 }
 
-/** Plain-English summary. Whole grades only, no treatment advice. */
-export function summarize(b: Bucket[], period: Period): string {
+export interface SummaryItem { label: string; value: string; tone: "teal" | "violet" | "pink" | "green" | "amber" }
+/** Summary as labelled lines. Whole grades only, no treatment advice. */
+export function summaryItems(b: Bucket[], period: Period): SummaryItem[] {
   const total = b.reduce((s, x) => s + x.count, 0), dry = b.reduce((s, x) => s + x.dry, 0);
-  if (!total && !dry) return "No entries in this view yet. Log an episode or a dry day to fill it in.";
-  const unit = period === "days" ? "day" : period === "weeks" ? "week" : "month";
-  const parts: string[] = [];
+  if (!total && !dry) return [{ label: "Nothing yet", value: "No entries in this view. Log an episode or a dry day to fill it in.", tone: "teal" }];
+  const out: SummaryItem[] = [];
+  const ep = (n: number) => `${n} episode${n === 1 ? "" : "s"}`;
   if (period === "days") {
-    parts.push(`${plural(total, "episode")} and ${plural(dry, "dry day")} in the last 14 days.`);
-    const quiet = b.filter(x => !x.count && !x.dry).length; if (quiet) parts.push(`${plural(quiet, "day")} had no entry, so logging every day will sharpen your patterns.`);
+    const quiet = b.filter(x => !x.count && !x.dry).length;
+    out.push({ label: "Last 14 days", value: ep(total), tone: "teal" }, { label: "Dry days", value: `${dry} day${dry === 1 ? "" : "s"}`, tone: "green" });
+    if (quiet) out.push({ label: "Days with no entry", value: `${quiet} day${quiet === 1 ? "" : "s"}`, tone: "amber" });
   } else {
-    const cur = b[b.length - 1], prev = b[b.length - 2];
-    parts.push(`This ${unit} so far: ${plural(cur.count, "episode")}. Last ${unit}: ${prev.count}.`);
+    const unit = period === "weeks" ? "week" : "month", cur = b[b.length - 1], prev = b[b.length - 2];
+    out.push({ label: `This ${unit} so far`, value: ep(cur.count), tone: "teal" }, { label: `Last ${unit}`, value: ep(prev.count), tone: "violet" });
     const top = [...b].sort((a, c) => c.count - a.count)[0];
-    if (top.count > 0) parts.push(`Your busiest ${unit} was ${top.full} with ${top.count}.`);
+    if (top.count > 0) out.push({ label: `Busiest ${unit}`, value: `${top.full} · ${ep(top.count)}`, tone: "pink" });
+    out.push({ label: "Dry days in this view", value: `${dry} day${dry === 1 ? "" : "s"}`, tone: "green" });
   }
   const g = b.flatMap(x => x.byGrade.flatMap((c, i) => Array(c).fill(i + 1)));
-  if (g.length) parts.push(`Typical severity in this view: HDSS ${hdssRound(g.reduce((a, c) => a + c, 0) / g.length)}.`);
-  return parts.join(" ");
+  if (g.length) out.push({ label: "Typical severity", value: `HDSS ${hdssRound(g.reduce((a, c) => a + c, 0) / g.length)}`, tone: "pink" });
+  return out;
 }
 
 export function describeRow(r: any) {
-  const clean = (s: string) => String(s).replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
   const areas: any[] = r.bodyAreas ?? r.body_areas ?? [];
   const trig: any[] = Array.isArray(r.triggers) ? r.triggers : [];
   const t = timeOf(r);
+  const seen = new Set<string>();
+  const areaLabels = (Array.isArray(areas) ? areas : []).map(canonArea).filter(Boolean).map(a => a!).filter(a => !seen.has(a.key) && seen.add(a.key)).map(a => a.label);
+  const trigLabels = trig.map((x: any) => (typeof x === "string" ? x : x?.label || x?.value || "")).filter(Boolean)
+    .map((l: string) => TRIGGER_INDEX[normTrigger(l)]?.label ?? l);
   return {
     when: t ? `${DOW[t.getDay()]} ${t.getDate()} ${MON[t.getMonth()]}, ${t.toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit", hour12: true })}` : "",
-    grade: r.is_dry_day ? 0 : gradeOf(r), dry: !!r.is_dry_day,
-    areas: (Array.isArray(areas) ? areas : []).map(clean),
-    triggers: trig.map((x: any) => (typeof x === "string" ? x : x?.label || x?.value || "")).filter(Boolean),
+    grade: r.is_dry_day ? 0 : gradeOf(r), dry: !!r.is_dry_day, areas: areaLabels, triggers: Array.from(new Set(trigLabels)),
   };
 }

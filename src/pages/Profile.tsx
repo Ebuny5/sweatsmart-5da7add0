@@ -10,6 +10,8 @@ import { useNavigate } from "react-router-dom";
 import { useProfile } from "@/hooks/useProfile";
 import { useEpisodes } from "@/hooks/useEpisodes";
 import { consistency } from "@/features/insights/analyticsSeries";
+import { downloadClinicalReport, patientFromProfile, declaredTypeFrom } from "@/features/insights/clinicalReportPdf";
+import { FileText } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { NativeBiometric } from "@capgo/capacitor-native-biometric";
@@ -687,6 +689,42 @@ const Profile = () => {
                   )}
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* ── CLINICAL REPORT DOWNLOAD ─────────────────────────────────── */}
+          <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 overflow-hidden mb-4">
+            <div className="px-5 pt-5 pb-2">
+              <h3 className="text-base font-bold text-gray-800">Dermatologist Report</h3>
+              <p className="text-xs text-gray-400 mt-0.5">Download your clinical PDF summary</p>
+            </div>
+            <div className="px-5 pb-5">
+              <button
+                onClick={() => {
+                  try {
+                    downloadClinicalReport({
+                      rows: episodes || [],
+                      patient: patientFromProfile(profile, user),
+                      profile: { declaredType: declaredTypeFrom((profile as any)?.diagnosis_type || (profile as any)?.diagnosis) },
+                    });
+                    toast({ title: "Report downloaded 📋", description: "Share this PDF with your dermatologist." });
+                  } catch (e) {
+                    toast({ title: "Could not create report", description: "Please try again.", variant: "destructive" });
+                  }
+                }}
+                className="w-full flex items-center justify-between p-4 rounded-xl border border-teal-100 bg-teal-50/50 hover:bg-teal-100/50 transition-all group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-teal-100 flex items-center justify-center text-teal-600">
+                    <FileText className="h-5 w-5" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-gray-800">Download Clinical PDF Report</p>
+                    <p className="text-xs text-teal-700">Formatted for physician review</p>
+                  </div>
+                </div>
+                <ArrowRight className="h-4 w-4 text-teal-500 group-hover:translate-x-1 transition-transform" />
+              </button>
             </div>
           </div>
 
