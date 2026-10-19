@@ -68,7 +68,11 @@ const CSS = `
 .lg-ripple{animation:lg-ripple 4s ease-in-out infinite;transform-origin:50% 50%}
 .lg-sway{animation:lg-sway 14s ease-in-out infinite}
 .lg-scroll::-webkit-scrollbar{display:none}
-@media (prefers-reduced-motion:reduce){.lg-morph,.lg-float,.lg-ripple,.lg-sway{animation:none}}
+@keyframes lg-in{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
+@keyframes lg-out{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(.8)}}
+.lg-in{animation:lg-in .5s ease-out both}
+.lg-out{animation:lg-out .45s ease-in both}
+@media (prefers-reduced-motion:reduce){.lg-morph,.lg-float,.lg-ripple,.lg-sway,.lg-in,.lg-out{animation:none}}
 `;
 
 // ───────────────────────────── Small pieces ─────────────────────────────
@@ -196,36 +200,55 @@ function Drivers({ vm }: { vm: InsightsVM }) {
   );
 }
 
-// ── Affected areas: one coloured shape per area, ranked most to least. Tap a shape for care tips. ──
+// ── Affected areas: ONE shape at a time, most affected first. Stays 60 seconds, fades away, the next area appears. ──
 const AREA_CLIPS: { clip: string; pad?: number }[] = [
-  { clip: "polygon(50% 0%, 100% 100%, 0% 100%)", pad: 14 },           // triangle
-  { clip: "circle(50% at 50% 50%)" },                                   // circle
+  { clip: "polygon(50% 0%, 100% 100%, 0% 100%)", pad: 44 },            // triangle
+  { clip: "circle(50% at 50% 50%)" },                                    // circle
   { clip: "polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)" }, // hexagon
-  { clip: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)" },             // diamond
-  { clip: "polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)" },   // pentagon
-  { clip: "inset(0 round 18px)" },                                      // rounded square
+  { clip: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)" },              // diamond
+  { clip: "polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)", pad: 10 }, // pentagon
+  { clip: "inset(0 round 36px)" },                                       // rounded square
 ];
-const AREA_COLORS = ["#db2777", "#7c3aed", "#0d9488", "#0284c7", "#ea580c", "#4d7c0f", "#e11d48", "#0891b2"];
-function AreasPanel({ vm, onPick }: { vm: InsightsVM; onPick: (i: number) => void }) {
-  const list = vm.areas.slice(0, 8);
+const AREA_FILLS: [string, string][] = [["#db2777", "#f472b6"], ["#7c3aed", "#a78bfa"], ["#0d9488", "#5eead4"], ["#0284c7", "#7dd3fc"],
+  ["#ea580c", "#fdba74"], ["#4d7c0f", "#bef264"], ["#e11d48", "#fda4af"], ["#0891b2", "#67e8f9"]];
+function AreaSpotlight({ vm, onPick, paused, seconds = 60 }: { vm: InsightsVM; onPick: (i: number) => void; paused: boolean; seconds?: number }) {
+  const list = vm.areas.slice(0, 8), n = list.length;
+  const [i, setI] = useState(0), [left, setLeft] = useState(seconds), [out, setOut] = useState(false);
+  const go = (next: number) => { setOut(true); setTimeout(() => { setI(next); setLeft(seconds); setOut(false); }, 450); };
+  useEffect(() => {
+    if (n < 2 || paused || out) return;
+    const t = setInterval(() => setLeft(x => x - 1), 1000);
+    return () => clearInterval(t);
+  }, [n, paused, out, i]);
+  useEffect(() => { if (left <= 0 && n > 1 && !out) go((i + 1) % n); }, [left]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!n) return null;
+  const a = list[i], shape = AREA_CLIPS[i % AREA_CLIPS.length], [c1, c2] = AREA_FILLS[i % AREA_FILLS.length];
+  const mm = `${Math.floor(Math.max(left, 0) / 60)}:${String(Math.max(left, 0) % 60).padStart(2, "0")}`;
   return (
-    <Panel>
-      <PanelTitle sub="Your most affected areas, from most to least. Tap a shape to learn how to care for it.">Affected areas</PanelTitle>
-      <div className="grid grid-cols-2 gap-3">
-        {list.map((a, i) => {
-          const color = AREA_COLORS[i % AREA_COLORS.length], shape = AREA_CLIPS[i % AREA_CLIPS.length], size = i < 2 ? 68 : 52;
-          return (
-            <button key={a.key} onClick={() => onPick(i)} className="rounded-[24px] p-4 text-left flex flex-col items-start gap-2 active:scale-[.98] transition-transform"
-              style={{ background: color + "14", border: `1.5px solid ${color}40` }}>
-              <span className="flex items-center justify-center text-white font-semibold text-xl" style={{ width: size, height: size, background: color, clipPath: shape.clip, paddingTop: shape.pad ?? 0 }}>{i + 1}</span>
-              <span className="block font-semibold text-[17px] leading-tight" style={{ color: INK }}>{a.label}</span>
-              <span className="text-sm leading-snug" style={{ color: "#3f6f6c" }}>{a.count} of {vm.n} episodes</span>
-              <span className="text-xs font-semibold" style={{ color }}>Tap for care tips</span>
-            </button>
-          );
-        })}
+    <section className="py-2">
+      <div className="px-1 mb-1">
+        <h3 className="text-xl font-semibold leading-snug" style={{ fontFamily: DISPLAY, color: INK }}>Affected areas</h3>
+        <p className="text-sm mt-0.5" style={{ color: "#3f6f6c" }}>One area at a time, from most to least affected. Tap the shape to learn how to care for it.</p>
       </div>
-    </Panel>
+      <div className="flex items-center justify-between px-1 mt-2 text-sm font-semibold" style={{ color: "#3f6f6c" }}>
+        <span>Area {i + 1} of {n}</span>
+        {n > 1 && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/70 border border-teal-100"><Clock className="h-3.5 w-3.5" />{paused ? "Paused" : mm}</span>}
+      </div>
+      <div key={i} className={`flex flex-col items-center text-center pt-4 pb-2 ${out ? "lg-out" : "lg-in"}`}>
+        <button onClick={() => onPick(i)} aria-label={`${a.label}: tap for care tips`} className="active:scale-95 transition-transform" style={{ filter: `drop-shadow(0 18px 22px ${c1}55)` }}>
+          <span className="flex items-center justify-center text-white font-semibold" style={{ width: 210, height: 210, fontSize: 64, fontFamily: DISPLAY,
+            background: `linear-gradient(145deg, ${c1}, ${c2})`, clipPath: shape.clip, paddingTop: shape.pad ?? 0 }}>{i + 1}</span>
+        </button>
+        <h4 className="text-[28px] leading-tight font-semibold mt-3" style={{ fontFamily: DISPLAY, color: c1 }}>{a.label}</h4>
+        <p className="text-base mt-0.5" style={{ color: "#245250" }}>{a.count} of {vm.n} episodes</p>
+        <p className="text-sm font-semibold mt-1" style={{ color: c1 }}>Tap the shape for care tips</p>
+      </div>
+      {n > 1 && (
+        <div className="flex justify-center gap-2.5 mt-2">
+          {list.map((x, k) => <button key={x.key} aria-label={`Show ${x.label}`} onClick={() => k !== i && go(k)} className="rounded-full transition-all"
+            style={{ width: k === i ? 22 : 10, height: 10, background: k === i ? c1 : "#b7d9d4" }} />)}
+        </div>)}
+    </section>
   );
 }
 function AreaSheet({ vm, index, onClose }: { vm: InsightsVM; index: number; onClose: () => void }) {
@@ -490,7 +513,7 @@ const Insights = () => {
 
           <Drivers vm={vm} />
 
-          <AreasPanel vm={vm} onPick={setAreaSheet} />
+          <AreaSpotlight vm={vm} onPick={setAreaSheet} paused={areaSheet !== null} />
 
           <Panel>
             <PanelTitle sub={vm.peak ? `Your peak: ${vm.peak.short.toLowerCase()}. Tap a bar for details.` : vm.timedCount < 6 ? "Needs a few more logs with a time" : "No window clearly stands out. Tap a bar for details."}>Time of day</PanelTitle>
