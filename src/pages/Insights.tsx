@@ -172,12 +172,11 @@ function Drivers({ vm }: { vm: InsightsVM }) {
   if (!list.length) return null;
   return (
     <Panel>
-      <PanelTitle sub="Your top triggers, why each one ranks where it does, and what to do before it strikes.">What sets it off</PanelTitle>
+      <PanelTitle sub="Your top triggers and why each one ranks where it does.">What sets it off</PanelTitle>
       <ul className="space-y-3 p-0">
         {list.map((t, i) => {
-          const def = TRIGGER_INDEX[t.id], color = DRIVER_COLORS[i % DRIVER_COLORS.length], isOpen = open === t.id, prev = list[i - 1];
+          const color = DRIVER_COLORS[i % DRIVER_COLORS.length], isOpen = open === t.id, prev = list[i - 1];
           const why = `Ranked #${i + 1} because it appeared in ${t.count} of your ${vm.n} episodes (${pct(t.share)})${prev && prev.count === t.count ? `, the same as ${prev.label}.` : "."}`;
-          const advice = def ? def.lifestyle.slice(0, 2) : ["Note what you were doing and how long before the sweating started.", "Look for a pattern across your next few logs."];
           return (
             <li key={t.id} className="list-none">
               <button onClick={() => setOpen(isOpen ? null : t.id)} className="w-full flex items-center gap-3 text-left" aria-expanded={isOpen}>
@@ -188,8 +187,6 @@ function Drivers({ vm }: { vm: InsightsVM }) {
               {isOpen && (
                 <div className="mt-2 ml-[60px] rounded-2xl p-3.5 space-y-2" style={{ background: color + "14", borderLeft: `4px solid ${color}` }}>
                   <p className="text-[15px] leading-relaxed">{why}</p>
-                  <p className="text-xs font-semibold" style={{ color }}>Before it happens</p>
-                  {advice.map((a, k) => <p key={k} className="text-[15px] leading-relaxed"><b style={{ color }}>{k + 1}.</b> {plain(a)}</p>)}
                 </div>)}
             </li>
           );
