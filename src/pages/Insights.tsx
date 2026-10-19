@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useEngagement } from "@/hooks/useEngagement";
+import { useEpisodes } from "@/hooks/useEpisodes";
 import { TRIGGER_INDEX, type UserProfileInput } from "@/features/insights/insightEngine";
 import { loadInsightState } from "@/features/insights/insightState";
 import {
@@ -370,7 +371,7 @@ const Insights = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { trackAction } = useEngagement();
-  const [rows, setRows] = useState<any[]>([]);
+  const { episodes: rows, loading: episodesLoading } = useEpisodes();
   const [profile, setProfile] = useState<UserProfileInput>({});
   const [profileRow, setProfileRow] = useState<any>(null);
   const [helped, setHelped] = useState<string[]>([]);
@@ -392,11 +393,6 @@ const Insights = () => {
   useEffect(() => {
     (async () => {
       if (!user) { setLoading(false); setScanning(false); return; }
-      try {
-        const { data, error } = await supabase.from("episodes").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
-        if (error) toast({ title: "Error loading insights", description: "Failed to load historical data.", variant: "destructive" });
-        setRows(data || []);
-      } catch { toast({ title: "Error", description: "Unexpected error loading insights.", variant: "destructive" }); }
       try { // profile (column names may differ: Jules to confirm)
         const q = (supabase as any).from("profiles").select("*");
         const { data } = await q.eq("user_id", user.id).maybeSingle();
@@ -406,7 +402,7 @@ const Insights = () => {
       try { const st = await loadInsightState(user.id); setHelped(Object.entries(st.feedback || {}).filter(([, v]) => v).map(([k]) => k)); } catch { /* optional */ }
       setLoading(false);
     })();
-  }, [user, toast]);
+  }, [user]);
 
   const vm = useMemo(() => buildInsightsViewModel(rows, profile), [rows, profile]);
   const byDay = useMemo(() => groupByDay(rows), [rows]);
@@ -433,7 +429,7 @@ const Insights = () => {
     </AppLayout>
   );
 
-  if (loading) return shell(<div className="py-16"><div className="mx-auto w-52 h-52 rounded-full bg-teal-100 animate-pulse" /></div>);
+  if (loading || episodesLoading) return shell(<div className="py-16"><div className="mx-auto w-52 h-52 rounded-full bg-teal-100 animate-pulse" /></div>);
   if (rows.length === 0) return shell(
     <div className="text-center py-14 space-y-4">
       <div className="text-6xl">🌸</div>
