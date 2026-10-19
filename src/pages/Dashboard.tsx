@@ -125,9 +125,15 @@ function GroupedChart({ buckets, sel, onEp, onDry, onSlot }: { buckets: Bucket[]
 function Calendar({ cal, onPick }: { cal: CalCell[][]; onPick: (c: CalCell) => void }) {
   const cellBg = (c: CalCell) => (c.kind === "episode" ? GRADE_COLOR[(c.grade || 1) - 1] : c.kind === "dry" ? DRY_COLOR : "#e3eeed");
   return (
-    <div className="grid gap-[3px]" style={{ gridTemplateColumns: `16px repeat(${cal.length}, 1fr)` }}>
+    <div className="grid gap-[3px]" style={{ gridTemplateColumns: `16px repeat(${cal.length}, minmax(0, 1fr))` }}>
       {cal.map((col, w) => { const d = col[0].date, prev = w > 0 ? cal[w - 1][0].date : null;
-        return <span key={"m" + w} className="text-xs leading-none whitespace-nowrap" style={{ color: MUTED, gridColumn: w + 2, gridRow: 1 }}>{!prev || prev.getMonth() !== d.getMonth() ? MONTHS[d.getMonth()] : ""}</span>; })}
+        const show = !prev || prev.getMonth() !== d.getMonth();
+        return (
+          <span key={"m" + w} className="relative block h-4 min-w-0" style={{ gridColumn: w + 2, gridRow: 1 }}>
+            {show && <span className="absolute left-0 top-0 text-xs leading-none whitespace-nowrap" style={{ color: MUTED }}>{MONTHS[d.getMonth()]}</span>}
+          </span>
+        );
+      })}
       {["M", "", "W", "", "F", "", "S"].map((l, i) => <span key={"d" + i} className="text-xs self-center" style={{ color: MUTED, gridColumn: 1, gridRow: i + 2 }}>{l}</span>)}
       {cal.map((col, w) => col.map((c, d) => (
         <button key={c.key} onClick={() => c.kind !== "future" && onPick(c)} aria-label={c.key}
