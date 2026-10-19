@@ -131,14 +131,45 @@ export const EpisodesProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const deleteEpisode = async (id: string): Promise<{ error: unknown }> => {
     try {
+      // 1. Permanent hard deletion from database
       const { error: deleteError } = await supabase
         .from("episodes")
         .delete()
         .eq("id", id);
       if (deleteError) throw deleteError;
+
+      // 2. Remove from React memory state immediately
       setEpisodes((prev) => prev.filter((ep) => ep.id !== id));
+
+      // 3. Purge matching episode logs & cached insights from browser storage
+      try {
+        const existingLogsStr = localStorage.getItem("sweatSmartLogs");
+        if (existingLogsStr) {
+          const existingLogs = JSON.parse(existingLogsStr);
+          if (Array.isArray(existingLogs)) {
+            const updatedLogs = existingLogs.filter((log: any) => log.id !== id);
+            localStorage.setItem("sweatSmartLogs", JSON.stringify(updatedLogs));
+          }
+        }
+
+        const lastInsightStr = localStorage.getItem("last_episode_insight");
+        if (lastInsightStr) {
+          try {
+            const parsedInsight = JSON.parse(lastInsightStr);
+            if (parsedInsight?.episodeId === id || parsedInsight?.id === id) {
+              localStorage.removeItem("last_episode_insight");
+            }
+          } catch {
+            // ignore
+          }
+        }
+      } catch (lsErr) {
+        console.warn("Failed to clean up deleted episode from local storage:", lsErr);
+      }
+
       return { error: null };
     } catch (err) {
+      console.error("Error deleting episode:", err);
       return { error: err };
     }
   };
