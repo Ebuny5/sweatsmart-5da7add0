@@ -477,16 +477,16 @@ const Insights = () => {
             <p className="text-sm mt-1" style={{ color: "#3f6f6c" }}>Tap a droplet to see a trigger.</p>
           </div>
 
-          {/* swipeable story cards */}
-          <div className="lg-scroll -mx-4 px-4 flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2">
+  {/* swipeable story cards - compact size */}
+  <div className="lg-scroll -mx-4 px-4 flex gap-2.5 overflow-x-auto snap-x snap-mandatory pb-1.5">
             {cards.map(c => (
               <button key={c.key} onClick={c.onClick} disabled={!c.onClick}
-                className="snap-center shrink-0 w-[62%] max-w-[250px] min-h-[150px] rounded-[24px] p-4 text-left shadow-lg flex flex-col active:scale-[.98] transition-transform"
+        className="snap-center shrink-0 w-[45%] max-w-[160px] min-h-[105px] rounded-[18px] p-3 text-left shadow-md flex flex-col active:scale-[.98] transition-transform"
                 style={{ background: c.bg, color: c.fg }}>
                 <Eyebrow light={c.fg === "#fff"}>{c.eyebrow}</Eyebrow>
-                <h3 className="text-xl font-semibold leading-tight mt-1" style={{ fontFamily: DISPLAY }}>{c.title}</h3>
-                {c.big && <span className="text-4xl font-semibold mt-1.5 leading-none" style={{ fontFamily: DISPLAY }}>{c.big}</span>}
-                <p className="text-sm leading-snug mt-auto pt-2 opacity-95">{c.line}</p>
+        <h3 className="text-sm font-semibold leading-tight mt-0.5" style={{ fontFamily: DISPLAY }}>{c.title}</h3>
+        {c.big && <span className="text-xl font-bold mt-1 leading-none" style={{ fontFamily: DISPLAY }}>{c.big}</span>}
+        <p className="text-[11px] leading-snug mt-auto pt-1 opacity-90 line-clamp-2">{c.line}</p>
               </button>
             ))}
           </div>
