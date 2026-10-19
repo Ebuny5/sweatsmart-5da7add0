@@ -145,7 +145,30 @@ const ord = (n: number) => { const m = n % 100; const sfx = m >= 11 && m <= 13 ?
 const your = (a: string[]) => "your " + join(a);
 const GLOSS = GLOSSARY.map(([k, p, m]) => ({ k, re: new RegExp(p, "i"), m }));
 
+export function cleanTextPostProcessing(text: string): string {
+  if (!text) return text;
+  let s = text;
+
+  s = s.replace(/\bHot Temp\b/g, "Hot Temperature");
+  s = s.replace(/\bTemp Shift\b/g, "Temperature Shift");
+  s = s.replace(/\bBP Meds\b/g, "Blood Pressure Medication");
+  s = s.replace(/\bBlood Pressure Meds\b/g, "Blood Pressure Medication");
+  s = s.replace(/\bDiabetes Meds\b/g, "Insulin / Diabetes Medication");
+  s = s.replace(/\bInsulin \/ Diabetes Meds\b/g, "Insulin / Diabetes Medication");
+  s = s.replace(/\bmeds\b/gi, "medication");
+
+  s = s.replace(/\bWhen it happens\b/gi, "When it happened");
+  s = s.replace(/\bavoid stress\s*(?:it\s+)?lowers\b/gi, "avoid stress, as it lowers");
+
+  s = s.replace(/\s+/g, " ");
+  s = s.replace(/\s+([.,;:!?])/g, "$1");
+  s = s.replace(/,([^\s\d])/g, ", $1");
+
+  return s.trim();
+}
+
 export function explain(text: string, seen: Set<string>): string {
+  text = cleanTextPostProcessing(text);
   for (const { k, re, m } of GLOSS) {
     if (seen.has(k)) continue;
     const hit = re.exec(text);
@@ -155,7 +178,7 @@ export function explain(text: string, seen: Set<string>): string {
     if (text.slice(end, end + 2) === " (") continue;
     text = text.slice(0, end) + ` (${m})` + text.slice(end);
   }
-  return text;
+  return cleanTextPostProcessing(text);
 }
 function vary(st: InsightState, key: string, variants: string[]): string {
   const c = st.phraseCounter[key] || 0; st.phraseCounter[key] = c + 1; return variants[c % variants.length];

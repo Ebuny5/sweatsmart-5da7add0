@@ -116,7 +116,7 @@ const CLINICAL_KNOWLEDGE: Record<string, { title: string; mechanism: string; ico
 
   // Phase 1: Environment & Situation
   hot_temperature: {
-    title: "Ambient Thermal Load",
+    title: "Hot Temperature",
     mechanism: "Directly stimulates preoptic anterior hypothalamic thermoreceptors to trigger eccrine sweating for core defense.",
     icon: "🌡️"
   },
@@ -126,7 +126,7 @@ const CLINICAL_KNOWLEDGE: Record<string, { title: string; mechanism: string; ico
     icon: "💧"
   },
   transitional_temp: {
-    title: "Rapid Thermal Transition",
+    title: "Transitional Temperature Shift",
     mechanism: "Sudden temperature contrast (e.g., exiting air-conditioning into heat) sparks transient autonomic overcompensation.",
     icon: "🔄"
   },
@@ -267,12 +267,12 @@ const CLINICAL_KNOWLEDGE: Record<string, { title: string; mechanism: string; ico
 
   // Phase 4: Medication, Systemic & Hormonal
   bp_meds: {
-    title: "Vasomotor Blood Pressure Shifts",
+    title: "Blood Pressure Medication",
     mechanism: "Antihypertensive agents alter peripheral resistance, inducing compensatory autonomic vasomotor sweating episodes.",
     icon: "💊"
   },
   diabetes_meds: {
-    title: "Glycemic Autonomic Shifts",
+    title: "Insulin / Diabetes Medication",
     mechanism: "Blood glucose fluctuations stimulate adrenaline release, which acts as a potent eccrine sweat trigger.",
     icon: "💉"
   },
@@ -329,9 +329,9 @@ const TRIGGER_GROUPS = [
     desc: "Physical surroundings and thermal changes that amplify eccrine activity",
     colorKey: "sky" as const,
     items: [
-      { id: "hot_temperature", label: "Hot Temp", type: "environment", icon: "🌡️" },
+      { id: "hot_temperature", label: "Hot Temperature", type: "environment", icon: "🌡️" },
       { id: "humidity", label: "High Humidity", type: "environment", icon: "💧" },
-      { id: "transitional_temp", label: "Temp Shift", type: "environment", icon: "🔄" },
+      { id: "transitional_temp", label: "Temperature Shift", type: "environment", icon: "🔄" },
       { id: "sun_exposure", label: "Sun Exposure", type: "environment", icon: "☀️" },
       { id: "synthetic_fabrics", label: "Synthetic Fabrics", type: "environment", icon: "🧶" },
       { id: "poor_ventilation", label: "Poor Airflow / No Ventilation", type: "environment", icon: "🚪" },
@@ -379,8 +379,8 @@ const TRIGGER_GROUPS = [
     desc: "Pharmacological and endocrine changes that alter central thermoregulation",
     colorKey: "purple" as const,
     items: [
-      { id: "bp_meds", label: "Blood Pressure Meds", type: "medication", icon: "💊" },
-      { id: "diabetes_meds", label: "Insulin / Diabetes Meds", type: "medication", icon: "💉" },
+      { id: "bp_meds", label: "Blood Pressure Medication", type: "medication", icon: "💊" },
+      { id: "diabetes_meds", label: "Insulin / Diabetes Medication", type: "medication", icon: "💉" },
       { id: "new_medication", label: "New Medication", type: "medication", icon: "🔔" },
       { id: "supplements", label: "Supplements / Herbal", type: "dietary", icon: "🌿" },
       { id: "hormonal", label: "Hormonal / Menopause", type: "systemic", icon: "🧬" },

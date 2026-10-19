@@ -351,7 +351,7 @@ const Dashboard = () => {
       </Panel>
 
       <Panel>
-        <Title sub={grid.timed >= 10 ? "Episodes by time of day and weekday. Tap a square." : `Unlocks at 10 episodes with a time (you have ${grid.timed})`}>When it happens</Title>
+        <Title sub={grid.timed >= 10 ? "Episodes by time of day and weekday. Tap a square." : `Unlocks at 10 episodes with a time (you have ${grid.timed})`}>When it happened</Title>
         {grid.timed >= 10 ? (
           <div className="grid gap-1.5" style={{ gridTemplateColumns: "76px repeat(7, 1fr)" }}>
             <span />{["M", "T", "W", "T", "F", "S", "S"].map((d, i) => <span key={i} className="text-xs text-center font-semibold" style={{ color: MUTED }}>{d}</span>)}

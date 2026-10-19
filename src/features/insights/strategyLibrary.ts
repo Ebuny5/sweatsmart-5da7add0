@@ -14,7 +14,7 @@ export interface TriggerDef {
 export const TRIGGERS: TriggerDef[] = [
   {
     "id": "hot_temp",
-    "label": "Hot Temp",
+    "label": "Hot Temperature",
     "phase": 1,
     "kind": "thermal",
     "zones": [
@@ -61,7 +61,7 @@ export const TRIGGERS: TriggerDef[] = [
   },
   {
     "id": "temp_shift",
-    "label": "Temp Shift",
+    "label": "Temperature Shift",
     "phase": 1,
     "kind": "thermal",
     "zones": [
@@ -677,7 +677,7 @@ export const TRIGGERS: TriggerDef[] = [
   },
   {
     "id": "blood_pressure_meds",
-    "label": "Blood Pressure Meds",
+    "label": "Blood Pressure Medication",
     "phase": 4,
     "kind": "systemic",
     "zones": [
@@ -699,7 +699,7 @@ export const TRIGGERS: TriggerDef[] = [
   },
   {
     "id": "insulin_diabetes_meds",
-    "label": "Insulin / Diabetes Meds",
+    "label": "Insulin / Diabetes Medication",
     "phase": 4,
     "kind": "systemic",
     "zones": [

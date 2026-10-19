@@ -244,7 +244,7 @@ function AreaSpotlight({ vm, onPick, paused, seconds = 60 }: { vm: InsightsVM; o
 }
 function AreaSheet({ vm, index, onClose }: { vm: InsightsVM; index: number; onClose: () => void }) {
   const a = vm.areas[index], care = AREA_CARE[a.key] ?? AREA_CARE_DEFAULT;
-  const sections: [string, string[], string][] = [["Daily care", care.care, "#0d9488"], ["Before it happens", care.prevent, "#7c3aed"], ["When it happens", care.manage, "#db2777"]];
+  const sections: [string, string[], string][] = [["Daily care", care.care, "#0d9488"], ["Before it happens", care.prevent, "#7c3aed"], ["When it happened", care.manage, "#db2777"]];
   return (
     <Popup title={`${a.label}: how to care for it`} onClose={onClose}>
       <p style={{ color: "#3f6f6c" }}>Logged in {a.count} of your {vm.n} episodes (#{index + 1} most affected).</p>
@@ -456,7 +456,7 @@ const Insights = () => {
       onClick: top3.length ? () => setSheet(vm.triggers.indexOf(top3[0])) : undefined,
     },
     {
-      key: "time", bg: "linear-gradient(145deg,#6d28d9,#8b5cf6)", fg: "#fff", eyebrow: "When it happens",
+      key: "time", bg: "linear-gradient(145deg,#6d28d9,#8b5cf6)", fg: "#fff", eyebrow: "When it happened",
       title: vm.peak ? vm.peak.label : "No time pattern yet", big: vm.peak ? pct(vm.peak.share) : undefined,
       line: vm.peak ? "of your timed episodes. Plan cooling steps before this window." : vm.timedCount < 6 ? `${6 - vm.timedCount} more timed logs unlock this.` : "Your episodes are spread across the day.",
     },
