@@ -6,6 +6,8 @@ import { webPushService } from '@/services/WebPushService';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import type { Thresholds } from '@/types';
+import { usePermissionFlow } from '@/hooks/usePermissionFlow';
+import { PermissionGuidanceModal } from '@/components/notifications/PermissionGuidanceModal';
 
 interface WebPushSettingsProps {
   thresholds: Thresholds;
@@ -13,6 +15,7 @@ interface WebPushSettingsProps {
 
 export const WebPushSettings: React.FC<WebPushSettingsProps> = ({ thresholds }) => {
   const { user } = useAuth();
+  const { startNotificationFlow, startLocationFlow } = usePermissionFlow();
   const [isSupported, setIsSupported] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -67,30 +70,19 @@ export const WebPushSettings: React.FC<WebPushSettingsProps> = ({ thresholds }) 
   const handleSubscribe = async () => {
     setIsLoading(true);
     try {
-      // Get location for weather-based alerts
-      const loc = await getLocation();
-      setLocation(loc);
+      // Use the unified flow for notifications
+      const notifResult = await startNotificationFlow();
 
-      const subscription = await webPushService.subscribe(
-        user?.id,
-        loc?.lat,
-        loc?.lng,
-        {
-          temperature: thresholds.temperature,
-          humidity: thresholds.humidity,
-          uv: thresholds.uvIndex,
-        }
-      );
+      if (notifResult === 'granted') {
+        // Also ensure location is granted for weather-based alerts
+        const locResult = await startLocationFlow();
+        const loc = await getLocation();
+        setLocation(loc);
 
-      if (subscription) {
         setIsSubscribed(true);
         setPermission('granted');
         toast.success('Push notifications enabled!', {
           description: 'You\'ll receive alerts even when the app is closed.',
-        });
-      } else {
-        toast.error('Failed to enable notifications', {
-          description: 'Please allow notifications in your browser settings.',
         });
       }
     } catch (error) {
@@ -235,6 +227,7 @@ export const WebPushSettings: React.FC<WebPushSettingsProps> = ({ thresholds }) 
 
   return (
     <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4 space-y-4">
+      <PermissionGuidanceModal />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {isSubscribed ? (

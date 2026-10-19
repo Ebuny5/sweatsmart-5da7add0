@@ -1,10 +1,20 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Trash2 } from "lucide-react";
 import AppLayout from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import EpisodeInsights from "@/components/episode/EpisodeInsights";
 import { useEpisodes } from "@/hooks/useEpisodes";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 // ── All original logic — untouched ──────────────────────────────────────────
 const getSeverityConfig = (level: number) => {
@@ -37,7 +47,7 @@ const TRIGGER_CATEGORY_COLORS: Record<string, string> = {
 
 // ── Section wrapper ──────────────────────────────────────────────────────────
 const DetailSection = ({ title, emoji, children }: { title: string; emoji: string; children: React.ReactNode }) => (
-  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+  <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-slate-100 overflow-hidden">
     <div className="px-5 pt-4 pb-3 border-b border-gray-50 flex items-center gap-2">
       <span className="text-lg">{emoji}</span>
       <h3 className="font-bold text-sm text-gray-800">{title}</h3>
@@ -50,7 +60,7 @@ const DetailSection = ({ title, emoji, children }: { title: string; emoji: strin
 const EpisodeDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { episodes, loading } = useEpisodes();
+  const { episodes, loading, deleteEpisode } = useEpisodes();
 
   if (loading) {
     return (
@@ -92,14 +102,50 @@ const EpisodeDetail = () => {
 
         {/* ── GRADIENT HERO ──────────────────────────────────────────────── */}
         <div className={`bg-gradient-to-br ${severityConfig.gradient} px-6 pt-8 pb-10 rounded-b-[2.5rem] shadow-lg mb-6`}>
-          {/* Back button */}
-          <button
-            onClick={() => navigate("/history")}
-            className="flex items-center gap-1.5 text-white/80 hover:text-white text-sm font-medium mb-6 transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to History
-          </button>
+          {/* Top Header Controls */}
+          <div className="flex items-center justify-between mb-6">
+            <button
+              onClick={() => navigate("/history")}
+              className="flex items-center gap-1.5 text-white/80 hover:text-white text-sm font-medium transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to History
+            </button>
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-white text-xs font-semibold backdrop-blur-xs transition-all border border-red-200/30"
+                >
+                  <Trash2 className="h-3.5 w-3.5 text-red-200" />
+                  Delete Episode
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="rounded-3xl">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Episode?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the episode record from your account and analytics.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl"
+                    onClick={async () => {
+                      if (id) {
+                        await deleteEpisode(id);
+                        navigate("/history");
+                      }
+                    }}
+                  >
+                    Delete Permanently
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
 
           {/* Date & title */}
           <p className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-1">
@@ -176,9 +222,6 @@ const EpisodeDetail = () => {
               </p>
             </DetailSection>
           )}
-
-          {/* ── INSIGHTS ───────────────────────────────────────────────── */}
-          <EpisodeInsights episode={episode} />
 
           {/* ── BACK BUTTON ────────────────────────────────────────────── */}
           <button

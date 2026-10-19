@@ -125,8 +125,12 @@
     @apply border-border;
   }
 
-  body {
-    @apply bg-background text-foreground font-sans;
+  html, body {
+    @apply bg-background text-foreground font-sans overflow-x-hidden max-w-[100vw] w-full;
+  }
+
+  #root {
+    @apply overflow-x-hidden max-w-[100vw] w-full;
   }
 }
 
@@ -136,6 +140,34 @@ body {
 
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-area-left {
+  padding-left: env(safe-area-inset-left, 0px);
+}
+
+.safe-area-right {
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.pl-safe {
+  padding-left: env(safe-area-inset-left, 0px);
+}
+
+.pr-safe {
+  padding-right: env(safe-area-inset-right, 0px);
 }
 
 @keyframes voice-pulse {
@@ -181,4 +213,128 @@ body {
 
 .match-pulse-animation {
   animation: match-pulse 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.brand-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.2;
+}
+
+.brand-title {
+  font-size: 15px;
+  line-height: 1.1;
+  font-weight: 700;
+  margin: 0;
+  padding: 4px 0 0 0;
+}
+
+.brand-subtitle-1 {
+  font-size: 10px;
+  font-weight: 500;
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+
+
+/* Container holding both buttons */
+.auth-buttons-container {
+  display: flex;
+  align-items: center;
+  gap: 12px; /* Uniform spacing between buttons */
+}
+/* Base button styles to ensure identical shapes */
+.nav-btn {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 20px; /* Forces identical inner sizing */
+  border-radius: 20px; /* Matching clean pill shape */
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px; /* Guarantees identical heights */
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+/* Custom, styled Sign Up button */
+.btn-signup {
+  background-color: #E2D3F5; /* Light purple fill from your design */
+  color: #4A154B; /* Dark text for contrast */
+  border: none;
+}
+/* Upgraded Login button to match shape and height */
+.btn-login {
+  background-color: transparent;
+  color: #FFFFFF; /* Clean white text */
+  border: 2px solid #FFFFFF; /* Outlined border gives it identical structure */
+}
+
+/* Marquee for Landing Page Footer Badges */
+.footer-badges-marquee {
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.marquee-container {
+  display: flex;
+  overflow: hidden;
+  width: 100%;
+}
+
+.marquee-content {
+  display: flex;
+  width: max-content;
+  animation: marquee 15s linear infinite;
+}
+
+.marquee-content:hover {
+  animation-play-state: paused;
+}
+
+.marquee-set {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding-right: 20px;
+  flex-shrink: 0;
+}
+
+.marquee-set a {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+}
+
+.marquee-set img {
+  height: 54px !important;
+  width: auto !important;
+  max-width: none !important;
+  display: block;
+  flex-shrink: 0;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-25%); /* Move exactly 1 out of 4 sets for a seamless loop */
+  }
+}
+
+@media (max-width: 640px) {
+  .marquee-content {
+    animation-duration: 25s;
+  }
+  .marquee-set {
+    gap: 16px;
+    padding-right: 16px;
+  }
+  .marquee-set img {
+    height: 42px !important;
+  }
 }

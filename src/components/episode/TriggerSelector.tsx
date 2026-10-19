@@ -103,14 +103,14 @@ const TriggerSelector: React.FC<TriggerSelectorProps> = ({
       </p>
 
       {TRIGGER_GROUPS.map((group) => (
-        <div key={`${group.category}-${group.title}`} className="space-y-2">
+        <div key={`${group.category}-${group.title}`} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
           {/* Category header */}
           <div className="space-y-0.5">
-            <h4 className="font-semibold text-sm text-gray-800 flex items-center gap-1.5">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
               <span>{group.categoryEmoji}</span>
               {group.title}
             </h4>
-            <p className="text-[11px] text-black font-bold leading-snug pl-5">
+            <p className="text-[11px] text-slate-400 font-medium leading-snug pl-5">
               {group.researchNote}
             </p>
           </div>
@@ -132,18 +132,18 @@ const TriggerSelector: React.FC<TriggerSelectorProps> = ({
                       getEffectiveTip(trigger.label, trigger.tip)
                     )
                   }
-                  className={`relative flex items-center gap-2 px-4 py-2.5 rounded-full border-2 transition-all duration-200 min-h-[48px]
+                  className={`relative flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border-2 transition-all duration-200
                     ${
                       isSelected
                         ? `${group.selectedBg} ${group.selectedBorder} shadow-sm`
-                        : "bg-blue-50 border-gray-200 hover:border-gray-300 hover:bg-gray-100"
+                        : "bg-slate-50/50 border-slate-200 hover:border-slate-300 hover:bg-slate-100 text-slate-700"
                     }
                     ${isHighlighted ? "match-pulse-animation ring-2 ring-blue-300 border-blue-600" : ""}
                   `}
                 >
                   {isSelected && (
-                    <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center shadow-sm">
-                      <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center shadow-sm">
+                      <svg width="8" height="6" viewBox="0 0 10 8" fill="none">
                         <path
                           d="M1 4L3.5 6.5L9 1"
                           stroke="white"
@@ -154,10 +154,10 @@ const TriggerSelector: React.FC<TriggerSelectorProps> = ({
                       </svg>
                     </span>
                   )}
-                  <span className="text-lg leading-none">{trigger.emoji}</span>
+                  <span className="text-sm leading-none">{trigger.emoji}</span>
                   <span
-                    className={`text-sm font-bold ${
-                      isSelected ? "text-black" : "text-black"
+                    className={`text-xs font-medium ${
+                      isSelected ? "text-black" : ""
                     }`}
                   >
                     {trigger.label}
@@ -189,24 +189,24 @@ const TriggerSelector: React.FC<TriggerSelectorProps> = ({
 
       {/* Custom triggers */}
       {customTriggers.length > 0 && (
-        <div className="space-y-2">
-          <h4 className="font-semibold text-sm text-gray-700 flex items-center gap-1.5">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
             <span>✨</span> Your Custom Triggers
           </h4>
           <div className="flex flex-wrap gap-2">
             {customTriggers.map((trigger, i) => (
               <div
                 key={i}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-full border-2 bg-amber-50 border-amber-400 shadow-sm min-h-[48px]"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border-2 bg-amber-50 border-amber-400 shadow-sm"
               >
-                <span className="text-lg">✨</span>
-                <span className="text-sm font-medium text-gray-800">{trigger.label}</span>
+                <span className="text-sm">✨</span>
+                <span className="text-xs font-medium text-gray-800">{trigger.label}</span>
                 <button
                   type="button"
                   onClick={() => handleRemoveTrigger(trigger)}
                   className="ml-1 text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  <X className="h-3.5 w-3.5" />
+                  <X className="h-3 w-3" />
                 </button>
               </div>
             ))}
@@ -223,14 +223,14 @@ const TriggerSelector: React.FC<TriggerSelectorProps> = ({
               value={customTrigger}
               onChange={(e) => setCustomTrigger(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAddCustomTrigger()}
-              className="flex-1 rounded-full min-h-[48px] px-4"
+              className="flex-1 rounded-full h-[40px] px-4 text-sm"
               autoFocus
             />
             <Button
               type="button"
               onClick={handleAddCustomTrigger}
               disabled={!customTrigger.trim()}
-              className="rounded-full min-h-[48px] px-5"
+              className="rounded-full h-[40px] px-5 text-sm"
             >
               Add
             </Button>
@@ -249,10 +249,10 @@ const TriggerSelector: React.FC<TriggerSelectorProps> = ({
           <button
             type="button"
             onClick={() => setShowCustomInput(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-full border-2 border-dashed border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-all min-h-[48px]"
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border-2 border-dashed border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-all"
           >
             <Plus className="h-4 w-4" />
-            <span className="text-sm font-medium">Add your own trigger</span>
+            <span className="text-xs font-medium">Add your own trigger</span>
           </button>
         )}
       </div>

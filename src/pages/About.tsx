@@ -19,11 +19,11 @@ const About = () => {
             <p>
               At <a href="https://www.giftovate.world" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline inline-flex items-center gap-1">
                 Giftovate Therapeutics Ltd <ExternalLink className="w-4 h-4" />
-              </a>, we are reimagining digital health for invisible and stigmatized conditions. Our flagship innovation, the SweatSmart app, empowers individuals living with hyperhidrosis to log symptoms, analyze triggers, and receive personalized recommendations for better daily management.
+              </a>, we are reimagining digital health for invisible and stigmatized conditions. Our flagship innovation, the HidroAlly app, empowers individuals living with hyperhidrosis to log symptoms, analyze triggers, and receive personalized recommendations for better daily management.
             </p>
             
             <p>
-              SweatSmart already features a palm scanner powered by Google Gemini Cloud Vision and generative AI, capable of differentiating and detecting hyperhidrosis. This demo has been successfully integrated with simulated data from Xiaomi Band wearables and galvanic skin response (GSR) sensors during the Innovate Naija Challenge. With funding, we aim to expand to full live sensor integration, delivering real-time readings for users worldwide.
+              HidroAlly already features a palm scanner powered by Google Gemini Cloud Vision and generative AI, capable of differentiating and detecting hyperhidrosis. This demo has been successfully integrated with simulated data from Xiaomi Band wearables and galvanic skin response (GSR) sensors during the Innovate Naija Challenge. With funding, we aim to expand to full live sensor integration, delivering real-time readings for users worldwide.
             </p>
             
             <p>

@@ -187,7 +187,7 @@ serve(async (req) => {
       ? 'IMPORTANT: Sensor data HAS been provided. You MUST acknowledge and reference these values in your analysis. Explain how they correlate or conflict with visual findings.'
       : 'Note: No sensor data available for this analysis.';
 
-    const prompt = `You are a specialized dermatological AI assistant for SweatSmart.guru.
+    const prompt = `You are a specialized dermatological AI assistant for hidroally.space.
 
 Goal: Produce a detailed, medically grounded assessment from an image. Prioritize VISUAL evidence first, then correlate with sensors.
 

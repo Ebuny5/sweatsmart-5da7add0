@@ -1,0 +1,28 @@
+--- src/pages/Insights.tsx
++++ src/pages/Insights.tsx
+@@ -284,7 +284,7 @@
+         </div>
+       </header>
+
+-  if (episodes.length === 0) {
++  if (nonDryEpisodes.length === 0) {
+     return (
+       <AppLayout>
+         <div className="bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 min-h-screen p-4 flex flex-col pt-12">
+@@ -340,7 +340,7 @@
+             <BrainCircuit className="h-4 w-4 text-white/50" />
+           </div>
+           <p className="text-[10px] text-white/50 text-center font-medium mt-3">
+-            Based on <strong className="text-white">{episodes.length} logged episodes</strong> — your personal hyperhidrosis intelligence
++            Based on <strong className="text-white">{nonDryEpisodes.length} logged episodes</strong> — your personal hyperhidrosis intelligence
+           </p>
+         </div>
+
+@@ -358,7 +358,7 @@
+             </div>
+
+             <div className="grid grid-cols-2 gap-3 mb-6">
+-              <StatTile emoji="📋" value={episodes.length} label="Total episodes" gradient="bg-violet-50" />
++              <StatTile emoji="📋" value={nonDryEpisodes.length} label="Total episodes" gradient="bg-violet-50" />
+               <StatTile emoji="⚡" value={analytics.avgSeverity} label="Avg HDSS" gradient="bg-pink-50" />
+             </div>
