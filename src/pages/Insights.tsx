@@ -91,9 +91,7 @@ const PanelTitle = ({ children, sub }: { children: React.ReactNode; sub?: string
 );
 
 // ── Orb: the user's data as a picture ──
-function Orb({ vm, scanning, step, onPick }: { vm: InsightsVM; scanning: boolean; step: string; onPick: (i: number) => void }) {
-  const drops = vm.triggers.filter(t => t.id !== "no_clear_trigger").slice(0, 3);
-  const angles = [-60, 55, 175];
+function Orb({ vm, scanning, step }: { vm: InsightsVM; scanning: boolean; step: string }) {
   return (
     <div className="relative mx-auto w-[min(88vw,360px)] aspect-square">
       <svg viewBox="0 0 360 360" className="absolute inset-0 w-full h-full" aria-hidden="true">
@@ -117,13 +115,6 @@ function Orb({ vm, scanning, step, onPick }: { vm: InsightsVM; scanning: boolean
           </>
         )}
       </div>
-      {!scanning && drops.map((t, i) => (
-        <button key={t.id} onClick={() => onPick(vm.triggers.indexOf(t))} aria-label={`See ${t.label}`}
-          className="lg-float absolute w-12 h-12 rounded-full bg-white shadow-lg flex items-center justify-center text-2xl active:scale-95"
-          style={{ left: `${50 + 45 * Math.cos((angles[i] * Math.PI) / 180)}%`, top: `${50 + 45 * Math.sin((angles[i] * Math.PI) / 180)}%`, animationDelay: `${i * 0.7}s` }}>
-          {ICONS[t.id] || "💧"}
-        </button>
-      ))}
     </div>
   );
 }
@@ -487,14 +478,13 @@ const Insights = () => {
         <span className="text-xs px-3 py-1 rounded-full bg-white/80 border border-teal-100" style={{ color: "#3f6f6c" }}>Updated today · {vm.n} episodes</span>
       </div>
 
-      <Orb vm={vm} scanning={scanning} step={steps[step]} onPick={i => setSheet(i)} />
+      <Orb vm={vm} scanning={scanning} step={steps[step]} />
 
       {!scanning && (
         <div className="space-y-4 mt-2">
           <div className="text-center px-2">
             <h1 className="text-[30px] leading-tight font-semibold" style={{ fontFamily: DISPLAY }}>{vm.hero.headline}</h1>
             <p className="text-base mt-1" style={{ color: "#245250" }}>{vm.hero.sub}</p>
-            <p className="text-sm mt-1" style={{ color: "#3f6f6c" }}>Tap a droplet to see a trigger.</p>
           </div>
 
   {/* swipeable story cards - compact size */}
