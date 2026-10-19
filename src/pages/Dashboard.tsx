@@ -124,13 +124,27 @@ function GroupedChart({ buckets, sel, onEp, onDry, onSlot }: { buckets: Bucket[]
 
 function Calendar({ cal, onPick }: { cal: CalCell[][]; onPick: (c: CalCell) => void }) {
   const cellBg = (c: CalCell) => (c.kind === "episode" ? GRADE_COLOR[(c.grade || 1) - 1] : c.kind === "dry" ? DRY_COLOR : "#e3eeed");
+  const monthHeaders = useMemo(() => {
+    let lastCol = -10;
+    return cal.map((col, w) => {
+      const d = col[0].date;
+      const prev = w > 0 ? cal[w - 1][0].date : null;
+      const isNewMonth = !prev || prev.getMonth() !== d.getMonth();
+      if (isNewMonth && (w - lastCol >= 3 || w === 0)) {
+        lastCol = w;
+        return MONTHS[d.getMonth()];
+      }
+      return null;
+    });
+  }, [cal]);
+
   return (
     <div className="grid gap-[3px]" style={{ gridTemplateColumns: `16px repeat(${cal.length}, minmax(0, 1fr))` }}>
-      {cal.map((col, w) => { const d = col[0].date, prev = w > 0 ? cal[w - 1][0].date : null;
-        const show = !prev || prev.getMonth() !== d.getMonth();
+      {cal.map((col, w) => {
+        const label = monthHeaders[w];
         return (
           <span key={"m" + w} className="relative block h-4 min-w-0" style={{ gridColumn: w + 2, gridRow: 1 }}>
-            {show && <span className="absolute left-0 top-0 text-xs leading-none whitespace-nowrap" style={{ color: MUTED }}>{MONTHS[d.getMonth()]}</span>}
+            {label && <span className="absolute left-0 top-0 text-xs leading-none whitespace-nowrap" style={{ color: MUTED }}>{label}</span>}
           </span>
         );
       })}
