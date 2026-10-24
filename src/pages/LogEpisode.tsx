@@ -27,6 +27,7 @@ import { loadInsightState, saveInsightState } from "@/features/insights/insightS
 import { loggingReminderService, LAST_LOG_TIME_KEY, CURRENT_HDSS_KEY } from "@/services/LoggingReminderService";
 import { useVoiceLogging } from "@/hooks/useVoiceLogging";
 import VoiceVisualizer from "@/components/episode/VoiceVisualizer";
+import { checkWarriorEligibility, hasLoggedToday } from "@/utils/warriorEligibility";
 
 // ── COMPREHENSIVE CLINICAL KNOWLEDGE MATRIX ──────────────────────────────────
 const CLINICAL_KNOWLEDGE: Record<string, { title: string; mechanism: string; icon: string }> = {
@@ -668,6 +669,17 @@ const LogEpisode = () => {
         toast({ title: "Body areas required", description: "Please select at least one affected body area.", variant: "destructive" });
         return;
       }
+    }
+
+    // Daily limit check for non-warriors
+    const eligibility = checkWarriorEligibility(episodes || []);
+    if (!eligibility.unlocked && hasLoggedToday(episodes || [])) {
+      toast({
+        title: "Daily logging limit reached ⏳",
+        description: "Non-warriors can log 1 episode per day. Log 8 flare-ups across 2 weeks to unlock the Hyperhidrosis Warrior Badge for unlimited daily logs.",
+        variant: "destructive",
+      });
+      return;
     }
 
     setIsSubmitting(true);

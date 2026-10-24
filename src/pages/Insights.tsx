@@ -569,7 +569,7 @@ const Insights = () => {
 
           {/* actions */}
           <div className="grid grid-cols-1 gap-3">
-            <button onClick={() => { try { downloadClinicalReport({ rows, patient: patientFromProfile(profileRow, user), profile }); toast({ title: "Report downloaded", description: "Share it with your dermatologist." }); } catch { toast({ title: "Could not create report", description: "Please try again.", variant: "destructive" }); } }}
+            <button onClick={() => { try { downloadClinicalReport({ rows, patient: patientFromProfile(profileRow, user), profile }); toast({ title: "Report downloaded", description: "Share it with your dermatologist." }); } catch (err: any) { toast({ title: "Could not create report", description: err?.message || "Please try again.", variant: "destructive" }); } }}
               className="rounded-[28px] p-4 flex items-center gap-3 text-left text-white shadow-lg" style={{ background: "linear-gradient(135deg,#0f766e,#0891b2)" }}>
               <FileText className="h-6 w-6 shrink-0" />
               <div className="flex-1"><p className="font-semibold text-base">Doctor report</p><p className="text-sm opacity-90">Your history, ready to share with a dermatologist.</p></div>

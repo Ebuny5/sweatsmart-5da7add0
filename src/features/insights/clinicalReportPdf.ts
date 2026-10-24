@@ -12,6 +12,7 @@ import jsPDF from "jspdf";
 import { hdssRound, TRIGGER_INDEX, type UserProfileInput } from "./insightEngine";
 import { buildInsightsViewModel, episodeTime, typicalText, plain, type InsightsVM } from "./insightsAnalytics";
 import { buildGuide, GUIDE_SOURCES, TELL_YOUR_DERMATOLOGIST, type Guide } from "./treatmentGuide";
+import { checkWarriorEligibility } from "@/utils/warriorEligibility";
 
 // ───────────────────────────── Content ─────────────────────────────
 export interface PatientInfo { name: string; age?: number | string | null; sex?: string | null; country?: string | null; diagnosis?: string | null }
@@ -253,6 +254,11 @@ export function renderClinicalReport(c: ReportContent): jsPDF {
 }
 
 export function downloadClinicalReport(args: { rows: any[]; patient: PatientInfo; profile?: UserProfileInput }): void {
+  const eligibility = checkWarriorEligibility(args.rows || []);
+  if (!eligibility.unlocked) {
+    throw new Error(eligibility.message);
+  }
+
   const content = buildReportContent(args);
   const doc = renderClinicalReport(content);
   const d = new Date(); const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;

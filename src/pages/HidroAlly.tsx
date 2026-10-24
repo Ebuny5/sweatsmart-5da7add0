@@ -584,11 +584,16 @@ const HidroAlly = () => {
   };
 
   const generatePDFReport = async () => {
-    downloadClinicalReport({
-      rows: rawEpisodes,
-      patient: patientFromProfile(profile, user),
-      profile: { declaredType: declaredTypeFrom((profile as any)?.diagnosis_type || (profile as any)?.diagnosis) },
-    });
+    try {
+      downloadClinicalReport({
+        rows: rawEpisodes,
+        patient: patientFromProfile(profile, user),
+        profile: { declaredType: declaredTypeFrom((profile as any)?.diagnosis_type || (profile as any)?.diagnosis) },
+      });
+      toast.success('Clinical report downloaded successfully');
+    } catch (err: any) {
+      toast.error(err.message || 'Could not generate clinical report');
+    }
   };
 
   // ── Stop active TTS playback safely ───────────────────────────────────────
