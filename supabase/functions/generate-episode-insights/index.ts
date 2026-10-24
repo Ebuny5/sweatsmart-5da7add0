@@ -6,6 +6,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const MAX_TRIGGERS = 10;
+const MAX_BODY_AREAS = 10;
+const MAX_NOTES_LENGTH = 1000;
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -25,6 +29,8 @@ serve(async (req) => {
       isDryDay,
       is_dry_day,
       userName,
+      episodesList = [],
+      totalEpisodes = 1,
     } = payload;
     const dryDay = (isDryDay ?? is_dry_day) === true;
 
@@ -108,203 +114,162 @@ serve(async (req) => {
     } catch (sqlErr) {
       console.error('SQL RPC execution failed, generating inline clinical fallback:', sqlErr);
 
-      // Embedded safe fallback (no missing file dependency)
-      const greeting = userName ? `Hi ${userName}, this is HidroAlly` : 'Hi, this is HidroAlly';
+      // API Key check for AI model generation
+      const API_KEY = Deno.env.get('GOOGLE_AI_STUDIO_API_KEY') || Deno.env.get('LOVABLE_API_KEY') || Deno.env.get('OPENAI_API_KEY');
 
-      const fallbackInsights = dryDay ? {
-        clinicalAnalysis: "Asymptomatic dry intervals confirm stabilized basal sympathetic cholinergic tone and temporary eccrine ductal occlusion.",
-        immediateRelief: [
-          "Maintain nocturnal application protocol to avoid premature ductal unblocking.",
-          "Apply ceramide-based barrier moisturizers to preserve skin mantle integrity."
-        ],
-        treatmentOptions: [
-          "Continue current compliance schedule. Consistency is necessary to maintain therapeutic saturation."
-        ],
-        lifestyleModifications: [
-          "Track consecutive dry days to provide objective response metrics for clinical review."
-        ],
-        medicalAttention: "No clinical safety concerns present during asymptomatic intervals.",
-        emotionalOpener: `${greeting}. Great job tracking an asymptomatic day. Here is your clinical maintenance guidance.`,
-        cta: "If you need a more clinical or in-depth evaluation of this episode, our HidroAlly clinical assistant is ready in the chat.",
-        isDryDay: true
-      } : {
-        clinicalAnalysis: `This episode reflects active focal hyperhidrosis recorded at HDSS ${severity}. Postganglionic sympathetic outflow stimulated localized eccrine output beyond basal thermoregulatory needs.`,
-        immediateRelief: [
-          "Extremity Vasculature Cooling: Run cool water over pulse points at your wrists for 3 to 4 minutes to signal core temperature reduction.",
-          "Autonomic Downregulation: Perform 3 to 5 minutes of paced diaphragmatic breathing to moderate sympathetic arousal."
-        ],
-        treatmentOptions: [
-          "Review targeted first-line topical therapy or consult your dermatologist regarding prescription muscarinic receptor antagonists."
-        ],
-        lifestyleModifications: [
-          "Maintain active ventilation across high-demand spaces to support cutaneous evaporative cooling."
-        ],
-        medicalAttention: Number(severity) >= 3
-          ? "At HDSS 3 or higher, functional disruption is significant. Bring your episode logs to a physician to discuss prescription escalation."
-          : "Standard monitoring: no immediate red flags identified.",
-        emotionalOpener: `${greeting}, your personal hyperhidrosis clinical guide. Here is your evidence-based analysis for this logged episode.`,
-        cta: "If you need a more clinical or in-depth evaluation of this episode, our HidroAlly clinical assistant is ready in the chat.",
-        isDryDay: false
-      };
+      const greeting = userName ? `Hi ${userName}` : 'Hi there';
 
-    if (!API_KEY) {
-      throw new Error('GOOGLE_AI_STUDIO_API_KEY is not configured');
-    }
+      if (!API_KEY) {
+        // Safe embedded fallback tailored strictly to selected areas
+        const sanitizedAreas = (Array.isArray(bodyAreas) ? bodyAreas : []).join(' and ') || 'your skin';
+        const fallbackInsights = dryDay ? {
+          clinicalAnalysis: "Asymptomatic dry intervals confirm stabilized basal sympathetic cholinergic tone and temporary eccrine ductal occlusion.",
+          immediateRelief: [
+            "Maintain nocturnal application protocol to avoid premature ductal unblocking.",
+            "Apply ceramide-based barrier moisturizers to preserve skin mantle integrity."
+          ],
+          treatmentOptions: [
+            "Continue current compliance schedule to maintain therapeutic saturation."
+          ],
+          lifestyleModifications: [
+            "Track consecutive dry days to provide objective response metrics for clinical review."
+          ],
+          medicalAttention: "No clinical safety concerns present during asymptomatic intervals.",
+          emotionalOpener: `${greeting}, great job tracking an asymptomatic day. Here is your clinical maintenance guidance.`,
+          cta: "If you need a more clinical or in-depth evaluation of this episode, our HidroAlly clinical assistant is ready in the chat.",
+          isDryDay: true
+        } : {
+          clinicalAnalysis: `${greeting}, let's look closely at what your body experienced during this flare-up.\n\nYou logged an episode affecting your ${sanitizedAreas} with a severity rating of HDSS ${severity} out of 4 (indicating significant discomfort and daily interference).\n\nUnderstanding Your Triggers:\n${formattedTriggersForSQL.length ? formattedTriggersForSQL.map((t: string) => `• ${t}: Stimulates localized autonomic eccrine arousal across your ${sanitizedAreas}.`).join('\n') : '• Idiopathic factors: Spontaneous autonomic sympathetic discharge beyond thermoregulatory need.'}\n\nLongitudinal Trend (${totalEpisodes} Entries Logged):\nYour recorded entries focus on ${sanitizedAreas}, providing valuable baseline data for clinical review.`,
+          immediateRelief: (Array.isArray(bodyAreas) && bodyAreas.length > 0 ? bodyAreas : ['affected areas']).slice(0, 3).map((area: string) => `For your ${area}: Apply cool compresses or allow air movement across your ${area} to dissipate localized heat.`),
+          treatmentOptions: [
+            "Discuss targeted topicals, localized nerve-signal blockers, or oral anticholinergics with your dermatologist."
+          ],
+          lifestyleModifications: (formattedTriggersForSQL.length ? formattedTriggersForSQL : ['Environmental heat']).slice(0, 3).map((trig: string) => `${trig}: Adjust microclimate and daily routine to minimize peak exposure.`),
+          medicalAttention: `Because your HDSS score of ${severity} reflects daily impact, discussing targeted clinical treatments with a specialist is an important next step. Note: Seek immediate medical care if sweating is accompanied by high fever, unexplainable weight loss, chest pressure, or nocturnal soaking sweats.`,
+          emotionalOpener: `${greeting}, your personal HidroAlly Clinical Companion. Here is your evidence-based analysis for this logged episode.`,
+          cta: "If you need a more clinical or in-depth evaluation of this episode, our HidroAlly clinical assistant is ready in the chat.",
+          isDryDay: false
+        };
 
-    // Build a detailed prompt with hyperhidrosis medical knowledge
-    // Sanitize user inputs for prompt (escape special characters and limit length)
-    const sanitizedTriggers = triggers
-      .slice(0, MAX_TRIGGERS)
-      .map((t: any) => {
-        const label = String(t.label || t.value || '').slice(0, 200);
-        const type = String(t.type || 'unknown').slice(0, 50);
-        return `${label} (${type})`;
-      })
-      .join(', ');
-    
-    const mappedAreas = bodyAreas
-      .slice(0, MAX_BODY_AREAS)
-      .map((a: string) => {
-        const areaStr = String(a).toLowerCase().slice(0, 100);
-        if (areaStr.includes('underarm')) return 'Axillary vaults (underarms)';
-        if (areaStr.includes('face') || areaStr.includes('scalp')) return 'Craniofacial region (face & scalp)';
-        if (areaStr.includes('hand') || areaStr.includes('palm')) return 'Palmar surfaces (hands)';
-        if (areaStr.includes('feet') || areaStr.includes('sole')) return 'Plantar surfaces (feet)';
-        if (areaStr.includes('chest')) return 'Thoracic region (chest)';
-        if (areaStr.includes('groin') || areaStr.includes('pelvi')) return 'Inguinal/Pelvic region (groin)';
-        if (areaStr.includes('back')) return 'Dorsal region (back)';
-        // Title case for anything else
-        return areaStr.charAt(0).toUpperCase() + areaStr.slice(1);
-      });
+        return new Response(JSON.stringify({ insights: fallbackInsights, source: 'fallback' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
 
-    let sanitizedAreas = mappedAreas.join(', ');
-    if (mappedAreas.length > 1) {
-      sanitizedAreas = `Multifocal primary focal hyperhidrosis (${sanitizedAreas})`;
-    }
-    
-    const sanitizedNotes = notes ? String(notes).slice(0, MAX_NOTES_LENGTH) : '';
+      // Build AI prompt with strict dynamic area filtering and grammar rules
+      const sanitizedTriggers = (Array.isArray(triggers) ? triggers : [])
+        .slice(0, MAX_TRIGGERS)
+        .map((t: any) => typeof t === 'string' ? t.trim() : (t.label || t.value || '').trim())
+        .filter(Boolean)
+        .join(', ') || 'No Identifiable Trigger';
 
-    const EPISODE_INSIGHTS_SYSTEM_PROMPT = `
-You are the HidroAlly Clinical Insight Engine, an expert digital health consultant specializing in Primary and Secondary Hyperhidrosis. Your role is to generate personalized, empathetic, highly accurate clinical episode analyses based on user-logged data.
+      const rawAreas = (Array.isArray(bodyAreas) ? bodyAreas : [])
+        .slice(0, MAX_BODY_AREAS)
+        .map((a: string) => String(a).trim())
+        .filter(Boolean);
 
-### INPUT SCHEMA:
-You will receive a JSON payload with:
-- affected_areas: string[] (e.g., ["Palms", "Soles", "Face", "Axillae", or custom user-defined areas])
-- triggers: string[] (e.g., ["Heat", "Crowded Spaces", "Synthetic Fabrics", "No Identifiable Trigger", or custom user-defined triggers])
-- severity_hdss: number (1 to 4, whole grade from 1 to 4 - NEVER output decimal HDSS values)
-- additional_notes: string (Optional freeform narrative from the user)
-- sensor_data: object (Optional EDA in µS, ambient temperature, UV index)
+      const sanitizedAreas = rawAreas.join(', ');
 
----
+      const sanitizedNotes = notes ? String(notes).slice(0, MAX_NOTES_LENGTH) : '';
 
-### CORE LOGICAL DIRECTIVES:
+      const EPISODE_INSIGHTS_SYSTEM_PROMPT = `
+You are the HidroAlly Personal Clinical Companion, a warm, highly empathetic, and professional AI consultant specializing in Hyperhidrosis. Your role is to generate clear, polished, standard conversational English episode analyses based strictly on user-logged data.
 
-1. DYNAMIC SYNTHESIS (NO CANNED OPENERS):
-   - ABSOLUTELY NEVER use static templates like "What you experienced in [areas]...", "For a hyperhidrosis warrior...", or start by simply listing the body areas.
-   - You MUST vary your opening sentence across reports. Begin with a clinical observation about the autonomic response or severity.
-   - Frame the clinical picture naturally based on the combination of severity, anatomical locations, and context.
-   - Weave in the user's "additional_notes" directly into the Clinical Analysis to make the insight truly personal. If sensor data (EDA, temperature) is present, reference how physiological arousal or heat correlated with the episode.
+### CRITICAL RULES & DIRECTIVES:
 
-2. TRIGGER HANDLING - STRICT RULES:
-   - If the triggers list includes "No Identifiable Trigger" or is empty:
-     * YOU MUST NOT USE THE WORDS "triggers are clearly identified", "manageable variables", or anything similar.
-     * YOU MUST treat this as classic idiopathic sympathetic overactivity.
-     * YOU MUST explicitly explain spontaneous autonomic sympathetic discharge and hypothalamic threshold sensitivity.
-     * YOU MUST NOT advise "identifying triggers" or searching for causes.
-   - If specific or custom triggers ARE selected (and NOT "No Identifiable Trigger"):
-     * Analyze the direct physiological connection between those stimuli (e.g., synthetic textiles trapping heat, social adrenergic stimulation) and eccrine response.
+1. STRICT DYNAMIC AREA FILTERING (NO HALLUCINATED AREAS):
+   - ABSOLUTELY NEVER mention unselected body areas (such as "palms", "feet", "back", "groin", "axillae") UNLESS the user explicitly selected them in the "Clinical Anatomical Regions Affected" input.
+   - Restrict ALL mechanisms, relief steps, and clinical observations STRICTLY to the exact logged areas: [ ${sanitizedAreas} ].
 
-3. REGION-SPECIFIC TREATMENT ISOLATION:
-   - Provide distinct, self-contained recommendations for each logged area.
-   - DO NOT repeat contraindications across sections. (e.g., If craniofacial is logged, state clearly that metallic salts/aluminum chloride are unsuitable for delicate facial barriers and provide alternatives immediately. DO NOT mention this facial warning inside the underarm section if a dedicated craniofacial section follows).
-   - Match treatments strictly to anatomy:
-     * Palms/Feet: Aluminum chloride 20% (with occlusion), tap-water iontophoresis, intradermal botulinum toxin.
-     * Face/Scalp: Topical anticholinergics (e.g., glycopyrronium / Qbrexza wipes), dermal/hairline botulinum toxin. State clearly that aluminum chloride is contraindicated on the face.
-     * Underarms: Aluminum chloride, topical glycopyrronium/sofpironium, miraDry, botulinum toxin. Explain nocturnal application to dry skin for aluminum chloride.
-     * Multi-Site: Introduce oral anticholinergics (glycopyrrolate, oxybutynin) as a systemic escalation.
+2. DYNAMIC GRAMMAR & SUBJECT-VERB AGREEMENT:
+   - Use correct singular and plural verbs based on the logged anatomy:
+     * Singular zones ("Face", "Head", "Chest", "Back", "Neck", "Torso", "Groin"): "Your Face is a classic focal zone..." or "Your Chest is a secondary truncal area..."
+     * Plural zones ("Palms", "Soles", "Feet", "Hands", "Underarms", "Legs", "Thighs"): "Your Palms are classic focal zones..." or "Your Underarms are..."
 
-4. IMMEDIATE RELIEF BY REGION:
-   - Generate relief steps STRICTLY for the areas recorded:
-     * Craniofacial: Cold damp compress or cooling mist to temporal/forehead thermoreceptors.
-     * Axillary: Localized cold compress, breathable layer swap, and microclimate ventilation.
-     * Palmar/Plantar: Cold-water immersion or evaporative airflow across extremities.
+3. ELIMINATE REPETITION & SYNTHESIZE TRIGGERS:
+   - NEVER use repeated phrases like "That lines up with the sweating on your..." at the end of every trigger point.
+   - Synthesize triggers into a fluid, cohesive narrative explaining brief physiological mechanisms and how they interacted with the user's logged areas.
 
-5. FORMAT & OUTPUT PURITY:
-   - Output ONLY clean standard Markdown.
-   - DO NOT DELETE EM-DASHES OUTRIGHT without replacing them. If you want to use a pause or break, you MUST USE standard commas, colons, or periods to keep sentences grammatically correct and readable. NEVER output the em-dash character (—), but ensure the sentence still flows.
-   - DO NOT output emojis, custom icons, or raw unicode symbols that break PDF canvas rendering.
-   - Keep tone clinical, supportive, and practical.
+4. REQUIRED LAYOUT & STRUCTURE:
+   Format the "clinicalAnalysis" paragraph as follows:
+   "Hi there, let's look closely at what your body experienced during this flare-up.
 
----
+   You logged an episode affecting your [Logged Areas] with a severity rating of HDSS [Severity] out of 4 (indicating that your sweating is causing significant discomfort and interfering with daily activities).
 
-### REPORT STRUCTURE:
+   Looking at your body map, [Dynamic grammar: Your [Focal Area] is/are primary focal area(s), while your [Truncal Area] is/are secondary truncal zone(s)]. This combination suggests a mixed pattern: a combination of nerve-driven focal hyperhidrosis alongside a generalized body cooling response.
 
-**Clinical Analysis**
-- [Dynamic assessment of autonomic response, severity (HDSS), integration of custom notes/sensors, and physiological mechanisms]
+   Understanding Your Triggers:
+   • [Trigger 1]: [Brief mechanism]. In this episode, this directly heightened sensitivity across your [Logged Areas].
+   • [Trigger 2]: [Brief mechanism]. This created a localized microclimate, preventing normal cooling on your [Logged Areas].
 
-**Immediate Relief Strategies**
-- [2 to 3 actionable, rapid physical or thermoregulatory actions tailored to the logged areas]
+   Longitudinal Trend ([Total Episodes] Entries Logged):
+   Across your recorded entries, your symptoms consistently focus on [Logged Areas]. These patterns provide valuable baseline data that points toward primary focal hyperhidrosis. As you log more entries, this profile will become increasingly precise."
 
-**Targeted Treatment Pathways**
-- [Anatomically segregated medical options from first-line to clinical escalation]
+5. IMMEDIATE RELIEF STRATEGIES:
+   - Provide location-specific actions tailored ONLY to the logged areas:
+     "1. For your [Area 1]: [Immediate action]\n2. For your [Area 2]: [Immediate action]"
 
-**Lifestyle & Practical Adjustments**
-- [Footwear/fabric changes, moisture-wicking strategies, and targeted adjustments]
+6. LIFESTYLE MODIFICATIONS:
+   - Provide trigger-based adjustments:
+     "1. [Trigger 1]: [Lifestyle modification]\n2. [Trigger 2]: [Lifestyle modification]"
 
-**Tracking & Clinical Next Steps**
-- [If No Trigger: Shift logging to treatment response and duration. If Triggered: Track threshold patterns. Clear criteria for physician/dermatologist escalation]
+7. HIDROALLY CARE & SPECIALIST GUIDANCE:
+   - "Because your HDSS score reflects significant daily impact, exploring targeted clinical treatments with a specialist is an important next step.\n\nPotential options your dermatologist may discuss include topicals, localized nerve-signal blockers, or systemic therapies tailored to your specific zones. Your [Total Episodes] logged entries give your doctor clear, objective telemetry so your consultation begins with real data rather than memory estimates.\n\nNote: Please seek immediate medical care if sweating is accompanied by high fever, unexplainable weight loss, chest pressure, or nocturnal soaking sweats, as these warrant prompt medical review."
 `;
 
-    // Dynamic Tracking Logic
-    let tracking_focus = "";
-    if (sanitizedTriggers.toLowerCase().includes("no identifiable trigger") || !sanitizedTriggers) {
-      tracking_focus = "CRITICAL INSTRUCTION: The user has NO IDENTIFIABLE TRIGGERS. You MUST discuss spontaneous autonomic sympathetic discharge. You MUST NOT say their triggers are clear. You MUST NOT tell them to find triggers.";
-    } else {
-      tracking_focus = "Focus on identifying trigger combinations, environmental thresholds (temperature/EDA), and situational patterns.";
-    }
+      const prompt = `${EPISODE_INSIGHTS_SYSTEM_PROMPT}
 
-    const prompt = `${EPISODE_INSIGHTS_SYSTEM_PROMPT}
-
-**Episode Data:**
+**Logged Episode Data:**
 - Severity: ${severity}/4 HDSS
 - Clinical Anatomical Regions Affected: ${sanitizedAreas}
 - Triggers: ${sanitizedTriggers}
 - Additional Context (Patient notes): ${sanitizedNotes || "None provided"}
-- Time logged: ${new Date().toISOString()}
-- Dynamic Tracking Focus: ${tracking_focus}
+- Total Episodes Logged: ${totalEpisodes}
+- User Name: ${userName || "User"}
 
-**Structure your response as a JSON object with these exact keys:**
+**Return a JSON object with these exact keys:**
 {
-  "clinicalAnalysis": "A richly worded, highly structured clinical analysis in paragraph form. Discuss pathology, location, severity, triggers, and the absence of systemic red flags. Vary phrasing to ensure uniqueness.",
-  "immediateRelief": ["3 specific, evidence-based techniques (e.g., blotting papers for face, alcohol-based sanitizer for quick evaporation on hands, cold compresses, or specific breathing techniques). Explain *why* they work biologically."],
-  "treatmentOptions": ["3 targeted treatment recommendations strictly tailored to the specific body areas affected in this episode. Include specific medical names (e.g., Topical Glycopyrrolate, Iontophoresis, Qbrexza, Oxybutynin). Explain their mechanism (e.g., blocking muscarinic receptors)."],
-  "lifestyleModifications": ["3 actionable, clinical lifestyle modifications tailored to the logged triggers."],
-  "medicalAttention": "Clear guidance on when to see a doctor and specific red flags (e.g., sudden generalized sweating)."
+  "clinicalAnalysis": "Complete Clinical Analysis string adhering to the required structure above",
+  "immediateRelief": ["Array of immediate relief strings formatted as 'For your [Area]: [Action]'"],
+  "treatmentOptions": ["Array of clinical treatment option descriptions tailored strictly to the logged areas"],
+  "lifestyleModifications": ["Array of lifestyle modifications formatted as '[Trigger]: [Modification]'"],
+  "medicalAttention": "Complete HidroAlly Care & Specialist Guidance text",
+  "emotionalOpener": "${greeting}, your personal HidroAlly Clinical Companion. Here is your evidence-based analysis for this logged episode.",
+  "cta": "If you need a more clinical or in-depth evaluation of this episode, our HidroAlly clinical assistant is ready in the chat."
 }`;
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [{ text: prompt }],
-            },
-          ],
-        }),
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Gemini API error:', response.status, errorText);
+        throw new Error('AI service unavailable');
       }
-    );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Gemini API error:', response.status, errorText);
-      throw new Error('AI service unavailable');
+      const resData = await response.json();
+      const textResponse = resData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+      let parsedInsights;
+      try {
+        const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
+        parsedInsights = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(textResponse);
+      } catch (pErr) {
+        console.error('Failed to parse AI JSON response:', pErr, textResponse);
+        throw pErr;
+      }
+
+      return new Response(JSON.stringify({ insights: parsedInsights, source: 'ai' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+
     }
-
   } catch (err) {
     console.error('Edge Function Request Error:', err);
     return new Response(JSON.stringify({ error: 'Unable to retrieve clinical protocols' }), {

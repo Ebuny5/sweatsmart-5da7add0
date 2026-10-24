@@ -708,8 +708,8 @@ const Profile = () => {
                       profile: { declaredType: declaredTypeFrom((profile as any)?.diagnosis_type || (profile as any)?.diagnosis) },
                     });
                     toast({ title: "Report downloaded 📋", description: "Share this PDF with your dermatologist." });
-                  } catch (e) {
-                    toast({ title: "Could not create report", description: "Please try again.", variant: "destructive" });
+                  } catch (e: any) {
+                    toast({ title: "Could not create report", description: e.message || "Please try again.", variant: "destructive" });
                   }
                 }}
                 className="w-full flex items-center justify-between p-4 rounded-xl border border-teal-100 bg-teal-50/50 hover:bg-teal-100/50 transition-all group"

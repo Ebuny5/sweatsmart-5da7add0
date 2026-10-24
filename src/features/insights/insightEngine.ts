@@ -187,6 +187,17 @@ const inc = (r: Record<string, number>, k: string) => { r[k] = (r[k] || 0) + 1; 
 const mostCommon = (r: Record<string, number>): Array<[string, number]> =>
   Object.entries(r).sort((a, b) => b[1] - a[1]);
 
+function formatZoneGrammar(areas: string[], zoneType: "focal" | "truncal"): string {
+  if (!areas.length) return "";
+  const joined = your(areas);
+  const isPlural = areas.length > 1 || areas.some(a => ["palms", "soles", "feet", "hands", "underarms", "legs", "thighs", "toes", "fingers"].includes(a.toLowerCase()));
+  if (zoneType === "focal") {
+    return isPlural ? `${joined} represent primary focal areas` : `${joined} represents a primary focal area`;
+  } else {
+    return isPlural ? `${joined} are secondary truncal zones` : `${joined} is a secondary truncal zone`;
+  }
+}
+
 // ───────────────────────────── Episodes & stats ─────────────────────────────
 export interface NEp { areas: string[]; tids: string[]; labels: Record<string, string>; hdss: number; ts: Date | null }
 
@@ -350,84 +361,44 @@ function pickLifestyle(tids: string[], s: Stats, st: InsightState): LifestyleIte
 }
 
 // ───────────────────────────── Section builders ─────────────────────────────
-const OPENERS = [
-  "Let's walk through this flare-up together.",
-  "Here's a plain-language look at what your body just did.",
-  "Let's break down what happened during this flare-up.",
-  "Here's what this episode is telling us.",
-  "Think of this as a quick consultation about the episode you just logged.",
-];
-
-function buildClinical(cur: NEp, s: Stats, a: Assessment, st: InsightState): string[] {
-  const n = s.n; const paras = [vary(st, "opener", OPENERS)];
+function buildClinical(cur: NEp, s: Stats, _a: Assessment, _st: InsightState): string[] {
+  const n = s.n;
+  const paras: string[] = ["Hi there, let's look closely at what your body experienced during this flare-up."];
   const { areas, tids } = cur;
-  const A = areas.length ? your(areas) : "your skin";
-  let S: string;
-  if (!st.seenHdssDef) {
-    S = `HDSS ${cur.hdss} (on the 1-to-4 Hyperhidrosis Disease Severity Scale this means ${HDSS_LONG[cur.hdss] || "a level we could not read"})`;
-    st.seenHdssDef = true;
-  } else S = `HDSS ${cur.hdss} (${HDSS_SHORT[cur.hdss] || "unrated"})`;
-  const labs = tids.map(t => labelOf(s, t));
-  const T = labs.length ? join(labs) : "no trigger you could pin down";
-  paras.push(vary(st, "recap", [
-    `You logged sweating on ${A}, at ${S}. The triggers you suspect are ${T}.`,
-    `This time it hit ${A}, rated ${S}, with ${T} on your list of suspects.`,
-    `${cap(A)} were affected at ${S}, and you linked it to ${T}.`,
-    `The episode involved ${A} at ${S}, and ${T} stood out as the likely spark.`,
-  ]));
-  const foc = areas.filter(x => FOCAL.has(x)); const tru = areas.filter(x => TRUNCAL.has(x));
-  if (foc.length && !tru.length) paras.push(vary(st, "zone_f", [
-    "Everything you marked is a classic focal zone, so the location itself fits the usual pattern.",
-    `The spots you picked, ${your(foc)}, are the textbook places where primary hyperhidrosis tends to appear.`]));
-  else if (tru.length && !foc.length) paras.push(vary(st, "zone_t", [
-    `Sweating on ${your(tru)} is also what heat, effort and everyday stress cause in almost anyone, so by itself it doesn't point strongly either way. What matters is how often it happens and what sets it off.`,
-    `${cap(your(tru))} are 'trunk' areas that sweat for most people when they are warm, so we'll lean on your triggers and repeat logs to learn more.`]));
-  else if (foc.length && tru.length) paras.push(vary(st, "zone_m", [
-    `${cap(your(foc))} are classic focal zones, while ${your(tru)} are trunk areas that sweat in most people when warm. That makes this a mixed picture: some of it may be nerve-driven, some a normal heat response.`,
-    `A mix of both again: ${your(foc)} are focal spots, ${your(tru)} are trunk areas. Heat and stress can easily explain the trunk sweating, so the focal spots are the ones we'll watch most closely.`]));
-  const known = tids.filter(t => TRIGGER_INDEX[t]);
-  for (const tid of known.slice(0, 3)) {
-    const tr = TRIGGER_INDEX[tid]; const k = s.trigC[tid] || 0;
-    if (!st.shownWhy.includes(tid)) {
-      st.shownWhy.push(tid);
-      const matched = areas.filter(x => tr.zones.includes(CLUSTER[x]));
-      const tail = matched.length ? ` That lines up with the sweating on ${your(matched)}.`
-        : areas.length ? ` It is not a classic cause of sweating on ${your(areas)}, so watch whether it repeats there.` : "";
-      const rep = k >= 2 ? ` It is now in ${k} of your ${n} logs.` : "";
-      paras.push(`${tr.label}: ${tr.why}${tail}${rep}`);
-    } else {
-      let top: string | null = null; let best = 0;
-      for (const [key, c] of Object.entries(s.pairC)) { const [t, ar] = key.split(SEP); if (t === tid && c > best) { best = c; top = ar; } }
-      const where = top ? `, most often with your ${top}` : "";
-      paras.push(vary(st, `rep_${tid}`, [
-        `${tr.label} is back for the ${ord(k)} time in ${n} episodes${where}.`,
-        `${tr.label} again: ${k} of your ${n} episodes so far${where}.`,
-        `Another ${tr.label} episode. It now shows up in ${Math.round(100 * k / n)}% of your logs${where}.`]));
-    }
-  }
-  if (known.length > 3) paras.push(`Also on your list: ${join(known.slice(3).map(t => labelOf(s, t)))}.`);
-  const { lean, support: sup, flags: flg } = a;
-  if (n === 1) {
-    paras.push("Because this is your first entry, it is too early to say whether your sweating is primary hyperhidrosis or secondary hyperhidrosis. In primary hyperhidrosis the sweat glands are healthy but the nerves that switch them on react too easily. In secondary hyperhidrosis something else is driving the sweating and that cause needs to be found. The difference shows up in patterns: where it happens, what sets it off, whether it happens at rest and whether it ever wakes you at night. Your next 3 to 4 entries will start to reveal that.");
-    if (a.missing.length) paras.push(`Two things worth keeping an eye on, because they help tell the two apart: ${join(a.missing.slice(0, 2))}. You can tell the HidroAlly chat about them any time.`);
-  } else if (n <= 3) {
-    const rem = Math.max(4 - n, 1);
-    const txt: Record<string, string> = {
-      primary_like: `After ${n} entries, your pattern is starting to resemble primary hyperhidrosis: ${semi(sup.slice(0, 2))}. This is a first impression, not a conclusion.`,
-      unclear: `After ${n} entries there is no clear lean yet. That is normal this early, because a single trigger or area can look different once there is a second and third example.`,
-      mixed: `After ${n} entries the picture is mixed: ${sup[0] || "some signs point to primary hyperhidrosis"}, but ${flg[0] || "one detail needs a closer look"}.`,
-      check_cause: `After ${n} entries, one detail is worth a doctor's look: ${flg[0] || "a possible underlying cause"}. This doesn't mean something is wrong. It means the cause should be ruled out.`,
-    };
-    paras.push(`${txt[lean]} Log ${rem} or more episodes and the comparison becomes much sharper.`);
-  } else if (lean === "primary_like") {
-    paras.push(`Across ${n} entries, your pattern is ${n < 8 ? "starting to look consistent" : "consistent"} with primary hyperhidrosis. What points that way: ${semi(sup.slice(0, 3))}. It isn't dangerous and it doesn't mean you are unwell: the glands are healthy and the nerve signal that switches them on is over-eager. It tends to be lifelong but is very manageable, and your logs show which triggers to tackle first. Only a clinician can confirm it.`);
-  } else if (lean === "mixed") {
-    paras.push(`Across ${n} entries the picture is mixed. Signs for primary hyperhidrosis: ${semi(sup.slice(0, 2)) || "a few"}. Details worth checking: ${semi(flg.slice(0, 2))}. Sharing these logs with a doctor is the best way to settle it.`);
-  } else if (lean === "check_cause") {
-    paras.push(`Across ${n} entries, some details are worth a doctor's attention: ${semi(flg.slice(0, 3))}. In secondary hyperhidrosis the sweating is a symptom of something else, so finding and treating that cause is what actually fixes it. It is common and often very treatable, and your log history will help the doctor get there faster.`);
+  const areaLabel = areas.length ? your(areas) : "your skin";
+
+  paras.push(`You logged an episode affecting ${areaLabel} with a severity rating of HDSS ${cur.hdss} out of 4 (indicating that your sweating is causing significant discomfort and interfering with daily activities).`);
+
+  const foc = areas.filter(x => FOCAL.has(x));
+  const tru = areas.filter(x => TRUNCAL.has(x));
+
+  let zoneText = "";
+  if (foc.length && tru.length) {
+    zoneText = `Looking at your body map, ${formatZoneGrammar(foc, "focal")}, while ${formatZoneGrammar(tru, "truncal")}. This combination suggests a mixed pattern: a combination of nerve-driven focal hyperhidrosis alongside a generalized body cooling response.`;
+  } else if (foc.length) {
+    zoneText = `Looking at your body map, ${formatZoneGrammar(foc, "focal")}. This fits classic primary hyperhidrosis, where sweat glands are healthy but autonomic nerve signals react too easily.`;
+  } else if (tru.length) {
+    zoneText = `Looking at your body map, ${formatZoneGrammar(tru, "truncal")}. Sweating in these zones commonly responds to core body temperature and ambient warmth.`;
   } else {
-    paras.push(`Across ${n} entries, the pattern hasn't leaned clearly in either direction yet. That is useful information too. More detail on timing, family history and night sweats would help most.`);
+    zoneText = `Looking at your body map, sweating on ${areaLabel} reflects localized autonomic eccrine activation.`;
   }
+  paras.push(zoneText);
+
+  const known = tids.filter(t => TRIGGER_INDEX[t]);
+  if (known.length) {
+    const trigLines = known.slice(0, 3).map(tid => {
+      const tr = TRIGGER_INDEX[tid];
+      const matched = areas.filter(x => tr.zones.includes(CLUSTER[x]));
+      const affectStr = matched.length ? your(matched) : areaLabel;
+      return `• ${tr.label}: ${tr.why} In this episode, this directly heightened sensitivity across ${affectStr}.`;
+    });
+    paras.push(`Understanding Your Triggers:\n${trigLines.join("\n")}`);
+  }
+
+  const dominantZones = mostCommon(s.areaC).slice(0, 2).map(([x]) => x);
+  const domStr = dominantZones.length ? your(dominantZones) : areaLabel;
+  paras.push(`Longitudinal Trend (${n} Entries Logged):\nAcross your recorded entries, your symptoms consistently focus on ${domStr}. These patterns provide valuable baseline data that points toward primary focal hyperhidrosis. As you log more entries, this profile will become increasingly precise.`);
+
   return paras;
 }
 
@@ -467,38 +438,26 @@ function buildTracker(s: Stats, st: InsightState, dryDays: number): string[] {
   return lines;
 }
 
-function buildCare(cur: NEp, s: Stats, a: Assessment, clusters: Set<string>, st: InsightState): string[] {
+function buildCare(cur: NEp, s: Stats, _a: Assessment, clusters: Set<string>, st: InsightState): string[] {
   const n = s.n; const paras: string[] = [];
   if (cur.hdss >= 3) {
-    paras.push(vary(st, "care_high", [
-      "At this rating the sweating is getting in the way of your day, and that is the point where treatment is worth discussing instead of just coping.",
-      "A rating of 3 or 4 means sweating is disrupting daily life, so this is a good moment to look beyond tips and towards treatment.",
-      "Sweating that regularly disrupts your routine deserves more than self-care. There are medical options that work well."]));
+    paras.push("Because your HDSS score reflects significant daily impact, exploring targeted clinical treatments with a specialist is an important next step.");
     const pool: Array<[string, string]> = [];
     clusters.forEach(c => (TREATMENTS[c] || []).forEach(t => { if (!pool.some(p => p[0] === t[0])) pool.push(t); }));
     const fresh = pool.filter(p => !st.shownTreat.includes(p[0])); const chosen = (fresh.length ? fresh : pool).slice(0, 2);
     for (const [name] of chosen) { const i = st.shownTreat.indexOf(name); if (i >= 0) st.shownTreat.splice(i, 1); st.shownTreat.push(name); }
-    if (chosen.length) paras.push("Options clinicians commonly discuss for your areas: " + chosen.map(c => c[1]).join("; ") + ". Your dermatologist will advise on what suits you.");
-    paras.push(vary(st, "care_book", [
-      `${n === 1 ? "Your logged entry gives" : `Your ${n} logged entries give`} a HidroAlly partner dermatologist objective evidence (where, when, what triggered it and how severe) so the consultation starts with data instead of guesses.`,
-      "Bring your HidroAlly history to your partner dermatologist consultation. The areas, triggers and severity trend you've recorded help them pick the right treatment faster.",
-      "When you book your partner dermatologist consultation, share your tracker. The more entries it holds, the more precisely a specialist can match a treatment to your pattern."]));
+    const optsText = chosen.length
+      ? "Potential options your dermatologist may discuss include " + chosen.map(c => c[1]).join("; ") + " tailored to your specific zones."
+      : "Potential options your dermatologist may discuss include topicals, localized nerve-signal blockers, or systemic therapies tailored to your specific zones.";
+    paras.push(`${optsText} Your ${n === 1 ? "logged entry gives" : `${n} logged entries give`} your doctor clear, objective telemetry so your consultation begins with real data rather than memory estimates.`);
   } else {
-    paras.push(vary(st, "care_low", [
-      "At this level most people do well with trigger management and the strategies above. A specialist consultation becomes worthwhile if your rating climbs to 3 or 4, or if sweating starts to affect work, relationships or confidence.",
-      "Your sweating is in the self-management range right now. Keep logging so that, if it ever worsens, a specialist can see exactly how things changed.",
-      "This episode sits in the milder range. Keep using the relief steps and review your tracker weekly. If you start rating episodes 3 or 4, that is your cue to book a consultation."]));
+    paras.push("Your sweating is in the self-management range right now. Keep using the relief steps and review your tracker weekly. If your rating climbs to 3 or 4, or if sweating starts disrupting work, relationships, or confidence, exploring targeted clinical treatments with a specialist is an important next step.");
   }
-  if (a.lean === "check_cause" || a.flags.length) {
-    paras.push(vary(st, "care_flag", [
-      "Please speak to a doctor soon (not only a dermatologist) if sweating comes with fever, unexplained weight loss, chest pain or a racing heart, or if you wake up soaked at night. These can point to a cause that needs treating.",
-      "Sweating together with fever, weight loss, palpitations or soaking night sweats deserves a prompt medical check, whatever your HidroAlly history says."]));
-    if (a.flags.length) paras.push(`Mention to your doctor that ${join(a.flags.slice(0, 2))}.`);
-  }
+  paras.push("Note: Please seek immediate medical care if sweating is accompanied by high fever, unexplainable weight loss, chest pressure, or nocturnal soaking sweats, as these warrant prompt medical review.");
   return paras;
 }
 
-// ───────────────────────────── Dry day (kept from your old engine) ─────────────────────────────
+// ───────────────────────────── Dry day ─────────────────────────────
 function buildDryDay(input: EpisodeInput, st: InsightState): InsightResult {
   const sorted = [...(input.episodesList || [])].sort((a, b) => new Date(b.datetime).getTime() - new Date(a.datetime).getTime());
   let streak = 0; for (const ep of sorted) { if (ep.is_dry_day) streak++; else break; }
@@ -522,7 +481,7 @@ function buildDryDay(input: EpisodeInput, st: InsightState): InsightResult {
   const life = ["Note Successful Conditions: Pay attention to your environment today (indoor temperature, clothing choices, stress levels) and replicate these conditions on warmer days."];
   const care = "No active flare-up or red flags logged today. Keep logging dry days alongside flare-ups to demonstrate progress at your next doctor visit.";
   const footer = { text: "Want a deeper look at your progress? Continue the conversation in the HidroAlly chat.", button: "Continue in HidroAlly Chat" };
-  const greeting = input.userName ? `Hi ${input.userName}, this is HidroAlly` : "Hi, this is HidroAlly";
+  const greeting = input.userName ? `Hi ${input.userName}` : "Hi there";
   return {
     stage: 3, entries: sorted.length, lean: "n/a", readingConfidence: "none",
     sections: {
@@ -533,14 +492,14 @@ function buildDryDay(input: EpisodeInput, st: InsightState): InsightResult {
       care: { title: "HidroAlly Care & Specialist Scheduling", paragraphs: [care] },
     },
     footer, disclaimer: DISCLAIMER,
-    emotionalOpener: `${greeting}. Great job tracking an asymptomatic day! Here is your maintenance guidance.`,
+    emotionalOpener: `${greeting}, great job tracking an asymptomatic day! Here is your maintenance guidance.`,
     clinicalAnalysis: analysis, immediateRelief: relief, lifestyleModifications: life, patternTracker: [header],
     medicalAttention: care, cta: footer.text, isDryDay: true,
     dryDayMetrics: { currentStreak: streak, dryDaysLast7: dry7, monthlyDryTotal: dry30, header }, newState: st,
   };
 }
 
-const DISCLAIMER = "These insights are generated by HidroAlly AI for education only. They are not a diagnosis. Always consult a healthcare provider for personal medical advice.";
+const DISCLAIMER = "These insights are AI-generated for educational and tracking support. Always consult your healthcare provider for clinical diagnosis and treatment.";
 
 // ───────────────────────────── Main entry ─────────────────────────────
 export function generateEpisodeInsights(input: EpisodeInput, state?: InsightState | null): InsightResult {
@@ -576,19 +535,19 @@ export function generateEpisodeInsights(input: EpisodeInput, state?: InsightStat
     intro = "A lifestyle modification is a small change in your routine that makes a trigger less likely to set off sweating. Each one below is matched to a trigger you logged.";
     st.seenLifestyleDef = true;
   }
-  const greeting = input.userName ? `Hi ${input.userName}, this is HidroAlly` : "Hi, this is HidroAlly";
+  const greeting = input.userName ? `Hi ${input.userName}` : "Hi there";
   const footer = { text: "Want a deeper look at this episode? Continue the conversation in the HidroAlly chat.", button: "Continue in HidroAlly Chat" };
   return {
     stage: s.n === 1 ? 1 : s.n <= 3 ? 2 : 3, entries: s.n, lean: a.lean, readingConfidence: confidence,
     sections: {
       clinicalAnalysis: { title: "Clinical Analysis", paragraphs: clinical },
-      immediateRelief: { title: "Immediate Relief Strategies", subtitle: "One for each area you logged. Tell us if it helped so we learn what works for you.", items: relief },
-      lifestyle: { title: "Lifestyle Modifications", subtitle: "Changes that make your logged triggers less likely to set you off", intro, items: life },
+      immediateRelief: { title: "Immediate Relief Strategies", subtitle: "Here are immediate, location-specific actions you can take right now:", items: relief },
+      lifestyle: { title: "Lifestyle Modifications", subtitle: "To reduce the frequency of future flare-ups, consider these adjustments:", intro, items: life },
       patternTracker: { title: "Your Pattern Tracker", lines: tracker },
-      care: { title: "HidroAlly Care & Specialist Scheduling", paragraphs: care },
+      care: { title: "HidroAlly Care & Specialist Guidance", paragraphs: care },
     },
     footer, disclaimer: DISCLAIMER,
-    emotionalOpener: `${greeting}, your personal hyperhidrosis clinical guide. Here is your analysis for this logged episode.`,
+    emotionalOpener: `${greeting}, your personal HidroAlly Clinical Companion. Here is your analysis for this logged episode.`,
     clinicalAnalysis: clinical.join("\n\n"),
     immediateRelief: relief.map(r => `For your ${r.area}: ${r.text}`),
     lifestyleModifications: life.map(l => `${l.trigger}: ${l.text}${l.stat ? " " + l.stat : ""}`),
