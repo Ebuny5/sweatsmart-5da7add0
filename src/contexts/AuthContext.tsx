@@ -171,6 +171,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     try {
+      // Remove the device's native push token binding while the session is still
+      // valid, so the next account on this phone cannot inherit these reminders.
+      const { clearNativePushBinding } = await import('@/services/NativePushService');
+      await clearNativePushBinding();
       await supabase.auth.signOut();
       // Clear all auth-related storage
       localStorage.removeItem('sb-ujbcolxawpzfjkjviwqw-auth-token');

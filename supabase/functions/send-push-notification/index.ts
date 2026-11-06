@@ -127,6 +127,237 @@ function getNormalizedPublicKey(publicKeyB64: string): string {
   return uint8ArrayToBase64Url(pubBytes);
 }
 
+// ── Native push (FCM HTTP v1) ───────────────────────────────────────────────
+// Capacitor Android/iOS builds cannot use Web Push: they register an FCM/APNs
+// device token instead, stored in push_subscriptions.device_token. Delivery goes
+// through Firebase so notifications arrive while the app is closed.
+//
+// Required secret: FCM_SERVICE_ACCOUNT_JSON (Firebase service account JSON, also
+// accepted as FIREBASE_SERVICE_ACCOUNT_JSON). Without it native rows are skipped
+// with `fcm_not_configured` and the web push path is completely unaffected.
+
+type FcmServiceAccount = { projectId: string; clientEmail: string; privateKey: string };
+
+let fcmAccessTokenCache: { token: string; expiresAt: number } | null = null;
+let fcmServiceAccountCache: FcmServiceAccount | null | undefined;
+
+function getFcmServiceAccount(): FcmServiceAccount | null {
+  if (fcmServiceAccountCache !== undefined) return fcmServiceAccountCache;
+
+  const raw =
+    Deno.env.get('FCM_SERVICE_ACCOUNT_JSON') ||
+    Deno.env.get('FIREBASE_SERVICE_ACCOUNT_JSON');
+
+  if (!raw) {
+    fcmServiceAccountCache = null;
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed?.project_id || !parsed?.client_email || !parsed?.private_key) {
+      console.error('FCM: service account JSON is missing project_id/client_email/private_key');
+      fcmServiceAccountCache = null;
+      return null;
+    }
+    fcmServiceAccountCache = {
+      projectId: String(parsed.project_id),
+      clientEmail: String(parsed.client_email),
+      privateKey: String(parsed.private_key),
+    };
+    return fcmServiceAccountCache;
+  } catch (e) {
+    console.error('FCM: FCM_SERVICE_ACCOUNT_JSON is not valid JSON:', (e as Error).message);
+    fcmServiceAccountCache = null;
+    return null;
+  }
+}
+
+function pemToDer(pem: string): Uint8Array {
+  const base64 = pem
+    .replace(/-----BEGIN [^-]+-----/g, '')
+    .replace(/-----END [^-]+-----/g, '')
+    .replace(/\s+/g, '');
+  const binary = atob(base64);
+  return Uint8Array.from(binary, (c) => c.charCodeAt(0));
+}
+
+async function getFcmAccessToken(sa: FcmServiceAccount): Promise<string> {
+  if (fcmAccessTokenCache && fcmAccessTokenCache.expiresAt - 60_000 > Date.now()) {
+    return fcmAccessTokenCache.token;
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const encodeJson = (obj: object) =>
+    uint8ArrayToBase64Url(new TextEncoder().encode(JSON.stringify(obj)));
+
+  const signingInput = `${encodeJson({ alg: 'RS256', typ: 'JWT' })}.${encodeJson({
+    iss: sa.clientEmail,
+    scope: 'https://www.googleapis.com/auth/firebase.messaging',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now,
+    exp: now + 3600,
+  })}`;
+
+  const key = await crypto.subtle.importKey(
+    'pkcs8',
+    pemToDer(sa.privateKey).buffer as ArrayBuffer,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+
+  const signature = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5',
+    key,
+    new TextEncoder().encode(signingInput),
+  );
+
+  const assertion = `${signingInput}.${uint8ArrayToBase64Url(new Uint8Array(signature))}`;
+
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion,
+    }).toString(),
+  });
+
+  const json = await response.json();
+  if (!response.ok || !json?.access_token) {
+    throw new Error(`FCM auth failed (${response.status}): ${JSON.stringify(json)}`);
+  }
+
+  fcmAccessTokenCache = {
+    token: String(json.access_token),
+    expiresAt: Date.now() + Number(json.expires_in || 3600) * 1000,
+  };
+  return fcmAccessTokenCache.token;
+}
+
+/** FCM `data` values must all be strings. */
+function toFcmData(payload: Record<string, unknown>): Record<string, string> {
+  const data: Record<string, string> = {};
+  for (const [key, value] of Object.entries(payload || {})) {
+    if (value === null || value === undefined) continue;
+    if (typeof value === 'object') continue;
+    data[key] = String(value);
+  }
+  return data;
+}
+
+async function sendFcmPush(
+  token: string,
+  payload: any,
+  platform?: string | null,
+): Promise<{ success: boolean; error?: string }> {
+  const sa = getFcmServiceAccount();
+  if (!sa) {
+    // Native delivery is not configured yet; never fail the whole batch.
+    return { success: false, error: 'fcm_not_configured' };
+  }
+
+  try {
+    const accessToken = await getFcmAccessToken(sa);
+
+    const title = String(payload?.title || 'HidroAlly');
+    const body = String(payload?.body || '');
+    const kind = String(payload?.kind || payload?.type || 'reminder');
+    const tag = String(payload?.tag || 'hidroally-push');
+    const url = String(payload?.url || '/');
+    const isClimate =
+      /climate|low|moderate|high|extreme/i.test(kind) || /climate/i.test(tag);
+    const channelId = isClimate ? 'climate' : 'reminder';
+
+    const message = {
+      message: {
+        token,
+        notification: { title, body },
+        data: toFcmData({ ...payload, title, body, url, kind, tag, channel: isClimate ? 'climate' : 'reminder' }),
+        android: {
+          priority: 'HIGH',
+          notification: {
+            channel_id: channelId,
+            color: '#3A7BD5',
+            sound: 'default',
+            click_action: 'FCM_PLUGIN_ACTIVITY',
+            notification_priority: 'PRIORITY_MAX',
+            default_vibrate_timings: true,
+          },
+        },
+        apns: {
+          headers: { 'apns-priority': '10' },
+          payload: {
+            aps: {
+              alert: { title, body },
+              sound: 'default',
+              'interruption-level': 'time-sensitive',
+            },
+          },
+        },
+      },
+    };
+
+    const response = await fetch(
+      `https://fcm.googleapis.com/v1/projects/${sa.projectId}/messages:send`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(message),
+      },
+    );
+
+    if (response.ok) return { success: true };
+
+    const text = await response.text();
+    console.error(`FCM send failed (${response.status}) for ${platform || 'native'}:`, text);
+
+    if (response.status === 401 || response.status === 403) {
+      fcmAccessTokenCache = null;
+      return { success: false, error: 'fcm_auth_failed' };
+    }
+
+    // Dead/rotated token only. A malformed payload (400 INVALID_ARGUMENT) must not
+    // delete a still-valid device, so match on the registration-token errors.
+    if (
+      response.status === 404 ||
+      /UNREGISTERED|Requested entity was not found/i.test(text)
+    ) {
+      return { success: false, error: 'subscription_expired' };
+    }
+
+    return { success: false, error: `fcm_http_${response.status}` };
+  } catch (error) {
+    console.error('FCM error:', (error as Error).message);
+    return { success: false, error: 'fcm_error' };
+  }
+}
+
+/** Route a delivery to the right transport for the stored subscription row. */
+async function deliverPush(
+  sub: any,
+  payload: any,
+  vapid: { publicKey: string; privateKey: string; subject: string },
+): Promise<{ success: boolean; error?: string }> {
+  if (sub?.device_token) {
+    return sendFcmPush(String(sub.device_token), payload, sub?.platform);
+  }
+  if (sub?.endpoint && sub?.p256dh && sub?.auth) {
+    return sendWebPush(
+      { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+      payload,
+      vapid.publicKey,
+      vapid.privateKey,
+      vapid.subject,
+    );
+  }
+  return { success: false, error: 'no_transport' };
+}
+
 // ── Encrypt push message (RFC 8291) ──
 async function encryptPayload(
   p256dh: string,
@@ -395,8 +626,23 @@ serve(async (req) => {
     }
 
     // Auth check
+    const isBroadcast = action === 'send_broadcast';
     const isCronAction = action === 'send_climate_alerts' || action === 'send_logging_reminders';
-    if (isCronAction) {
+
+    if (isBroadcast) {
+      // Announcements reach every user, so they are service-role / cron-secret only.
+      const authHeader = req.headers.get('authorization') || '';
+      const cronHeader = req.headers.get('x-cron-secret') || '';
+      const authorized =
+        authHeader === `Bearer ${supabaseServiceKey}` ||
+        (!!cronSecret && cronSecret.length >= MIN_CRON_SECRET_LENGTH && cronHeader === cronSecret);
+
+      if (!authorized) {
+        return new Response(JSON.stringify({ error: 'Unauthorized broadcast request' }), {
+          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    } else if (isCronAction) {
       const authHeader = req.headers.get('authorization');
       const cronHeader = req.headers.get('x-cron-secret');
 
@@ -440,11 +686,11 @@ serve(async (req) => {
     // send_to_endpoint (Test button and test reminders)
     if (action === 'send_to_endpoint' && endpoint) {
       // Allow passing keys directly to avoid DB lookup delays if available, but fallback to DB
-      let p256dh = body.keys?.p256dh;
-      let auth = body.keys?.auth;
-      let targetEndpoint = endpoint;
+      let target: any = null;
 
-      if (!p256dh || !auth) {
+      if (body.keys?.p256dh && body.keys?.auth) {
+        target = { endpoint, p256dh: body.keys.p256dh, auth: body.keys.auth, kind: 'web' };
+      } else {
         const { data: sub } = await supabase
           .from('push_subscriptions')
           .select('*')
@@ -457,9 +703,7 @@ serve(async (req) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
         }
-        p256dh = sub.p256dh;
-        auth = sub.auth;
-        targetEndpoint = sub.endpoint;
+        target = sub;
       }
 
       // Delay for background testing if requested
@@ -467,10 +711,10 @@ serve(async (req) => {
         await new Promise(r => setTimeout(r, body.delayMs));
       }
 
-      const result = await sendWebPush(
-        { endpoint: targetEndpoint, p256dh, auth },
+      const result = await deliverPush(
+        target,
         normalizeReminderNotification(notification) || { title: '✅ Test', body: 'Push notifications working!', tag: 'test', url: '/climate' },
-        vapidPublicKey, vapidPrivateKey, vapidSubject
+        { publicKey: vapidPublicKey, privateKey: vapidPrivateKey, subject: vapidSubject }
       );
 
       return new Response(JSON.stringify(result), {
@@ -487,10 +731,10 @@ serve(async (req) => {
         .eq('is_active', true);
 
       const results = await Promise.all((subs || []).map(async (sub: any) => {
-        const result = await sendWebPush(
-          { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+        const result = await deliverPush(
+          sub,
           normalizeReminderNotification(notification),
-          vapidPublicKey, vapidPrivateKey, vapidSubject
+          { publicKey: vapidPublicKey, privateKey: vapidPrivateKey, subject: vapidSubject }
         );
         if (!result.success && result.error === 'subscription_expired') {
           await supabase.from('push_subscriptions').delete().eq('id', sub.id);
@@ -499,6 +743,66 @@ serve(async (req) => {
       }));
 
       return new Response(JSON.stringify({ success: true, results }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // send_broadcast — release / "new version available" announcements to every
+    // device (web push + native FCM). Service role or x-cron-secret only.
+    if (action === 'send_broadcast') {
+      const payload = normalizeReminderNotification(notification) || {
+        title: 'HidroAlly update available',
+        body: 'A new version of HidroAlly is ready. Open the app to update.',
+        tag: 'app-update',
+        type: 'system',
+        kind: 'system',
+        url: '/',
+      };
+
+      const platformFilter = typeof body.platform === 'string' ? body.platform : null;
+      let query = supabase.from('push_subscriptions').select('*').eq('is_active', true);
+      if (platformFilter === 'android' || platformFilter === 'ios' || platformFilter === 'web') {
+        query = query.eq('kind', platformFilter);
+      }
+
+      const { data: subs, error } = await query;
+      if (error) {
+        console.error('❌ Broadcast: failed to load subscriptions:', error);
+        return new Response(JSON.stringify({ error: 'Failed to load subscriptions' }), {
+          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      let sent = 0, failed = 0, expired = 0;
+      const rows = subs || [];
+      const CHUNK = 20;
+
+      for (let i = 0; i < rows.length; i += CHUNK) {
+        const chunk = rows.slice(i, i + CHUNK);
+        const results = await Promise.all(chunk.map(async (sub: any) => {
+          const result = await deliverPush(
+            sub,
+            payload,
+            { publicKey: vapidPublicKey, privateKey: vapidPrivateKey, subject: vapidSubject }
+          );
+          return { sub, result };
+        }));
+
+        for (const { sub, result } of results) {
+          if (result.success) {
+            sent++;
+          } else {
+            failed++;
+            if (result.error === 'subscription_expired') {
+              expired++;
+              await supabase.from('push_subscriptions').delete().eq('id', sub.id);
+            }
+          }
+        }
+      }
+
+      console.log(`Broadcast: sent=${sent}, failed=${failed}, expired=${expired}`);
+      return new Response(JSON.stringify({ success: true, sent, failed, expired }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
@@ -606,8 +910,8 @@ serve(async (req) => {
             }
           }
 
-          const result = await sendWebPush(
-            { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+          const result = await deliverPush(
+            sub,
             {
               title: reminderTitle,
               body: reminderBody,
@@ -616,7 +920,7 @@ serve(async (req) => {
               kind: reminderTitle === MISSED_REMINDER_TITLE ? 'missed-checkin' : 'reminder',
               url: '/log-episode',
             },
-            vapidPublicKey, vapidPrivateKey, vapidSubject
+            { publicKey: vapidPublicKey, privateKey: vapidPrivateKey, subject: vapidSubject }
           );
 
           if (result.success) {
@@ -777,10 +1081,10 @@ serve(async (req) => {
             }
           }
 
-          const result = await sendWebPush(
-            { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+          const result = await deliverPush(
+            sub,
             { title, body, tag: 'climate-alert', type: risk, kind: risk, url: '/climate' },
-            vapidPublicKey, vapidPrivateKey, vapidSubject
+            { publicKey: vapidPublicKey, privateKey: vapidPrivateKey, subject: vapidSubject }
           );
 
           if (result.success) {

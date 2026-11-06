@@ -6,6 +6,12 @@ import { notificationManager } from '@/services/NotificationManager';
 import { climateAlertService } from '@/services/ClimateAlertService';
 import { audioAlertPlayer, type AlertKind } from '@/utils/audioAlertPlayer';
 import { attachNativeTapHandler } from '@/services/NativeNotificationBridge';
+import {
+  initializeNativePush,
+  requestNativePushPermissionAndRegister,
+  setNativePushNavigationHandler,
+  syncNativePushContext,
+} from '@/services/NativePushService';
 import { useAuth } from '@/contexts/AuthContext';
 import { webPushService } from '@/services/WebPushService';
 
@@ -27,14 +33,24 @@ const NotificationListener = () => {
     notificationManager;
     loggingReminderService.forceCheck();
     climateAlertService.initialize();
-    // On Android/iOS: request OS-level notification permission and wire taps
-    void notificationManager.requestNativePermissionsIfAvailable();
+    // On Android/iOS: register the device for real FCM/APNs push so reminders and
+    // climate alerts arrive while the app is closed (Web Push cannot do that in a
+    // native WebView), then request OS-level permission and wire taps.
+    setNativePushNavigationHandler((url) => navigate(url));
+    void initializeNativePush();
+    void notificationManager.requestNativePermissionsIfAvailable().then((granted) => {
+      // Once the OS permission is granted, register with FCM/APNs in the same pass
+      // so the device token is stored even on first launch.
+      if (granted) void requestNativePushPermissionAndRegister();
+    });
     void attachNativeTapHandler((url) => navigate(url));
 
     // Keep the background push subscription linked to this user + location,
     // so closed-app climate alerts work without any setup screen.
     const syncPush = () => {
       webPushService.syncSubscriptionContext().catch((e) => console.warn('Push context sync failed:', e));
+      // Keep the native device row bound to this user + location as well.
+      syncNativePushContext().catch((e) => console.warn('Native push context sync failed:', e));
     };
     syncPush();
     const syncInterval = setInterval(syncPush, 30 * 60 * 1000);
@@ -60,6 +76,7 @@ const NotificationListener = () => {
     }
 
     return () => {
+      setNativePushNavigationHandler(null);
       loggingReminderService.cleanup();
       climateAlertService.cleanup();
       clearInterval(syncInterval);

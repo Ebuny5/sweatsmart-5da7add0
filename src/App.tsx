@@ -11,6 +11,7 @@ import { AnimatePresence } from "framer-motion";
 import { useLocation } from "react-router-dom";
 import NotificationListener from "@/components/notifications/NotificationListener";
 import ServiceWorkerUpdate from "@/components/ServiceWorkerUpdate";
+import AppUpdatePrompt from "@/components/AppUpdatePrompt";
 import Index from "./pages/Index";
 import NewIndex from "./pages/NewIndex";
 import Login from "./pages/Login";
@@ -271,6 +272,7 @@ const App = () => {
               <BrowserRouter>
                 <NotificationListener />
                 <ServiceWorkerUpdate />
+                <AppUpdatePrompt />
                 <AppRoutes />
               </BrowserRouter>
             </TooltipProvider>

@@ -452,48 +452,63 @@ export type Database = {
       }
       push_subscriptions: {
         Row: {
-          auth: string
+          app_version: string | null
+          auth: string | null
           created_at: string | null
+          device_token: string | null
           endpoint: string
           humidity_threshold: number | null
           id: string
           is_active: boolean | null
+          kind: string
           last_reminder_sent_at: string | null
+          last_seen_at: string | null
           latitude: number | null
           longitude: number | null
-          p256dh: string
+          p256dh: string | null
+          platform: string | null
           temperature_threshold: number | null
           updated_at: string | null
           user_id: string | null
           uv_threshold: number | null
         }
         Insert: {
-          auth: string
+          app_version?: string | null
+          auth?: string | null
           created_at?: string | null
+          device_token?: string | null
           endpoint: string
           humidity_threshold?: number | null
           id?: string
           is_active?: boolean | null
+          kind?: string
           last_reminder_sent_at?: string | null
+          last_seen_at?: string | null
           latitude?: number | null
           longitude?: number | null
-          p256dh: string
+          p256dh?: string | null
+          platform?: string | null
           temperature_threshold?: number | null
           updated_at?: string | null
           user_id?: string | null
           uv_threshold?: number | null
         }
         Update: {
-          auth?: string
+          app_version?: string | null
+          auth?: string | null
           created_at?: string | null
+          device_token?: string | null
           endpoint?: string
           humidity_threshold?: number | null
           id?: string
           is_active?: boolean | null
+          kind?: string
           last_reminder_sent_at?: string | null
+          last_seen_at?: string | null
           latitude?: number | null
           longitude?: number | null
-          p256dh?: string
+          p256dh?: string | null
+          platform?: string | null
           temperature_threshold?: number | null
           updated_at?: string | null
           user_id?: string | null
