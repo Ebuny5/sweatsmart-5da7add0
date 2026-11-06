@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import { Download, Share2, RefreshCw, X, Linkedin, Instagram, Facebook, MessageCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { checkWarriorEligibility } from "@/utils/warriorEligibility";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Badge canvas renderer
@@ -290,7 +291,7 @@ function drawBadge(
   ctx.font = "13px 'Georgia', serif";
   ctx.fillStyle = `${v.accent1}99`;
   ctx.letterSpacing = "3px";
-  ctx.fillText("SWEATSMART · NEVER SWEAT ALONE", shieldX + 2, shieldTop + 510);
+  ctx.fillText("HIDROALLY · NEVER SWEAT ALONE", shieldX + 2, shieldTop + 510);
   ctx.restore();
 
   // ── Bottom three dots ─────────────────────────────────────────────────────
@@ -309,30 +310,29 @@ function drawBadge(
 // ─────────────────────────────────────────────────────────────────────────────
 // Unlock requirement constants
 // ─────────────────────────────────────────────────────────────────────────────
-const REQUIRED_EPISODES  = 10;
-const REQUIRED_DAYS      = 5;
+const REQUIRED_EPISODES  = 8;
+const REQUIRED_WEEKS     = 2;
 
 interface WarriorBadgeProps {
   userName?: string;
   episodeCount?: number;
   // Full episodes array for unlock calculation — pass from useEpisodes()
-  episodes?: Array<{ datetime: string | Date }>;
+  episodes?: Array<any>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Unlock progress calculator
 // ─────────────────────────────────────────────────────────────────────────────
-function calcUnlockProgress(episodes: Array<{ datetime: string | Date }>) {
-  const total      = episodes.length;
-  const uniqueDays = new Set(
-    episodes.map(e => new Date(e.datetime).toDateString())
-  ).size;
+function calcUnlockProgress(episodes: Array<any>) {
+  const result = checkWarriorEligibility(episodes);
+  const total = result.totalEpisodes;
+  const distinctWeeks = result.distinctWeeks;
 
   const episodePct = Math.min(100, (total / REQUIRED_EPISODES) * 100);
-  const daysPct    = Math.min(100, (uniqueDays / REQUIRED_DAYS) * 100);
-  const unlocked   = total >= REQUIRED_EPISODES && uniqueDays >= REQUIRED_DAYS;
+  const weeksPct   = Math.min(100, (distinctWeeks / REQUIRED_WEEKS) * 100);
+  const unlocked   = result.unlocked;
 
-  return { total, uniqueDays, episodePct, daysPct, unlocked };
+  return { total, distinctWeeks, episodePct, weeksPct, unlocked };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -392,10 +392,10 @@ const WarriorBadge = ({
     () => calcUnlockProgress(episodes),
     [episodes]
   );
-  const { unlocked, total, uniqueDays, episodePct, daysPct } = progress;
+  const { unlocked, total, distinctWeeks, episodePct, weeksPct } = progress;
 
   // Overall combined progress (average of both requirements)
-  const overallPct = Math.round((episodePct + daysPct) / 2);
+  const overallPct = Math.round((episodePct + weeksPct) / 2);
 
   const redraw = useCallback(() => {
     if (canvasRef.current) drawBadge(canvasRef.current, userName, episodeCount, variant);
@@ -422,8 +422,8 @@ const WarriorBadge = ({
 
   const [showShareModal, setShowShareModal] = useState(false);
 
-  const shareText = `I just unlocked the Hyperhidrosis Warrior Badge on SweatSmart! 🛡️ Tracking my journey and turning sweat into strength. Start tracking your resilience with SweatSmart today. #MySweatDoesNotDefineMe #SweatSmartWarrior #HyperhidrosisAwareness`;
-  const shareUrl = "https://sweatsmart.app";
+  const shareText = `I just unlocked the Hyperhidrosis Warrior Badge on HidroAlly! 🛡️ Tracking my journey and turning sweat into strength. Start tracking your resilience with HidroAlly today. #MySweatDoesNotDefineMe #HidroAllyWarrior #HyperhidrosisAwareness`;
+  const shareUrl = "https://www.hidroally.space";
 
   const handleShare = async () => {
     if (!unlocked) { handleLockedTap(); return; }
@@ -437,7 +437,7 @@ const WarriorBadge = ({
           const file = new File([blob], "sweatsmart-warrior-badge.png", { type: "image/png" });
           if (navigator.canShare({ files: [file] })) {
             await navigator.share({
-              title: "SweatSmart Warrior",
+              title: "HidroAlly Warrior",
               text: shareText,
               url: shareUrl,
               files: [file],
@@ -527,6 +527,37 @@ const WarriorBadge = ({
       {/* ── Badge preview ────────────────────────────────────────────── */}
       <div className="px-5 relative">
         <div className="rounded-2xl overflow-hidden shadow-2xl shadow-purple-900 relative">
+          {/* Confetti particles when unlocked */}
+          {unlocked && (
+            <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
+              {[...Array(24)].map((_, i) => {
+                const colors = ["#ec4899", "#a855f7", "#3b82f6", "#eab308", "#10b981", "#f43f5e"];
+                const color = colors[i % colors.length];
+                const left = (i * 17) % 100;
+                const animDelay = (i * 0.15) % 2;
+                const size = 6 + (i % 5);
+                return (
+                  <div
+                    key={i}
+                    className="absolute animate-bounce"
+                    style={{
+                      top: `${(i * 13) % 85}%`,
+                      left: `${left}%`,
+                      width: `${size}px`,
+                      height: `${size * (i % 2 === 0 ? 1 : 1.8)}px`,
+                      backgroundColor: color,
+                      transform: `rotate(${i * 25}deg)`,
+                      borderRadius: i % 3 === 0 ? "50%" : "2px",
+                      opacity: 0.85,
+                      animationDuration: `${1.5 + (i % 3) * 0.5}s`,
+                      animationDelay: `${animDelay}s`,
+                    }}
+                  />
+                );
+              })}
+            </div>
+          )}
+
           <canvas
             ref={canvasRef}
             className="w-full h-auto block"
@@ -565,7 +596,7 @@ const WarriorBadge = ({
 
               <p className="text-white font-black text-sm mb-1">Almost there, Warrior!</p>
               <p className="text-white/50 text-[11px] text-center leading-snug px-6">
-                Log {REQUIRED_EPISODES} episodes across {REQUIRED_DAYS} different days to unlock
+                Log {REQUIRED_EPISODES} episodes across {REQUIRED_WEEKS} different weeks to unlock
               </p>
 
               {/* Overall progress bar */}
@@ -588,17 +619,17 @@ const WarriorBadge = ({
             </div>
           )}
 
-          {/* Unlocked celebration overlay — flashes briefly */}
+          {/* Unlocked celebration badge overlay */}
           {unlocked && (
-            <div className="absolute top-3 right-3">
+            <div className="absolute top-3 right-3 z-20">
               <div
-                className="px-2.5 py-1 rounded-full text-[10px] font-black text-white"
+                className="px-2.5 py-1 rounded-full text-[10px] font-black text-white flex items-center gap-1"
                 style={{
                   background: "linear-gradient(135deg, #7c3aed, #ec4899)",
                   boxShadow: "0 4px 12px rgba(124,58,237,0.5)",
                 }}
               >
-                ✨ Earned
+                🎉 Unlocked!
               </div>
             </div>
           )}
@@ -637,14 +668,14 @@ const WarriorBadge = ({
                 <div className="w-px h-10 bg-white/10" />
               </div>
 
-              {/* Days ring */}
+              {/* Weeks ring */}
               <ProgressRing
-                pct={daysPct}
+                pct={weeksPct}
                 size={56}
                 stroke={4}
                 color="#f472b6"
-                label={`${uniqueDays}/${REQUIRED_DAYS}`}
-                sublabel={`Different\ndays`}
+                label={`${distinctWeeks}/${REQUIRED_WEEKS}`}
+                sublabel={`Distinct\nweeks`}
               />
             </div>
 
@@ -652,11 +683,11 @@ const WarriorBadge = ({
             <p className="text-center text-[10px] text-white/30 mt-3 leading-snug">
               {total === 0
                 ? "Start logging your first episode to begin your warrior journey 💧"
-                : total < REQUIRED_EPISODES && uniqueDays < REQUIRED_DAYS
-                ? `${REQUIRED_EPISODES - total} more episodes across ${REQUIRED_DAYS - uniqueDays} more days to go`
+                : total < REQUIRED_EPISODES && distinctWeeks < REQUIRED_WEEKS
+                ? `${REQUIRED_EPISODES - total} more episodes across ${REQUIRED_WEEKS - distinctWeeks} more weeks to go`
                 : total < REQUIRED_EPISODES
                 ? `Just ${REQUIRED_EPISODES - total} more episode${REQUIRED_EPISODES - total !== 1 ? "s" : ""} to unlock`
-                : `Log across ${REQUIRED_DAYS - uniqueDays} more day${REQUIRED_DAYS - uniqueDays !== 1 ? "s" : ""} to unlock`
+                : `Log across ${REQUIRED_WEEKS - distinctWeeks} more week${REQUIRED_WEEKS - distinctWeeks !== 1 ? "s" : ""} to unlock`
               }
             </p>
           </div>
@@ -725,14 +756,14 @@ const WarriorBadge = ({
       {/* Locked hint below buttons */}
       {!unlocked && (
         <p className="text-center text-[10px] text-purple-400/60 px-5 pb-3 -mt-2 leading-snug">
-          Download &amp; Share unlock after {REQUIRED_EPISODES} episodes across {REQUIRED_DAYS} days
+          Download &amp; Share unlock after {REQUIRED_EPISODES} episodes across {REQUIRED_WEEKS} weeks
         </p>
       )}
 
       {/* ── Footer hashtags ──────────────────────────────────────────── */}
       <div className="px-5 pb-4 text-center">
         <p className="text-[10px] text-purple-400 font-medium leading-snug">
-          #HyperhidrosisWarrior · <span className="text-purple-300 font-bold">#StopTheStigma</span> · #SweatSmart
+          #HyperhidrosisWarrior · <span className="text-purple-300 font-bold">#StopTheStigma</span> · #HidroAlly
         </p>
       </div>
 

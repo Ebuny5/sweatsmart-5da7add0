@@ -1,6 +1,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BodyAreaFrequency } from "@/types";
+import { formatHdss } from "@/utils/hdssGauger";
 
 interface BodyAreaHeatmapProps {
   bodyAreas: BodyAreaFrequency[];
@@ -42,7 +43,7 @@ const BodyAreaHeatmap: React.FC<BodyAreaHeatmapProps> = ({ bodyAreas }) => {
                 <div className="flex justify-between items-center mt-1">
                   <span className="text-xs">{area.count} episodes</span>
                   <span className="text-xs">
-                    Avg: {area.averageSeverity.toFixed(1)}
+                    Typically HDSS {formatHdss(area.averageSeverity)}
                   </span>
                 </div>
               </div>

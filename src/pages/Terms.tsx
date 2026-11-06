@@ -19,7 +19,7 @@ const Terms = () => {
             </CardHeader>
             <CardContent>
               <p className="text-professional-gray text-sm">
-                By accessing or using SweatSmart ("the Service"), you agree to be bound by these Terms of Service ("Terms"). 
+                By accessing or using HidroAlly ("the Service"), you agree to be bound by these Terms of Service ("Terms").
                 If you disagree with any part of these terms, you may not access the Service. These Terms apply to all visitors, 
                 users, and others who access or use the Service.
               </p>
@@ -32,7 +32,7 @@ const Terms = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-professional-gray text-sm">
-                SweatSmart is a digital health platform designed to help users track and manage hyperhidrosis symptoms. Our service includes:
+                HidroAlly is a digital health platform designed to help users track and manage hyperhidrosis symptoms. Our service includes:
               </p>
               <ul className="text-professional-gray text-sm space-y-1 list-disc list-inside">
                 <li>Episode tracking and logging capabilities</li>
@@ -43,7 +43,7 @@ const Terms = () => {
               <div className="bg-accent/50 p-4 rounded-lg">
                 <p className="text-sm font-semibold text-foreground mb-2">Important Medical Disclaimer:</p>
                 <p className="text-professional-gray text-sm">
-                  SweatSmart is NOT a medical device and does not provide medical diagnosis, treatment, or advice. 
+                  HidroAlly is NOT a medical device and does not provide medical diagnosis, treatment, or advice.
                   Always consult with qualified healthcare professionals for medical concerns.
                 </p>
               </div>
@@ -135,12 +135,12 @@ const Terms = () => {
               <div className="bg-accent/50 p-4 rounded-lg mb-4">
                 <p className="text-sm font-semibold text-foreground mb-2">Medical Limitation:</p>
                 <p className="text-professional-gray text-sm">
-                  SweatSmart is not responsible for any medical decisions made based on data or insights from our platform. 
+                  HidroAlly is not responsible for any medical decisions made based on data or insights from our platform.
                   Always consult healthcare professionals for medical advice.
                 </p>
               </div>
               <p className="text-professional-gray text-sm">
-                To the maximum extent permitted by law, SweatSmart shall not be liable for any indirect, incidental, 
+                To the maximum extent permitted by law, HidroAlly shall not be liable for any indirect, incidental,
                 special, or consequential damages arising from your use of the service, even if we have been advised 
                 of the possibility of such damages.
               </p>

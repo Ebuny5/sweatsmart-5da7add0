@@ -41,14 +41,16 @@ serve(async (req) => {
       return generateFallbackResponse(eda, palmResult);
     }
 
-    const prompt = `A wearable device reports an EDA reading of ${eda.toFixed(2)} μS and a palm scan reports "${palmResult}".
+    const prompt = `A wearable device reports an EDA reading of ${eda.toFixed(2)} μS and an affected-area scan reports "${palmResult}".
 Based on these two inputs, provide a fused analysis of the user's state.
 Output a JSON object with 'status' and 'explanation'.
 
 Guidelines for 'status' (these align with the sensor's simulation modes):
-- "Stable": EDA is in the resting range (e.g., < 5.0) and the palm scan shows "No significant moisture.".
-- "Early Alert": EDA is in the active range (e.g., 5.0-10.0) OR the palm scan shows "Moisture detected." when EDA is below 10.0.
-- "Episode Likely": EDA is in the trigger range (e.g., >= 10.0) OR EDA is in the active range (5.0-10.0) and the palm scan also shows "Moisture detected.".
+- "Stable": EDA is in the resting range (e.g., < 5.0) and the affected-area scan shows "No significant moisture.".
+- "Early Alert": EDA is in the active range (e.g., 5.0-10.0) OR the affected-area scan shows "Moisture detected." when EDA is below 10.0.
+- "Episode Likely": EDA is in the trigger range (e.g., >= 10.0) OR EDA is in the active range (5.0-10.0) and the affected-area scan also shows "Moisture detected.".
+
+Refer to the scan as "affected-area moisture" or "moisture detection" — never as "palm moisture".
 
 The 'explanation' should be a brief, professional judgment explaining the result to the user.
 Example for "Early Alert": "Your EDA reading is elevated, suggesting an increase in physiological arousal. Consider monitoring your state."`;
@@ -126,7 +128,7 @@ function generateFallbackResponse(eda: number, palmResult: string): Response {
   if (eda >= 10.0 || (eda >= 5.0 && palmResult === 'Moisture detected.')) {
     fallbackData = { 
       status: 'Episode Likely', 
-      explanation: 'High stress indicators detected based on sensor readings and palm scan. Please take a moment to relax and re-center.' 
+      explanation: 'High stress indicators detected based on sensor readings and affected-area scan. Please take a moment to relax and re-center.' 
     };
   } else if (eda >= 5.0 || palmResult === 'Moisture detected.') {
     fallbackData = { 

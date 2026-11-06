@@ -1,0 +1,29 @@
+--- src/pages/LogEpisode.tsx
++++ src/pages/LogEpisode.tsx
+@@ -195,13 +195,25 @@
+           value: t.value,
+           label: t.label,
+         }));
++
++        // Include the newly logged episode in the episodes list for real-time calculations
++        const newEpisodeForStreak = {
++          id: data?.[0]?.id || 'temp',
++          datetime: datetime.toISOString(),
++          severityLevel: finalSeverity,
++          is_dry_day: isDryDay,
++          hdssLevel: finalSeverity
++        };
++
++        const fullEpisodesList = [newEpisodeForStreak, ...(episodes || [])];
+
+         const insights = generateFallbackInsights(
+           finalSeverity,
+           finalBodyAreas,
+           triggerData,
+           finalNotes,
+           undefined,
+           isDryDay,
++          fullEpisodesList
+         );
+
+         setAiInsights(insights);

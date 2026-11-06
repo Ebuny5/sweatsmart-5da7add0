@@ -1,0 +1,11 @@
+--- src/pages/HidroAlly.tsx
++++ src/pages/HidroAlly.tsx
+@@ -510,7 +510,7 @@
+       }
+     }
+
+-    return { totalEpisodes: episodes.length, avgSeverity: (episodes.reduce((s, e) => s + e.severityLevel, 0) / episodes.length).toFixed(1), topTriggers, topAreas, weeklyTrends };
++    return { totalEpisodes: episodes.length, avgSeverity: episodes.length > 0 ? (episodes.reduce((s, e) => s + e.severityLevel, 0) / episodes.length).toFixed(1) : '0', topTriggers, topAreas, weeklyTrends };
+   }, [rawEpisodes]);
+
+   const userName = profile?.display_name || user?.email?.split('@')[0] || 'Warrior';

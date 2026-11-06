@@ -1,0 +1,27 @@
+--- src/hooks/useClimateData.ts
++++ src/hooks/useClimateData.ts
+@@ -113,11 +113,13 @@
+       });
+
+       if (fnError) throw new Error(fnError.message);
+-      if (data?.simulated) throw new Error("Weather API unavailable — no real data received.");
+
++      // We use data directly if it is successful, or data.data if the response was an error wrapper with fallback data
++      const activeData = data?.isSimulated ? data.data : data;
++
+       const w: WeatherData = {
+-        ...data,
+-        uvIndex: typeof data.uvIndex === 'number' ? data.uvIndex : null,
+-        sky: data.sky ?? 'unknown',
+-        heatIndex: data.heatIndex,
+-        dewPoint: data.dewPoint,
+-        realFeel: data.realFeel,
++        ...activeData,
++        uvIndex: typeof activeData.uvIndex === 'number' ? activeData.uvIndex : null,
++        sky: activeData.sky ?? 'unknown',
++        heatIndex: activeData.heatIndex,
++        dewPoint: activeData.dewPoint,
++        realFeel: activeData.realFeel,
++        isSimulated: data?.isSimulated || false,
+         lastUpdated: Date.now(),
+       };

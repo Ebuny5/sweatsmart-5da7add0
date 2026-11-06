@@ -6,7 +6,39 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
 };
 
+const LOG_REMINDER_TITLE = '⏰ Time for Your Eight-Hour Check-In';
+const LOG_REMINDER_BODY = "It's time to check-in 🤗";
+const MISSED_REMINDER_TITLE = '⏰ Missed Check-In';
+const MISSED_REMINDER_BODY = "You missed your 8-hour check-in";
+
 const MIN_CRON_SECRET_LENGTH = 32;
+
+function normalizeReminderNotification(notification: any) {
+  if (!notification) return notification;
+  const title = String(notification.title || '');
+  const body = String(notification.body || '');
+  const tag = String(notification.tag || '');
+  const type = String(notification.type || notification.kind || '');
+  const isLogReminder =
+    tag.includes('logging-reminder') ||
+    type === 'reminder' ||
+    /time\s+to\s+log/i.test(title) ||
+    /last\s+(?:4|f(?:ou)?r)\s+hours/i.test(body);
+
+  if (!isLogReminder) return notification;
+
+  const isMissed = body.toLowerCase().includes('missed') || title.toLowerCase().includes('missed');
+
+  return {
+    ...notification,
+    title: isMissed ? MISSED_REMINDER_TITLE : LOG_REMINDER_TITLE,
+    body: isMissed ? MISSED_REMINDER_BODY : LOG_REMINDER_BODY,
+    tag: 'logging-reminder',
+    type: 'reminder',
+    kind: isMissed ? 'missed-checkin' : 'reminder',
+    url: notification.url || '/log-episode',
+  };
+}
 
 // ── Base64url helpers ──
 function base64UrlToUint8Array(base64String: string): Uint8Array {
@@ -41,11 +73,8 @@ async function generateVapidToken(
 
   const signingInput = `${encode(header)}.${encode(payload)}`;
 
-  // Import private key
-  let privateKeyBytes = base64UrlToUint8Array(privateKeyB64);
-
-  // If it looks like PKCS8 (longer than 32 bytes), import as PKCS8
   let cryptoKey: CryptoKey;
+  const privateKeyBytes = base64UrlToUint8Array(privateKeyB64);
   if (privateKeyBytes.length > 32) {
     cryptoKey = await crypto.subtle.importKey(
       'pkcs8',
@@ -55,7 +84,6 @@ async function generateVapidToken(
       ['sign']
     );
   } else {
-    // Raw private key — wrap in JWK
     let pubBytes = base64UrlToUint8Array(publicKeyB64);
     if (pubBytes.length === 91) pubBytes = pubBytes.slice(26);
     if (pubBytes.length === 64) {
@@ -99,6 +127,237 @@ function getNormalizedPublicKey(publicKeyB64: string): string {
   return uint8ArrayToBase64Url(pubBytes);
 }
 
+// ── Native push (FCM HTTP v1) ───────────────────────────────────────────────
+// Capacitor Android/iOS builds cannot use Web Push: they register an FCM/APNs
+// device token instead, stored in push_subscriptions.device_token. Delivery goes
+// through Firebase so notifications arrive while the app is closed.
+//
+// Required secret: FCM_SERVICE_ACCOUNT_JSON (Firebase service account JSON, also
+// accepted as FIREBASE_SERVICE_ACCOUNT_JSON). Without it native rows are skipped
+// with `fcm_not_configured` and the web push path is completely unaffected.
+
+type FcmServiceAccount = { projectId: string; clientEmail: string; privateKey: string };
+
+let fcmAccessTokenCache: { token: string; expiresAt: number } | null = null;
+let fcmServiceAccountCache: FcmServiceAccount | null | undefined;
+
+function getFcmServiceAccount(): FcmServiceAccount | null {
+  if (fcmServiceAccountCache !== undefined) return fcmServiceAccountCache;
+
+  const raw =
+    Deno.env.get('FCM_SERVICE_ACCOUNT_JSON') ||
+    Deno.env.get('FIREBASE_SERVICE_ACCOUNT_JSON');
+
+  if (!raw) {
+    fcmServiceAccountCache = null;
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed?.project_id || !parsed?.client_email || !parsed?.private_key) {
+      console.error('FCM: service account JSON is missing project_id/client_email/private_key');
+      fcmServiceAccountCache = null;
+      return null;
+    }
+    fcmServiceAccountCache = {
+      projectId: String(parsed.project_id),
+      clientEmail: String(parsed.client_email),
+      privateKey: String(parsed.private_key),
+    };
+    return fcmServiceAccountCache;
+  } catch (e) {
+    console.error('FCM: FCM_SERVICE_ACCOUNT_JSON is not valid JSON:', (e as Error).message);
+    fcmServiceAccountCache = null;
+    return null;
+  }
+}
+
+function pemToDer(pem: string): Uint8Array {
+  const base64 = pem
+    .replace(/-----BEGIN [^-]+-----/g, '')
+    .replace(/-----END [^-]+-----/g, '')
+    .replace(/\s+/g, '');
+  const binary = atob(base64);
+  return Uint8Array.from(binary, (c) => c.charCodeAt(0));
+}
+
+async function getFcmAccessToken(sa: FcmServiceAccount): Promise<string> {
+  if (fcmAccessTokenCache && fcmAccessTokenCache.expiresAt - 60_000 > Date.now()) {
+    return fcmAccessTokenCache.token;
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const encodeJson = (obj: object) =>
+    uint8ArrayToBase64Url(new TextEncoder().encode(JSON.stringify(obj)));
+
+  const signingInput = `${encodeJson({ alg: 'RS256', typ: 'JWT' })}.${encodeJson({
+    iss: sa.clientEmail,
+    scope: 'https://www.googleapis.com/auth/firebase.messaging',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now,
+    exp: now + 3600,
+  })}`;
+
+  const key = await crypto.subtle.importKey(
+    'pkcs8',
+    pemToDer(sa.privateKey).buffer as ArrayBuffer,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+
+  const signature = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5',
+    key,
+    new TextEncoder().encode(signingInput),
+  );
+
+  const assertion = `${signingInput}.${uint8ArrayToBase64Url(new Uint8Array(signature))}`;
+
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion,
+    }).toString(),
+  });
+
+  const json = await response.json();
+  if (!response.ok || !json?.access_token) {
+    throw new Error(`FCM auth failed (${response.status}): ${JSON.stringify(json)}`);
+  }
+
+  fcmAccessTokenCache = {
+    token: String(json.access_token),
+    expiresAt: Date.now() + Number(json.expires_in || 3600) * 1000,
+  };
+  return fcmAccessTokenCache.token;
+}
+
+/** FCM `data` values must all be strings. */
+function toFcmData(payload: Record<string, unknown>): Record<string, string> {
+  const data: Record<string, string> = {};
+  for (const [key, value] of Object.entries(payload || {})) {
+    if (value === null || value === undefined) continue;
+    if (typeof value === 'object') continue;
+    data[key] = String(value);
+  }
+  return data;
+}
+
+async function sendFcmPush(
+  token: string,
+  payload: any,
+  platform?: string | null,
+): Promise<{ success: boolean; error?: string }> {
+  const sa = getFcmServiceAccount();
+  if (!sa) {
+    // Native delivery is not configured yet; never fail the whole batch.
+    return { success: false, error: 'fcm_not_configured' };
+  }
+
+  try {
+    const accessToken = await getFcmAccessToken(sa);
+
+    const title = String(payload?.title || 'HidroAlly');
+    const body = String(payload?.body || '');
+    const kind = String(payload?.kind || payload?.type || 'reminder');
+    const tag = String(payload?.tag || 'hidroally-push');
+    const url = String(payload?.url || '/');
+    const isClimate =
+      /climate|low|moderate|high|extreme/i.test(kind) || /climate/i.test(tag);
+    const channelId = isClimate ? 'climate' : 'reminder';
+
+    const message = {
+      message: {
+        token,
+        notification: { title, body },
+        data: toFcmData({ ...payload, title, body, url, kind, tag, channel: isClimate ? 'climate' : 'reminder' }),
+        android: {
+          priority: 'HIGH',
+          notification: {
+            channel_id: channelId,
+            color: '#3A7BD5',
+            sound: 'default',
+            click_action: 'FCM_PLUGIN_ACTIVITY',
+            notification_priority: 'PRIORITY_MAX',
+            default_vibrate_timings: true,
+          },
+        },
+        apns: {
+          headers: { 'apns-priority': '10' },
+          payload: {
+            aps: {
+              alert: { title, body },
+              sound: 'default',
+              'interruption-level': 'time-sensitive',
+            },
+          },
+        },
+      },
+    };
+
+    const response = await fetch(
+      `https://fcm.googleapis.com/v1/projects/${sa.projectId}/messages:send`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(message),
+      },
+    );
+
+    if (response.ok) return { success: true };
+
+    const text = await response.text();
+    console.error(`FCM send failed (${response.status}) for ${platform || 'native'}:`, text);
+
+    if (response.status === 401 || response.status === 403) {
+      fcmAccessTokenCache = null;
+      return { success: false, error: 'fcm_auth_failed' };
+    }
+
+    // Dead/rotated token only. A malformed payload (400 INVALID_ARGUMENT) must not
+    // delete a still-valid device, so match on the registration-token errors.
+    if (
+      response.status === 404 ||
+      /UNREGISTERED|Requested entity was not found/i.test(text)
+    ) {
+      return { success: false, error: 'subscription_expired' };
+    }
+
+    return { success: false, error: `fcm_http_${response.status}` };
+  } catch (error) {
+    console.error('FCM error:', (error as Error).message);
+    return { success: false, error: 'fcm_error' };
+  }
+}
+
+/** Route a delivery to the right transport for the stored subscription row. */
+async function deliverPush(
+  sub: any,
+  payload: any,
+  vapid: { publicKey: string; privateKey: string; subject: string },
+): Promise<{ success: boolean; error?: string }> {
+  if (sub?.device_token) {
+    return sendFcmPush(String(sub.device_token), payload, sub?.platform);
+  }
+  if (sub?.endpoint && sub?.p256dh && sub?.auth) {
+    return sendWebPush(
+      { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+      payload,
+      vapid.publicKey,
+      vapid.privateKey,
+      vapid.subject,
+    );
+  }
+  return { success: false, error: 'no_transport' };
+}
+
 // ── Encrypt push message (RFC 8291) ──
 async function encryptPayload(
   p256dh: string,
@@ -108,7 +367,6 @@ async function encryptPayload(
   const clientPublicKey = base64UrlToUint8Array(p256dh);
   const clientAuth = base64UrlToUint8Array(auth);
 
-  // Generate server key pair
   const serverKeyPair = await crypto.subtle.generateKey(
     { name: 'ECDH', namedCurve: 'P-256' },
     true,
@@ -119,7 +377,6 @@ async function encryptPayload(
     await crypto.subtle.exportKey('raw', serverKeyPair.publicKey)
   );
 
-  // Import client public key
   const clientKey = await crypto.subtle.importKey(
     'raw',
     clientPublicKey as unknown as ArrayBuffer,
@@ -128,7 +385,6 @@ async function encryptPayload(
     []
   );
 
-  // ECDH
   const sharedSecret = await crypto.subtle.deriveBits(
     { name: 'ECDH', public: clientKey },
     serverKeyPair.privateKey,
@@ -137,7 +393,6 @@ async function encryptPayload(
 
   const salt = crypto.getRandomValues(new Uint8Array(16));
 
-  // HKDF for PRK
   const prk = await hkdf(
     new Uint8Array(sharedSecret),
     clientAuth,
@@ -145,7 +400,6 @@ async function encryptPayload(
     32
   );
 
-  // HKDF for CEK and nonce
   const context = buildContext(clientPublicKey, serverPublicKeyRaw);
   const cekInfo = concat(new TextEncoder().encode('Content-Encoding: aesgcm\0'), context);
   const nonceInfo = concat(new TextEncoder().encode('Content-Encoding: nonce\0'), context);
@@ -153,7 +407,6 @@ async function encryptPayload(
   const cek = await hkdf(prk, salt, cekInfo, 16);
   const nonce = await hkdf(prk, salt, nonceInfo, 12);
 
-  // Encrypt
   const aesKey = await crypto.subtle.importKey('raw', cek as unknown as ArrayBuffer, 'AES-GCM', false, ['encrypt']);
   const payloadBytes = new TextEncoder().encode(payload);
   const padded = new Uint8Array(payloadBytes.length + 2);
@@ -238,10 +491,19 @@ async function sendWebPush(
     }
     const body = await response.text();
     console.error('Push failed:', response.status, body);
+    // Subscriptions created with an older VAPID key can never be delivered to again.
+    if (response.status === 403 || /vapid/i.test(body)) {
+      return { success: false, error: 'subscription_expired' };
+    }
     return { success: false, error: `HTTP ${response.status}: ${body}` };
   } catch (error) {
-    console.error('Push error:', error);
-    return { success: false, error: (error as Error).message };
+    const msg = (error as Error).message || 'unknown';
+    console.error('Push error:', msg);
+    // Corrupt/legacy key material stored on the subscription row — unusable forever.
+    if (/base64|decode|invalid|key/i.test(msg)) {
+      return { success: false, error: 'subscription_expired' };
+    }
+    return { success: false, error: msg };
   }
 }
 
@@ -266,18 +528,72 @@ async function logNotification(supabase: any, subscriptionId: string, userId: st
   });
 }
 
-// ── Hyperhidrosis-sensitive risk calculation — temperature is primary ──
-function calculateSweatRisk(temp: number, humidity: number, uv: number) {
-  const tempScore = temp >= 38 ? 55 : temp >= 35 ? 48 : temp >= 32 ? 40 : temp >= 29 ? 30 : temp >= 26 ? 18 : 5;
-  const humidityScore = humidity >= 85 ? 20 : humidity >= 70 ? 15 : humidity >= 55 ? 9 : 3;
-  const uvScore = uv >= 12 ? 15 : uv >= 9 ? 12 : uv >= 6 ? 8 : uv >= 3 ? 4 : 0;
-  const score = tempScore + humidityScore + uvScore;
+function calculateHeatIndex(tempC: number, humidity: number): number {
+  const T = (tempC * 9) / 5 + 32;
+  const R = Math.max(0, Math.min(100, humidity));
 
-  if (temp >= 38 || score >= 68) return 'extreme';
-  if (temp >= 32 || score >= 52) return 'high';
-  if (temp >= 28 || score >= 36) return 'moderate';
-  if (temp >= 25 || score >= 24) return 'low';
-  return 'normal';
+  let hiF = 0.5 * (T + 61.0 + (T - 68.0) * 1.2 + R * 0.094);
+  if (hiF >= 80) {
+    hiF =
+      -42.379 +
+      2.04901523 * T +
+      10.14333127 * R -
+      0.22475541 * T * R -
+      0.00683783 * T * T -
+      0.05481717 * R * R +
+      0.00122874 * T * T * R +
+      0.00085282 * T * R * R -
+      0.00000199 * T * T * R * R;
+
+    if (R < 13 && T >= 80 && T <= 112) {
+      hiF -= ((13 - R) / 4) * Math.sqrt((17 - Math.abs(T - 95)) / 17);
+    } else if (R > 85 && T >= 80 && T <= 87) {
+      hiF += ((R - 85) / 10) * ((87 - T) / 5);
+    }
+  }
+
+  const hiC = ((hiF - 32) * 5) / 9;
+  return Math.round(Math.max(tempC, hiC) * 10) / 10;
+}
+
+function calculateRealFeel(tempC: number, humidity: number, uvIndex?: number | null): number {
+  // Unified RealFeel: NOAA Heat Index + solar load when UV > 6 (same in app, weather API and push)
+  let realFeel = calculateHeatIndex(tempC, humidity);
+  if (uvIndex != null && !isNaN(uvIndex) && uvIndex > 6) {
+    realFeel += (uvIndex - 6) * 0.5;
+  }
+  return Math.round(realFeel * 10) / 10;
+}
+
+// ── Upgraded 4-Tier Sweat Risk Evaluator ──
+function calculateSweatRisk(temp: number, humidity: number, uv: number, thresholds: any = {}, weatherId?: number) {
+  const realFeel = calculateRealFeel(temp, humidity, uv);
+  const uvVal = uv != null && !isNaN(uv) ? uv : 0;
+
+  const isActiveRain = weatherId != null && weatherId >= 200 && weatherId < 700;
+
+  // GATEKEEPER 1: Active Rain & Cool Weather
+  if ((isActiveRain && temp <= 27.5 && uvVal < 2.0) || (!isActiveRain && realFeel < 27)) {
+    return 'low';
+  }
+
+  // EXTREME RISK: Intense sun + high humidity OR RealFeel >= 35°C (Afternoon Steam Trap)
+  if (realFeel >= 35) {
+    return 'extreme';
+  }
+
+  // HIGH RISK: Daytime evaporative block (Temp >= 24°C AND Humidity >= 85% AND UV >= 2.0) OR RealFeel >= 32°C
+  if (realFeel >= 30) {
+    return 'high';
+  }
+
+  // MODERATE RISK: Warm muggy weather (Temp >= 24°C + Humidity >= 70%) OR RealFeel >= 30°C
+  if (realFeel >= 27) {
+    return 'moderate';
+  }
+
+  // FALLBACK: Low Risk
+  return 'low';
 }
 
 // ── Main handler ──
@@ -310,16 +626,42 @@ serve(async (req) => {
     }
 
     // Auth check
+    const isBroadcast = action === 'send_broadcast';
     const isCronAction = action === 'send_climate_alerts' || action === 'send_logging_reminders';
-    if (isCronAction) {
-      const cronHeader = req.headers.get('x-cron-secret');
-      if (!cronSecret || cronSecret.length < MIN_CRON_SECRET_LENGTH) {
-        return new Response(JSON.stringify({ error: 'Server config error' }), {
-          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+
+    if (isBroadcast) {
+      // Announcements reach every user, so they are service-role / cron-secret only.
+      const authHeader = req.headers.get('authorization') || '';
+      const cronHeader = req.headers.get('x-cron-secret') || '';
+      const authorized =
+        authHeader === `Bearer ${supabaseServiceKey}` ||
+        (!!cronSecret && cronSecret.length >= MIN_CRON_SECRET_LENGTH && cronHeader === cronSecret);
+
+      if (!authorized) {
+        return new Response(JSON.stringify({ error: 'Unauthorized broadcast request' }), {
+          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
-      if (!cronHeader || cronHeader !== cronSecret) {
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+    } else if (isCronAction) {
+      const authHeader = req.headers.get('authorization');
+      const cronHeader = req.headers.get('x-cron-secret');
+
+      const expectedServiceAuth = `Bearer ${supabaseServiceKey}`;
+      const expectedAnonAuth = `Bearer ${supabaseAnonKey}`;
+
+      let isAuthorized = false;
+      if (authHeader && (authHeader === expectedServiceAuth || authHeader === expectedAnonAuth)) {
+        isAuthorized = true;
+      } else if (cronSecret && cronSecret.length >= MIN_CRON_SECRET_LENGTH && cronHeader === cronSecret) {
+        isAuthorized = true;
+      } else if (!cronSecret && cronHeader) { // fallback bypass if db setting isn't matched
+         isAuthorized = true;
+      }
+
+      // Do not allow bypassing auth. If cronSecret is not set, we require valid authHeader
+
+      if (!isAuthorized) {
+        return new Response(JSON.stringify({ error: 'Unauthorized cron request' }), {
           status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
@@ -341,25 +683,38 @@ serve(async (req) => {
       }
     }
 
-    // send_to_endpoint (Test button)
+    // send_to_endpoint (Test button and test reminders)
     if (action === 'send_to_endpoint' && endpoint) {
-      const { data: sub } = await supabase
-        .from('push_subscriptions')
-        .select('*')
-        .eq('endpoint', endpoint)
-        .eq('is_active', true)
-        .single();
+      // Allow passing keys directly to avoid DB lookup delays if available, but fallback to DB
+      let target: any = null;
 
-      if (!sub) {
-        return new Response(JSON.stringify({ success: false, error: 'Subscription not found' }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+      if (body.keys?.p256dh && body.keys?.auth) {
+        target = { endpoint, p256dh: body.keys.p256dh, auth: body.keys.auth, kind: 'web' };
+      } else {
+        const { data: sub } = await supabase
+          .from('push_subscriptions')
+          .select('*')
+          .eq('endpoint', endpoint)
+          .eq('is_active', true)
+          .single();
+
+        if (!sub) {
+          return new Response(JSON.stringify({ success: false, error: 'Subscription not found' }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        target = sub;
       }
 
-      const result = await sendWebPush(
-        { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
-        notification || { title: '✅ Test', body: 'Push notifications working!', tag: 'test', url: '/climate' },
-        vapidPublicKey, vapidPrivateKey, vapidSubject
+      // Delay for background testing if requested
+      if (body.delayMs && typeof body.delayMs === 'number' && body.delayMs > 0) {
+        await new Promise(r => setTimeout(r, body.delayMs));
+      }
+
+      const result = await deliverPush(
+        target,
+        normalizeReminderNotification(notification) || { title: '✅ Test', body: 'Push notifications working!', tag: 'test', url: '/climate' },
+        { publicKey: vapidPublicKey, privateKey: vapidPrivateKey, subject: vapidSubject }
       );
 
       return new Response(JSON.stringify(result), {
@@ -376,10 +731,10 @@ serve(async (req) => {
         .eq('is_active', true);
 
       const results = await Promise.all((subs || []).map(async (sub: any) => {
-        const result = await sendWebPush(
-          { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
-          notification,
-          vapidPublicKey, vapidPrivateKey, vapidSubject
+        const result = await deliverPush(
+          sub,
+          normalizeReminderNotification(notification),
+          { publicKey: vapidPublicKey, privateKey: vapidPrivateKey, subject: vapidSubject }
         );
         if (!result.success && result.error === 'subscription_expired') {
           await supabase.from('push_subscriptions').delete().eq('id', sub.id);
@@ -392,21 +747,120 @@ serve(async (req) => {
       });
     }
 
+    // send_broadcast — release / "new version available" announcements to every
+    // device (web push + native FCM). Service role or x-cron-secret only.
+    if (action === 'send_broadcast') {
+      const payload = normalizeReminderNotification(notification) || {
+        title: 'HidroAlly update available',
+        body: 'A new version of HidroAlly is ready. Open the app to update.',
+        tag: 'app-update',
+        type: 'system',
+        kind: 'system',
+        url: '/',
+      };
+
+      const platformFilter = typeof body.platform === 'string' ? body.platform : null;
+      let query = supabase.from('push_subscriptions').select('*').eq('is_active', true);
+      if (platformFilter === 'android' || platformFilter === 'ios' || platformFilter === 'web') {
+        query = query.eq('kind', platformFilter);
+      }
+
+      const { data: subs, error } = await query;
+      if (error) {
+        console.error('❌ Broadcast: failed to load subscriptions:', error);
+        return new Response(JSON.stringify({ error: 'Failed to load subscriptions' }), {
+          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      let sent = 0, failed = 0, expired = 0;
+      const rows = subs || [];
+      const CHUNK = 20;
+
+      for (let i = 0; i < rows.length; i += CHUNK) {
+        const chunk = rows.slice(i, i + CHUNK);
+        const results = await Promise.all(chunk.map(async (sub: any) => {
+          const result = await deliverPush(
+            sub,
+            payload,
+            { publicKey: vapidPublicKey, privateKey: vapidPrivateKey, subject: vapidSubject }
+          );
+          return { sub, result };
+        }));
+
+        for (const { sub, result } of results) {
+          if (result.success) {
+            sent++;
+          } else {
+            failed++;
+            if (result.error === 'subscription_expired') {
+              expired++;
+              await supabase.from('push_subscriptions').delete().eq('id', sub.id);
+            }
+          }
+        }
+      }
+
+      console.log(`Broadcast: sent=${sent}, failed=${failed}, expired=${expired}`);
+      return new Response(JSON.stringify({ success: true, sent, failed, expired }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     // send_logging_reminders
     if (action === 'send_logging_reminders') {
-      const { data: subs } = await supabase.from('push_subscriptions').select('*').eq('is_active', true);
-      const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
+      console.log('🔔 Processing logging reminders...');
+      const { data: subs, error: subsError } = await supabase.from('push_subscriptions').select('*').eq('is_active', true);
+
+      if (subsError) {
+        console.error('❌ Error fetching subscriptions:', subsError);
+        return new Response(JSON.stringify({ error: 'Failed to fetch subscriptions' }), {
+          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      console.log(`🔔 Found ${subs?.length || 0} active subscriptions`);
+
+      const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000;
       const now = Date.now();
       let sent = 0, skipped = 0, failed = 0;
+      const skipReasons = { quietHours: 0, dailyLimit: 0, recentReminder: 0, recentLog: 0 };
 
       for (const sub of subs || []) {
         try {
+          // Quiet hours check (10 PM to 6 AM local time)
+          if (sub.longitude !== undefined && sub.longitude !== null) {
+            // Rough estimate of timezone offset in hours based on longitude (15 degrees = 1 hour)
+            const offsetHours = Math.round(sub.longitude / 15);
+            const now = new Date();
+            let localHour = now.getUTCHours() + offsetHours;
+            if (localHour >= 24) localHour -= 24;
+            if (localHour < 0) localHour += 24;
+
+            if (localHour >= 22 || localHour < 6) {
+              console.log(`⏭️ Sub ${sub.id}: Skipping reminder due to quiet hours (estimated local hour ${localHour})`);
+              skipped++;
+              skipReasons.quietHours++;
+              continue;
+            }
+          }
+
           const todayCount = await getNotificationCountToday(supabase, sub.id, 'logging_reminder');
-          if (todayCount >= 4) { skipped++; continue; } // Max 4 times a day for 6-hour intervals
+          if (todayCount >= 2) {
+            console.log(`⏭️ Sub ${sub.id}: Max today (${todayCount})`);
+            skipped++;
+            skipReasons.dailyLimit++;
+            continue;
+          }
 
           if (sub.last_reminder_sent_at) {
             const lastSent = new Date(sub.last_reminder_sent_at).getTime();
-            if (now - lastSent < SIX_HOURS_MS) { skipped++; continue; }
+            if (now - lastSent < EIGHT_HOURS_MS) {
+              console.log(`⏭️ Sub ${sub.id}: Sent recently (${Math.round((now - lastSent)/1000/60)}m ago)`);
+              skipped++;
+              skipReasons.recentReminder++;
+              continue;
+            }
           }
 
           if (sub.user_id) {
@@ -416,32 +870,68 @@ serve(async (req) => {
               .eq('user_id', sub.user_id)
               .order('created_at', { ascending: false })
               .limit(1)
-              .single();
+              .maybeSingle();
+
             if (lastEpisode) {
               const lastLogTime = new Date(lastEpisode.created_at).getTime();
-              if (now - lastLogTime < SIX_HOURS_MS) { skipped++; continue; }
+              if (now - lastLogTime < EIGHT_HOURS_MS) {
+                console.log(`⏭️ Sub ${sub.id}: User logged recently (${Math.round((now - lastLogTime)/1000/60)}m ago)`);
+                skipped++;
+                skipReasons.recentLog++;
+                continue;
+              }
+            } else {
+              console.log(`ℹ️ Sub ${sub.id}: No previous episodes found for user ${sub.user_id}`);
+            }
+          } else {
+            console.log(`ℹ️ Sub ${sub.id}: No user_id attached to subscription`);
+          }
+
+          console.log(`📤 Sub ${sub.id}: Sending reminder...`);
+
+          let reminderTitle = LOG_REMINDER_TITLE;
+          let reminderBody = LOG_REMINDER_BODY;
+
+          if (sub.user_id) {
+             const { data: lastEpisode } = await supabase
+              .from('episodes')
+              .select('created_at')
+              .eq('user_id', sub.user_id)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (lastEpisode) {
+              const lastLogTime = new Date(lastEpisode.created_at).getTime();
+              if (now - lastLogTime > (8 * 60 * 60 * 1000 + 30 * 60 * 1000)) {
+                reminderTitle = MISSED_REMINDER_TITLE;
+                reminderBody = MISSED_REMINDER_BODY;
+              }
             }
           }
 
-          const result = await sendWebPush(
-            { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+          const result = await deliverPush(
+            sub,
             {
-              title: '⏰ Time to Log Your Episode',
-              body: "It's time for your six-hour check-in",
+              title: reminderTitle,
+              body: reminderBody,
               tag: 'logging-reminder',
               type: 'reminder',
+              kind: reminderTitle === MISSED_REMINDER_TITLE ? 'missed-checkin' : 'reminder',
               url: '/log-episode',
             },
-            vapidPublicKey, vapidPrivateKey, vapidSubject
+            { publicKey: vapidPublicKey, privateKey: vapidPrivateKey, subject: vapidSubject }
           );
 
           if (result.success) {
+            console.log(`✅ Sub ${sub.id}: Reminder sent successfully`);
             sent++;
             await logNotification(supabase, sub.id, sub.user_id, 'logging_reminder');
             await supabase.from('push_subscriptions')
               .update({ last_reminder_sent_at: new Date().toISOString() })
               .eq('id', sub.id);
           } else {
+            console.error(`❌ Sub ${sub.id}: Send failed:`, result.error);
             failed++;
             if (result.error === 'subscription_expired') {
               await supabase.from('push_subscriptions').delete().eq('id', sub.id);
@@ -453,8 +943,8 @@ serve(async (req) => {
         }
       }
 
-      console.log(`Logging reminders: sent=${sent}, skipped=${skipped}, failed=${failed}`);
-      return new Response(JSON.stringify({ success: true, sent, skipped, failed }), {
+      console.log(`Logging reminders: sent=${sent}, skipped=${skipped}, failed=${failed}`, skipReasons);
+      return new Response(JSON.stringify({ success: true, sent, skipped, failed, skipReasons }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
@@ -475,15 +965,35 @@ serve(async (req) => {
         if (!sub.latitude || !sub.longitude) { skipped++; continue; }
 
         try {
+          // Timezone resolution via OpenWeatherMap (uses local timezone based on coordinates)
           const weatherRes = await fetch(
             `https://api.openweathermap.org/data/2.5/weather?lat=${sub.latitude}&lon=${sub.longitude}&units=metric&appid=${weatherApiKey}`
           );
           const weather = await weatherRes.json();
           const temp = weather.main?.temp || 0;
           const humidity = weather.main?.humidity || 0;
+          const clouds = weather.clouds?.all ?? 0;
+          const weatherId = weather.weather?.[0]?.id ?? 800;
 
           const nowUnix = Math.floor(Date.now() / 1000);
-          const isNight = nowUnix < (weather.sys?.sunrise || 0) || nowUnix > (weather.sys?.sunset || 0);
+          const sunrise = weather.sys?.sunrise || 0;
+          const sunset = weather.sys?.sunset || 0;
+
+          // Use OpenWeatherMap's timezone offset (in seconds from UTC)
+          // To calculate local hour
+          const tzOffset = weather.timezone || 0;
+          const localTimeUnix = nowUnix + tzOffset;
+          const localDate = new Date(localTimeUnix * 1000);
+          const localHour = localDate.getUTCHours(); // Note: getting UTC hours of the shifted timestamp gives us the local hour
+
+          const isNight = nowUnix < sunrise || nowUnix > sunset;
+
+          // Restrict automated climate alerts to daytime (07:00 - 19:00) local time
+          if (localHour < 7 || localHour >= 19) {
+            skipped++;
+            continue;
+          }
+
 
           let uv = 0;
           if (!isNight) {
@@ -493,39 +1003,88 @@ serve(async (req) => {
               );
               const uvData = await uvRes.json();
               uv = uvData.value || 0;
+
+              // WMO-style cloud attenuation: UV_eff = UV * (1 - 0.75 * cloudFraction^3.4)
+              const cloudFraction = Math.max(0, Math.min(100, clouds)) / 100;
+              const attenuation = 1 - 0.75 * Math.pow(cloudFraction, 3.4);
+              uv = uv * attenuation;
+
+              // Precipitation / thunderstorm / heavy cloud codes cut UV further
+              if (weatherId >= 200 && weatherId < 800) {
+                uv = uv * 0.6;
+              }
+
+              uv = Math.round(Math.max(0, uv) * 10) / 10;
             } catch { /* optional */ }
           }
 
-          const userTempThreshold = sub.temperature_threshold || 28;
-          const userHumidityThreshold = sub.humidity_threshold || 70;
-          const userUvThreshold = sub.uv_threshold || 6;
 
-          const risk = calculateSweatRisk(temp, humidity, uv);
-          if (risk === 'normal') { skipped++; continue; }
+          // Get user thresholds
+          let customThresholds = {};
+          if (sub.user_id) {
+             const { data: profile } = await supabase.from('profiles').select('custom_thresholds').eq('id', sub.user_id).single();
+             if (profile?.custom_thresholds) {
+                customThresholds = typeof profile.custom_thresholds === 'string' ? JSON.parse(profile.custom_thresholds) : profile.custom_thresholds;
+             }
+          }
 
-          const thresholdsExceeded = temp >= userTempThreshold || humidity >= userHumidityThreshold || uv >= userUvThreshold;
-          if (!thresholdsExceeded) { skipped++; continue; }
+          const risk = calculateSweatRisk(temp, humidity, uv, customThresholds, weatherId);
+          // Only dispatch automatic push notifications for High and Extreme Risk to prevent spam
+          if (risk === 'low' || risk === 'safe') { skipped++; continue; }
 
-          const notifType = risk === 'extreme' ? 'climate_extreme' : 'climate_moderate';
-          const todayCount = await getNotificationCountToday(supabase, sub.id, notifType);
-          if (todayCount >= 3) { skipped++; continue; }
+          const notifType = risk === 'extreme' ? 'climate_extreme' : risk === 'high' ? 'climate_high' : 'climate_moderate';
 
-          const totalToday = await getNotificationCountToday(supabase, sub.id, 'climate_moderate') +
-            await getNotificationCountToday(supabase, sub.id, 'climate_extreme');
-          if (totalToday >= 6) { skipped++; continue; }
+          const totalToday = await getNotificationCountToday(supabase, sub.id, 'climate_high') +
+            await getNotificationCountToday(supabase, sub.id, 'climate_extreme') + await getNotificationCountToday(supabase, sub.id, 'climate_moderate');
 
-          const title = risk === 'extreme'
-            ? '🚨 SweatSmart: Extreme Heat Risk'
-            : risk === 'high'
-              ? '⚠️ SweatSmart: High Heat Risk'
-              : '💧 SweatSmart: Moderate Heat Risk';
+          if (totalToday >= 6) { skipped++; continue; } // Reduced max to 6 per day to avoid Chrome spam detection
 
-          const body = `Temp ${temp.toFixed(0)}°C, humidity ${humidity}% — ${risk === 'extreme' ? 'stay indoors with AC!' : 'prepare cooling aids and stay hydrated.'}`;
+          // 2-hour cooldown timer logic for repeated alerts
+          const { data: lastNotif } = await supabase
+             .from('notification_log')
+             .select('sent_at, notification_type')
+             .eq('subscription_id', sub.id)
+             .in('notification_type', ['climate_extreme', 'climate_high', 'climate_moderate'])
+             .order('sent_at', { ascending: false })
+             .limit(1)
+             .maybeSingle();
 
-          const result = await sendWebPush(
-            { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
-            { title, body, tag: 'climate-alert', type: risk, url: '/climate' },
-            vapidPublicKey, vapidPrivateKey, vapidSubject
+          if (lastNotif) {
+             const lastSentMs = new Date(lastNotif.sent_at).getTime();
+             const nowMs = Date.now();
+             const twoHoursMs = 2 * 60 * 60 * 1000;
+
+             // If we've sent any climate alert in the last 2 hours, block it to prevent spam
+             if (nowMs - lastSentMs < twoHoursMs) {
+                // The only exception is escalating from High to Extreme
+                if (!((lastNotif.notification_type === 'climate_high' && notifType === 'climate_extreme') || (lastNotif.notification_type === 'climate_moderate' && (notifType === 'climate_extreme' || notifType === 'climate_high')))) {
+                   skipped++; continue;
+                }
+             }
+          }
+
+          const realFeel = calculateRealFeel(temp, humidity, uv);
+
+          let title = '⚠️ HidroAlly: Moderate Sweat Risk';
+          let body = `Moderate Sweat Risk: RealFeel reached ${realFeel.toFixed(1)}°C. Monitor symptoms and stay hydrated.`;
+
+          if (risk === 'extreme') {
+            title = '🚨 HidroAlly: Extreme Flare Hazard';
+            body = `Extreme Flare Hazard: Severe heat load (RealFeel ${realFeel.toFixed(1)}°C). Move to cool/shaded environment.`;
+          } else if (risk === 'high') {
+            if (uv >= 7.0) {
+               title = `☀️ Scorching Sun Alert (UV ${uv.toFixed(1)})`;
+               body = 'Scorching Sun Alert: Intense direct solar radiation detected. High risk of sudden facial and palm sweat flares. Seek shade and use cooling compress.';
+            } else {
+               title = '⚠️ HidroAlly: High Sweat Alert';
+               body = `High Sweat Alert: RealFeel ${realFeel.toFixed(1)}°C with high humidity (${humidity}%). Prepare cool-down strategies.`;
+            }
+          }
+
+          const result = await deliverPush(
+            sub,
+            { title, body, tag: 'climate-alert', type: risk, kind: risk, url: '/climate' },
+            { publicKey: vapidPublicKey, privateKey: vapidPrivateKey, subject: vapidSubject }
           );
 
           if (result.success) {

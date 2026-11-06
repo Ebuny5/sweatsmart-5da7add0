@@ -17,7 +17,7 @@ const Legal = () => {
           </CardHeader>
           <CardContent className="space-y-4 text-gray-700">
             <p>
-              SweatSmart is developed and managed by Giftovate Therapeutics Ltd., in partnership with <a href="https://www.beyondsweat.life" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline inline-flex items-center gap-1">
+              HidroAlly is developed and managed by Giftovate Therapeutics Ltd., in partnership with <a href="https://www.beyondsweat.life" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline inline-flex items-center gap-1">
                 Beyond Sweat Foundation <ExternalLink className="w-4 h-4" />
               </a>, to alleviate the challenges of hyperhidrosis warriors through digital health innovation.
             </p>

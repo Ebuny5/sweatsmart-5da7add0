@@ -1,0 +1,11 @@
+--- src/pages/HidroAlly.tsx
++++ src/pages/HidroAlly.tsx
+@@ -1624,7 +1624,7 @@
+
+             {/* Send / Stop */}
+             <button
+-              onClick={isLoading ? handleStop : handleSend}
++              onClick={isLoading ? handleStop : () => handleSend()}
+               disabled={!isLoading && !input.trim() && !pendingImage}
+               className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 disabled:opacity-30"
+               style={{

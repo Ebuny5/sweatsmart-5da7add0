@@ -1,0 +1,108 @@
+import re
+
+with open("src/components/recommendationEngine.ts", "r") as f:
+    content = f.read()
+
+pattern = re.compile(
+    r"function buildDryDayResponse\(\s*ni: NotesIntelligence,\s*userName: string \| undefined,\s*seed: number,\s*(?:episodesList\?: any\[\])?\s*\): EpisodeInsights & \{ cta: string; emotionalOpener: string \} \{.*?\}",
+    re.DOTALL
+)
+
+new_func = """function buildDryDayResponse(
+  ni: NotesIntelligence,
+  userName: string | undefined,
+  seed: number,
+  episodesList?: any[]
+): EpisodeInsights & { cta: string; emotionalOpener: string } {
+  // Calculate metrics
+  let allEpisodes = episodesList || [];
+  if (allEpisodes.length === 0) {
+    const localLogsJson = localStorage.getItem('sweatSmartLogs');
+    if (localLogsJson) {
+      allEpisodes = JSON.parse(localLogsJson);
+    }
+  }
+
+  // Sort episodes by date descending
+  const sortedEpisodes = [...allEpisodes].sort((a: any, b: any) => new Date(b.datetime).getTime() - new Date(a.datetime).getTime());
+
+  // 1. Current Streak
+  let currentStreak = 0;
+  for (const ep of sortedEpisodes) {
+    if (ep.is_dry_day) {
+      currentStreak++;
+    } else {
+      break; // Stop counting at the first non-dry day
+    }
+  }
+  if (currentStreak === 0) currentStreak = 1; // Always at least 1 since they just logged today
+
+  // 2. 7-Day Dry Ratio
+  const now = new Date();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const epsLast7Days = sortedEpisodes.filter((ep: any) => new Date(ep.datetime) >= sevenDaysAgo);
+  const dryDaysLast7 = epsLast7Days.filter((ep: any) => ep.is_dry_day).length || 1; // Include today
+
+  // 3. Monthly Dry Total
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const epsLast30Days = sortedEpisodes.filter((ep: any) => new Date(ep.datetime) >= thirtyDaysAgo);
+  const monthlyDryTotal = epsLast30Days.filter((ep: any) => ep.is_dry_day).length || 1; // Include today
+
+  // Branching States
+  let header = "";
+  let clinicalAnalysis = "";
+  let immediateRelief: string[] = []; // Used as What to Do (Maintenance Protocol)
+
+  if (currentStreak >= 3) {
+    // State 3: Sustained Remission
+    header = `🏆 Sustained Remission — ${currentStreak} Consecutive Dry Days`;
+    clinicalAnalysis = "Consecutive dry days confirm deep eccrine duct occlusion. Your sweat glands have reached saturation, and your sympathetic signaling is well within manageable thresholds.";
+    immediateRelief = [
+      "Test Maintenance Frequency: If you have achieved 4+ consecutive dry days, discuss tapering to a 2–3 night/week maintenance schedule to protect your skin barrier.",
+      "Skin Recovery: Apply soothing barrier creams (ceramides/hyaluronic acid) on off-nights to prevent dermatitis.",
+      "Prepare Clinical Summary: Your streak data provides objective proof of treatment efficacy for your dermatologist.",
+      "Maintain Trigger Readiness: Keep your portable cooling strategies on hand in case of extreme environmental surges."
+    ];
+  } else if (dryDaysLast7 >= 3 && currentStreak < 3) {
+    // State 2: Intermittent / Partial Control
+    const percentage = Math.round((dryDaysLast7 / 7) * 100);
+    header = `⚖️ Partial Control — ${dryDaysLast7} of Last 7 Days Dry (${percentage}%)`;
+    clinicalAnalysis = "Your pattern shows intermittent responsiveness. Your treatment is successfully occluding sweat ducts on low-demand days, but is being overwhelmed on high-stress or high-temperature days. This intermittent pattern is common when the topical concentration is slightly subtherapeutic or when application technique allows sweat to wash away active ingredients before they bind.";
+    immediateRelief = [
+      "Audit Application Surface: Ensure skin is 100% bone-dry before applying nighttime topicals (apply a cool hairdryer on cool setting for 30 seconds before and after).",
+      "Correlate Wet vs. Dry Days: Review the Trigger Intelligence tab to see which specific environmental factor caused the wet days between your dry days.",
+      "Clinical Discussion Note: If 3–4 weeks of consistent application still yields an alternating wet/dry pattern, consult your physician about increasing topical concentration (e.g., from 15% to 20% Aluminum Chloride) or adding an oral anticholinergic bridge."
+    ];
+  } else {
+    // State 1: Isolated Reset Day
+    header = "✨ Dry Baseline Reset — 1 Dry Day Logged";
+    clinicalAnalysis = "Today demonstrates that your sweat glands are capable of achieving occlusion under the right physiological conditions. Because this follows recent active episodes, today represents a temporary barrier hold rather than permanent saturation. Your sweat ducts are beginning to respond to treatment or lower autonomic load, but the effect is wearing off within 24–48 hours.";
+    immediateRelief = [
+      "Identify Today’s Protective Factor: Did you apply topicals last night, spend more time in climate-controlled spaces, or experience lower stress?",
+      "Do Not Skip Tonight’s Protocol: Intermittent dry days require immediate re-application tonight. Skipping now will cause sweat to wash out forming duct plugs tomorrow.",
+      "Track the 'Breakthrough Window': Note how many hours of dryness you achieve before the next flare begins.",
+      "Skin Barrier Care: If using clinical topicals, apply a gentle moisturizer to off-target areas to prevent irritation."
+    ];
+  }
+
+  return {
+    emotionalOpener: "",
+    clinicalAnalysis,
+    immediateRelief,
+    treatmentOptions: [],
+    lifestyleModifications: [],
+    medicalAttention: "",
+    cta: buildCTA(ni, seed),
+    isDryDay: true,
+    dryDayMetrics: {
+      currentStreak,
+      dryDaysLast7,
+      monthlyDryTotal,
+      header
+    }
+  };
+}"""
+
+new_content = pattern.sub(new_func, content)
+with open("src/components/recommendationEngine.ts", "w") as f:
+    f.write(new_content)

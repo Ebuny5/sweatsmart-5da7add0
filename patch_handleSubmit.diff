@@ -1,0 +1,13 @@
+<<<<<<< SEARCH
+    const finalNotes = isDryDay
+      ? (manualNotes !== undefined ? manualNotes : notes) || "Dry day / maintenance logged"
+      : (manualNotes !== undefined ? manualNotes : notes);
+=======
+    const baseNotes = manualNotes !== undefined ? manualNotes : notes;
+    const finalNotes = isDryDay
+      ? [
+          dryDayFactors.length > 0 ? `Factors: ${dryDayFactors.join(", ")}` : "",
+          baseNotes?.trim() ? `Context: ${baseNotes.trim()}` : ""
+        ].filter(Boolean).join(" | ") || "Dry day / maintenance logged"
+      : baseNotes;
+>>>>>>> REPLACE

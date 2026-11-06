@@ -1,0 +1,66 @@
+--- src/components/recommendationEngine.ts
++++ src/components/recommendationEngine.ts
+@@ -50,6 +50,7 @@
+   episodeCount?: number; // total episodes logged — used for variation + longitudinal context
+   userName?: string;     // optional — used in HidroAlly greeting
+   isDryDay?: boolean;    // true for dry-day/treatment logs — bypasses symptom analysis entirely
++  episodesList?: any[];  // Optional full episode list for streak calculations
+ }
+
+ export interface EpisodeInsights {
+@@ -58,6 +59,13 @@
+   treatmentOptions: string[];
+   lifestyleModifications: string[];
+   medicalAttention: string;
++  isDryDay?: boolean;
++  dryDayMetrics?: {
++    currentStreak: number;
++    dryDaysLast7: number;
++    monthlyDryTotal: number;
++    header: string;
++  };
+ }
+
+ // ─── Notes Intelligence Layer ─────────────────────────────────────────────────
+@@ -998,6 +1006,7 @@
+   notes,
+   climate,
+   isDryDay,
++  episodesList,
+ }: EpisodeInput): EpisodeInsights & { emotionalOpener: string; cta: string } {
+   const {
+     severity,
+@@ -1016,7 +1025,7 @@
+   // pattern engine and return a treatment-compliance / management-focused
+   // response instead. Must run BEFORE the empty-bodyAreas check below, since
+   // every dry day log has bodyAreas: [] by design, not by omission.
+   if (isDryDay) {
+-    return buildDryDayResponse(ni, userName, seed);
++    return buildDryDayResponse(ni, userName, seed, episodesList);
+   }
+
+   if (!bodyAreas || bodyAreas.length === 0) {
+@@ -1039,7 +1048,7 @@
+   notes?: string,
+   climate?: ClimateInput,
+   isDryDay?: boolean,
++  episodesList?: any[],
+ ): EpisodeInsights & { emotionalOpener: string; cta: string } {
+   // Get actual count from local logs or default to a simple fallback, avoid random numbers
+   const localLogsJson = localStorage.getItem('sweatSmartLogs');
+@@ -1051,6 +1060,7 @@
+     notes,
+     climate,
+     isDryDay,
++    episodesList,
+     episodeCount: actualCount,
+   });
+   return result;
+@@ -1062,7 +1072,8 @@
+ function buildDryDayResponse(
+   ni: NotesIntelligence,
+   userName: string | undefined,
+   seed: number,
++  episodesList?: any[]
+ ): EpisodeInsights & { cta: string; emotionalOpener: string } {
+   const greeting = userName ? `Hi ${userName}, this is HidroAlly 👋` : `Hi, this is HidroAlly 👋`;

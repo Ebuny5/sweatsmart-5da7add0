@@ -18,7 +18,7 @@ verify_jwt = true
 [functions.get-weather-data]
 verify_jwt = false
 
-[functions.hyper-ai-chat]
+[functions.hidro-ally-chat]
 verify_jwt = true
 
 [functions.send-push-notification]
@@ -32,3 +32,9 @@ verify_jwt = false
 
 [functions.voice-transcribe]
 verify_jwt = true
+
+[functions.text-to-speech]
+verify_jwt = true
+
+[functions.send-welcome-email]
+verify_jwt = false

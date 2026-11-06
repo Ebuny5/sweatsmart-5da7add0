@@ -5,7 +5,6 @@ import Sidebar from "./Sidebar";
 import MobileBottomNav from "./MobileBottomNav";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { NotificationPermissionModal } from "@/components/climate/NotificationPermissionModal";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -17,37 +16,35 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, isAuthenticated }) => {
   const isMobile = useIsMobile();
   const authenticated = isAuthenticated ?? !!user;
 
-  if (loading) {
+  if (loading && isAuthenticated !== false) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-violet-50 to-pink-50">
-        <div className="relative">
-          {/* Spinning gradient ring */}
-          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 animate-spin" 
-               style={{ padding: "3px" }}>
-            <div className="w-full h-full rounded-full bg-white" />
-          </div>
-          {/* Centre S logo */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-violet-600 font-black text-lg">S</span>
-          </div>
+        <div className="relative flex items-center justify-center">
+          {/* Pulsing ambient glow back-layer */}
+          <div className="absolute w-20 h-20 bg-purple-400/30 rounded-full blur-xl animate-pulse" />
+          {/* Animated glowing logo */}
+          <img
+            src="/sweatsmart-logo.png"
+            alt="HidroAlly Loading"
+            className="w-16 h-16 relative z-10 animate-bounce duration-1000 object-contain drop-shadow-[0_0_12px_rgba(168,85,247,0.5)]"
+          />
         </div>
-        <p className="mt-4 text-sm font-semibold text-purple-400">Loading SweatSmart…</p>
+        <p className="mt-4 text-sm font-semibold text-purple-600 tracking-wide animate-pulse">Loading HidroAlly...</p>
       </div>
     );
   }
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full flex-col">
+      <div className="min-h-screen flex w-full max-w-[100vw] overflow-x-hidden flex-col">
         <Header isAuthenticated={authenticated} />
-        <div className="flex flex-1">
+        <div className="flex flex-1 w-full max-w-[100vw] overflow-x-hidden safe-area-left safe-area-right">
           {authenticated && !isMobile && <Sidebar />}
-          <main className={`flex-1 ${isMobile ? "px-0 py-0 pb-20" : "container py-6"}`}>
+          <main className={`flex-1 w-full max-w-[100vw] overflow-x-hidden ${isMobile ? "px-0 py-0 pb-20" : "container py-6"}`}>
             {children}
           </main>
         </div>
         {authenticated && isMobile && <MobileBottomNav />}
-        {authenticated && <NotificationPermissionModal />}
       </div>
     </SidebarProvider>
   );
