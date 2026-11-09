@@ -4,22 +4,29 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      version_code_offset:
+        description: 'Added to the run number to form versionCode (must exceed the last Play upload)'
+        required: false
+        default: '2000'
 
 # ─────────────────────────────────────────────────────────────────────────────
 # REQUIRED GITHUB SECRETS (Settings → Secrets and variables → Actions → New):
 #
-#   KEYSTORE_BASE64      — your .jks / .keystore file encoded as Base64
-#                          Generate with: base64 -i your-key.jks | tr -d '\n'
-#                          On Windows use: certutil -encode your-key.jks tmp.txt
-#                          Then copy the content between -----BEGIN----- lines
+#   KEYSTORE_BASE64       — your Play UPLOAD key (.jks / .keystore) as Base64
+#   KEYSTORE_PASSWORD     — the keystore password
+#   KEY_ALIAS             — the key alias inside the keystore
+#   KEY_PASSWORD          — the key password (often same as keystore password)
+#   GOOGLE_SERVICES_JSON  — full contents of google-services.json from Firebase
+#                           (needed for native push notifications)
 #
-#   KEYSTORE_PASSWORD    — the keystore password
-#   KEY_ALIAS            — the key alias inside the keystore
-#   KEY_PASSWORD         — the key password (often same as keystore password)
-#
-# Until these secrets are added the "Sign AAB" step will fail but
-# an unsigned debug AAB will still be uploaded as a fallback artifact.
+# Without keystore secrets a DEBUG AAB is built (Play will reject it).
 # ─────────────────────────────────────────────────────────────────────────────
+
+env:
+  HAS_KEYSTORE: ${{ secrets.KEYSTORE_BASE64 != '' }}
+  HAS_GOOGLE_SERVICES: ${{ secrets.GOOGLE_SERVICES_JSON != '' }}
+  VERSION_CODE_OFFSET: ${{ github.event.inputs.version_code_offset || '2000' }}
 
 jobs:
   build-android:
@@ -27,44 +34,37 @@ jobs:
     timeout-minutes: 45
 
     steps:
-      # ── 1. Checkout ──────────────────────────────────────────────────────
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ── 2. Node ──────────────────────────────────────────────────────────
-      - name: Set up Node.js 20
+      - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
-      # ── 3. JS deps ───────────────────────────────────────────────────────
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
-      # ── 4. Build web assets ──────────────────────────────────────────────
       - name: Build web (Vite)
         run: npm run build
 
-      # ── 5. Java ──────────────────────────────────────────────────────────
-      - name: Set up JDK 17
+      # Capacitor 8 requires JDK 21
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
-      # ── 6. Android SDK ───────────────────────────────────────────────────
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      # ── 7. Add Android platform if not present ───────────────────────────
       - name: Add Capacitor Android platform
         run: |
           if [ ! -d "android" ]; then
             npx cap add android
           fi
 
-      # ── 8. Inject required permissions ───────────────────────────────────
       - name: Patch AndroidManifest.xml permissions
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
@@ -72,24 +72,43 @@ jobs:
             sed -i 's|<application|<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>\n    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>\n    <uses-permission android:name="android.permission.WAKE_LOCK"/>\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>\n    <uses-permission android:name="android.permission.INTERNET"/>\n    <application|' "$MANIFEST"
           fi
 
-      # ── 9. Capacitor sync ────────────────────────────────────────────────
+      # In-App Updates + friendly error screen (native/android/MainActivity.java)
+      - name: Install native MainActivity and Play In-App Updates library
+        run: |
+          DEST="android/app/src/main/java/guru/sweatsmart/twa"
+          mkdir -p "$DEST"
+          find android/app/src/main/java -name MainActivity.java -delete
+          cp native/android/MainActivity.java "$DEST/MainActivity.java"
+          GRADLE="android/app/build.gradle"
+          if ! grep -q "play:app-update" "$GRADLE"; then
+            sed -i "0,/dependencies {/s//dependencies {\n    implementation 'com.google.android.play:app-update:2.1.0'/" "$GRADLE"
+          fi
+
+      # Each Play upload needs a higher versionCode
+      - name: Set versionCode / versionName
+        run: |
+          CODE=$(( ${{ github.run_number }} + VERSION_CODE_OFFSET ))
+          GRADLE="android/app/build.gradle"
+          sed -i -E "s/versionCode [0-9]+/versionCode $CODE/" "$GRADLE"
+          sed -i -E "s/versionName \"[^\"]*\"/versionName \"11.0.$CODE\"/" "$GRADLE"
+          echo "VERSION_CODE=$CODE" >> $GITHUB_ENV
+
+      - name: Add google-services.json (native push)
+        if: env.HAS_GOOGLE_SERVICES == 'true'
+        run: echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > android/app/google-services.json
+
       - name: Capacitor sync
         run: npx cap sync android
 
-      # ── 10. Gradle executable ────────────────────────────────────────────
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
-      # ── 11. Decode keystore from secret ──────────────────────────────────
       - name: Decode keystore
-        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/hidroally-release.jks
-          echo "KEYSTORE_EXISTS=true" >> $GITHUB_ENV
+        if: env.HAS_KEYSTORE == 'true'
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/hidroally-release.jks
 
-      # ── 12. Build RELEASE AAB (signed) ───────────────────────────────────
       - name: Build signed release AAB
-        if: ${{ env.KEYSTORE_EXISTS == 'true' }}
+        if: env.HAS_KEYSTORE == 'true'
         run: |
           cd android
           ./gradlew bundleRelease --no-daemon \
@@ -98,47 +117,36 @@ jobs:
             -Pandroid.injected.signing.key.alias="${{ secrets.KEY_ALIAS }}" \
             -Pandroid.injected.signing.key.password="${{ secrets.KEY_PASSWORD }}"
 
-      # ── 13. Build DEBUG AAB fallback (no signing secrets yet) ────────────
-      - name: Build debug AAB (fallback — no keystore secrets set)
-        if: ${{ env.KEYSTORE_EXISTS != 'true' }}
+      - name: Build debug AAB (no keystore secrets)
+        if: env.HAS_KEYSTORE != 'true'
         run: |
           cd android
           ./gradlew bundleDebug --no-daemon
-          echo "⚠️ No keystore secrets found — built DEBUG AAB. Add KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD secrets to build a signed release AAB."
 
-      # ── 14. Upload signed release AAB ────────────────────────────────────
       - name: Upload signed release AAB
-        if: ${{ env.KEYSTORE_EXISTS == 'true' }}
+        if: env.HAS_KEYSTORE == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: hidroally-release-aab-${{ github.run_number }}
+          name: hidroally-release-aab-${{ env.VERSION_CODE }}
           path: android/app/build/outputs/bundle/release/app-release.aab
           retention-days: 14
 
-      # ── 15. Upload debug AAB fallback ────────────────────────────────────
-      - name: Upload debug AAB (fallback)
-        if: ${{ env.KEYSTORE_EXISTS != 'true' }}
+      - name: Upload debug AAB
+        if: env.HAS_KEYSTORE != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: hidroally-debug-aab-${{ github.run_number }}
+          name: hidroally-debug-aab-${{ env.VERSION_CODE }}
           path: android/app/build/outputs/bundle/debug/app-debug.aab
           retention-days: 14
 
-      # ── 16. Summary ──────────────────────────────────────────────────────
       - name: Build summary
         run: |
-          echo "## Android Build #${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
-          if [ "$KEYSTORE_EXISTS" = "true" ]; then
-            echo "✅ **Signed release AAB built** — ready to upload to Google Play" >> $GITHUB_STEP_SUMMARY
+          echo "## Android Build — versionCode $VERSION_CODE" >> $GITHUB_STEP_SUMMARY
+          if [ "$HAS_KEYSTORE" = "true" ]; then
+            echo "✅ Signed release AAB built — download from Artifacts and upload to Play Console → Closed testing." >> $GITHUB_STEP_SUMMARY
           else
-            echo "⚠️ **Debug AAB built** — add your keystore secrets to get a signed release AAB" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### Add these GitHub Secrets:" >> $GITHUB_STEP_SUMMARY
-            echo "Go to **Settings → Secrets and variables → Actions → New repository secret**" >> $GITHUB_STEP_SUMMARY
-            echo "- \`KEYSTORE_BASE64\` — your .jks file encoded as base64" >> $GITHUB_STEP_SUMMARY
-            echo "- \`KEYSTORE_PASSWORD\` — keystore password" >> $GITHUB_STEP_SUMMARY
-            echo "- \`KEY_ALIAS\` — key alias" >> $GITHUB_STEP_SUMMARY
-            echo "- \`KEY_PASSWORD\` — key password" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ Debug AAB only — add KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD secrets." >> $GITHUB_STEP_SUMMARY
           fi
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Download the AAB from the **Artifacts** section above, then upload to Google Play Console → Production → Create new release." >> $GITHUB_STEP_SUMMARY
+          if [ "$HAS_GOOGLE_SERVICES" != "true" ]; then
+            echo "⚠️ GOOGLE_SERVICES_JSON secret missing — native push notifications will not work in this build." >> $GITHUB_STEP_SUMMARY
+          fi
