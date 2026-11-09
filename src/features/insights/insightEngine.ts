@@ -99,19 +99,22 @@ const TRIGGER_ALIASES: Record<string, string> = {
   diabetes_meds: "insulin_diabetes_meds", bp_meds: "blood_pressure_meds",
   transitional_temperature: "temp_shift", transitional_temp: "temp_shift", temperature_shift: "temp_shift", temp_change: "temp_shift",
   crowded_spaces: "crowded_space", synthetic_fabric: "synthetic_fabrics", bright_light: "bright_lights", loud_noise: "loud_noises",
+  poor_ventilation: "poor_airflow_no_ventilation", physical_exertion: "exercise_exertion",
+  no_trigger: "no_clear_trigger", anticipatory: "anticipatory_sweating",
   heavy_meal: "heavy_meals", hot_drink: "hot_drinks", spicy_foods: "spicy_food",
 };
-export const FOCAL = new Set(["palms", "soles", "feet", "face", "scalp", "hands", "underarms", "face and scalp", "feet and soles", "fingers", "toes"]);
-const TRUNCAL = new Set(["head", "neck", "chest", "back", "groin", "thighs", "entire body"]);
+export const FOCAL = new Set(["palms", "soles", "feet", "face", "scalp", "hands", "underarms", "face and scalp", "feet and soles", "fingers", "toes", "legs"]);
+const TRUNCAL = new Set(["head", "neck", "trunk", "chest", "back", "groin", "thighs", "entire body"]);
 export const CLUSTER: Record<string, string> = {
   face: "head_neck", head: "head_neck", scalp: "head_neck", neck: "head_neck", palms: "hands", hands: "hands",
-  soles: "feet", feet: "feet", underarms: "underarms", chest: "torso", back: "torso", groin: "groin_thighs",
+  soles: "feet", feet: "feet", underarms: "underarms", chest: "torso", back: "torso", trunk: "torso", legs: "groin_thighs", groin: "groin_thighs",
   thighs: "groin_thighs", "entire body": "all",
   "face and scalp": "head_neck", "feet and soles": "feet", fingers: "hands", toes: "feet",
 };
 const AREA_ALIASES: Record<string, string> = {
   underarm: "underarms", armpit: "underarms", armpits: "underarms", axillary: "underarms", foot: "feet",
   palm: "palms", hand: "hands", sole: "soles", toe: "toes", finger: "fingers",
+  torso: "trunk", "full torso": "trunk", "trunk full torso": "trunk", leg: "legs",
   entire_body: "entire body", "whole body": "entire body", "full body": "entire body", generalized: "entire body",
   "feet soles": "feet and soles", "face scalp": "face and scalp", "scalp face": "face and scalp",
 };
@@ -121,7 +124,7 @@ const KW: Record<string, RegExp> = {
   feet: /\b(feet|foot|socks?|soles?|shoes?)\b/,
   underarms: /\b(underarms?|armpits?)\b/,
   torso: /\b(back|chest|torso|shirts?)\b/,
-  groin_thighs: /\b(groin|thighs?)\b/,
+  groin_thighs: /\b(groin|thighs?|legs?|knees?|calf|calves)\b/,
 };
 function inferClusters(text: string): Set<string> {
   let t = text.toLowerCase().replace(/back of (the |your )?neck/g, "neck").replace(/hand fan|handheld fan|hand towel/g, " ");
@@ -361,13 +364,19 @@ function pickLifestyle(tids: string[], s: Stats, st: InsightState): LifestyleIte
 }
 
 // ───────────────────────────── Section builders ─────────────────────────────
-function buildClinical(cur: NEp, s: Stats, _a: Assessment, _st: InsightState): string[] {
+const HDSS_MEANING: Record<number, string> = {
+  1: "sweating is noticeable but does not interfere with your daily activities",
+  2: "sweating is tolerable but sometimes interferes with your daily activities",
+  3: "sweating is barely tolerable and frequently interferes with your daily activities",
+  4: "sweating is intolerable and always interferes with your daily activities",
+};
+function buildClinical(cur: NEp, s: Stats, _a: Assessment, _st: InsightState, notes = "", rawTriggers: Array<TriggerInput | string> = []): string[] {
   const n = s.n;
   const paras: string[] = ["Hi there, let's look closely at what your body experienced during this flare-up."];
   const { areas, tids } = cur;
   const areaLabel = areas.length ? your(areas) : "your skin";
 
-  paras.push(`You logged an episode affecting ${areaLabel} with a severity rating of HDSS ${cur.hdss} out of 4 (indicating that your sweating is causing significant discomfort and interfering with daily activities).`);
+  paras.push(`You logged an episode affecting ${areaLabel} with a severity rating of HDSS ${cur.hdss} out of 4 (${HDSS_MEANING[cur.hdss] || HDSS_MEANING[2]}).`);
 
   const foc = areas.filter(x => FOCAL.has(x));
   const tru = areas.filter(x => TRUNCAL.has(x));
@@ -394,10 +403,29 @@ function buildClinical(cur: NEp, s: Stats, _a: Assessment, _st: InsightState): s
     });
     paras.push(`Understanding Your Triggers:\n${trigLines.join("\n")}`);
   }
+  const unknown = rawTriggers.map(triggerText).filter(t => t && !TRIGGER_INDEX[normTrigger(t)]);
+  if (unknown.length) paras.push(`You also noted ${join(unknown.map(t => t.replace(/_/g, " ")))}. These are now part of your personal trigger profile, and HidroAlly will watch how often they line up with your flare-ups.`);
+  const meds = known.filter(t => ["blood_pressure_meds", "insulin_diabetes_meds", "new_medication", "supplements_herbal"].includes(t));
+  if (meds.length) paras.push(`Medication note: some medicines can raise sweating as a side effect (this is called drug-induced or secondary sweating). Because you linked this episode to ${join(meds.map(t => TRIGGER_INDEX[t].label.toLowerCase()))}, write down when you take it and when sweating starts. Never stop or change a prescribed medicine on your own; share this pattern with the doctor who prescribed it, as dose timing or an alternative may help.`);
+  const note = notes.trim();
+  if (note) {
+    const t = note.toLowerCase();
+    const obs: string[] = [];
+    if (/night|sleep|bed|woke/.test(t)) obs.push("sweating around sleep or at night, which is worth flagging to a doctor because primary hyperhidrosis usually quiets down during sleep");
+    if (/drip|soak|drench|wet through|pour/.test(t)) obs.push("heavy, dripping sweat, which supports the severity you chose");
+    if (/embarrass|shame|avoid|hide|cancel|confiden|cry|sad/.test(t)) obs.push("an emotional and social toll, which is a real part of this condition and something treatment aims to relieve");
+    if (/meeting|exam|interview|presentation|church|class|work|office|date/.test(t)) obs.push("a social or performance setting, where anticipation can switch on nerve-driven sweating");
+    if (/hot|heat|sun|humid|generator|no light|nepa|fan/.test(t)) obs.push("heat or poor cooling around you, which raises core temperature and sweat output");
+    if (/fever|weight loss|palpitat|heart|dizz|faint|tremor|shak/.test(t)) obs.push("body symptoms beyond sweating, which a doctor should check to rule out an underlying cause");
+    if (/pill|tablet|drug|medic|dose|amlodipine|insulin|antidepress/.test(t)) obs.push("a medicine connection, worth tracking against the time you take each dose");
+    if (/coffee|pepper|spicy|alcohol|beer|tea|meal|ate|food/.test(t)) obs.push("a food or drink link, which can stimulate sweat glands within minutes");
+    const quote = note.length > 160 ? note.slice(0, 157).trim() + "..." : note;
+    paras.push(`From your notes ("${quote}"): ${obs.length ? "I picked up " + semi(obs) + "." : "this extra context has been saved with your episode and will sharpen future pattern readings as you keep writing notes."}`);
+  }
 
   const dominantZones = mostCommon(s.areaC).slice(0, 2).map(([x]) => x);
   const domStr = dominantZones.length ? your(dominantZones) : areaLabel;
-  paras.push(`Longitudinal Trend (${n} Entries Logged):\nAcross your recorded entries, your symptoms consistently focus on ${domStr}. These patterns provide valuable baseline data that points toward primary focal hyperhidrosis. As you log more entries, this profile will become increasingly precise.`);
+  paras.push(`Longitudinal Trend (${n} Entries Logged):\nAcross your recorded entries, your symptoms consistently focus on ${domStr}. ${tru.length && !foc.length ? "Because this episode centred on truncal or generalized zones, keep tracking heat, illness and medicines alongside it so a doctor can tell primary from secondary sweating." : "These patterns provide valuable baseline data about your focal sweating profile."} As you log more entries, this profile will become increasingly precise.`);
 
   return paras;
 }
@@ -519,7 +547,7 @@ export function generateEpisodeInsights(input: EpisodeInput, state?: InsightStat
   const spanDays = s.stamps.length ? Math.floor((Math.max(...s.stamps.map(d => d.getTime())) - Math.min(...s.stamps.map(d => d.getTime()))) / 864e5) : 0;
   const confidence: InsightResult["readingConfidence"] =
     s.n < 4 ? "none" : s.n >= 15 && spanDays >= 14 ? "strong" : s.n >= 8 && spanDays >= 14 ? "moderate" : "early";
-  let clinical = buildClinical(current, s, a, st);
+  let clinical = buildClinical(current, s, a, st, input.notes || "", input.triggers || []);
   let relief = pickRelief(current.areas.length ? current.areas : ["entire body"], current.tids, s, st);
   let life = pickLifestyle(current.tids, s, st);
   let tracker = buildTracker(s, st, dryDays);
