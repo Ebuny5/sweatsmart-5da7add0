@@ -1074,6 +1074,11 @@ const LogEpisode = () => {
                 </div>
               </div>
 
+              <div className="w-full px-1 pt-2">
+                <h2 className="text-base font-bold text-slate-900">Affected Areas</h2>
+                <p className="text-xs text-slate-500">Tap every area that sweated. Primary = classic focal zones, Secondary = truncal and whole-body zones.</p>
+              </div>
+
               {/* ── CARD 2: PRIMARY FOCAL ZONES (FLO EMERALD THEME) ────────────── */}
               <div className="w-full bg-white rounded-3xl p-5 shadow-xs border border-slate-100">
                 <div className="mb-3">
