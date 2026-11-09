@@ -17,6 +17,7 @@ import {
   assess, buildStats, explain, hdssRound, toNEp, TRIGGER_INDEX,
   type NEp, type UserProfileInput,
 } from "./insightEngine";
+export type { UserProfileInput } from "./insightEngine";
 
 // ───────────────────────────── Types ─────────────────────────────
 export type Mood = "calm" | "moderate" | "intense";
