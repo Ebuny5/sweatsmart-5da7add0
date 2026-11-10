@@ -1026,9 +1026,9 @@ const HidroAlly = () => {
 
       assistantText = assistantText.replace(/\*/g, '');
 
-      if (!isShortGreetingResponse(assistantText) && !assistantText.includes("HidroAlly is not a dermatologist or medical provider")) {
-        assistantText = assistantText.trim() + "\n\n" + MANDATORY_NOTICE;
-      }
+      // Persistent safety notice lives below the chat input; strip any per-message copy.
+      void isShortGreetingResponse;
+      assistantText = assistantText.replace(MANDATORY_NOTICE, '').replace(/>?\s*HidroAlly is not a dermatologist or medical provider[^\n]*/g, '').trim();
 
       setMessages(prev => {
         const updated = [...prev];

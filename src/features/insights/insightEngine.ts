@@ -97,6 +97,8 @@ const TRIGGER_ALIASES: Record<string, string> = {
   herbal: "supplements_herbal", menopause: "hormonal_menopause", hormonal: "hormonal_menopause",
   fever: "fever_infection", infection: "fever_infection", insulin: "insulin_diabetes_meds",
   diabetes_meds: "insulin_diabetes_meds", bp_meds: "blood_pressure_meds",
+  blood_pressure_medication: "blood_pressure_meds", insulin_diabetes_medication: "insulin_diabetes_meds",
+  diabetes_medication: "insulin_diabetes_meds", insulin_medication: "insulin_diabetes_meds",
   transitional_temperature: "temp_shift", transitional_temp: "temp_shift", temperature_shift: "temp_shift", temp_change: "temp_shift",
   crowded_spaces: "crowded_space", synthetic_fabric: "synthetic_fabrics", bright_light: "bright_lights", loud_noise: "loud_noises",
   poor_ventilation: "poor_airflow_no_ventilation", physical_exertion: "exercise_exertion",
@@ -114,7 +116,7 @@ export const CLUSTER: Record<string, string> = {
 const AREA_ALIASES: Record<string, string> = {
   underarm: "underarms", armpit: "underarms", armpits: "underarms", axillary: "underarms", foot: "feet",
   palm: "palms", hand: "hands", sole: "soles", toe: "toes", finger: "fingers",
-  torso: "trunk", "full torso": "trunk", "trunk full torso": "trunk", leg: "legs",
+  torso: "trunk", "full torso": "trunk", "trunk full torso": "trunk", "trunk / full torso": "trunk", "trunk/full torso": "trunk", leg: "legs",
   entire_body: "entire body", "whole body": "entire body", "full body": "entire body", generalized: "entire body",
   "feet soles": "feet and soles", "face scalp": "face and scalp", "scalp face": "face and scalp",
 };
@@ -372,8 +374,14 @@ const HDSS_MEANING: Record<number, string> = {
 };
 function buildClinical(cur: NEp, s: Stats, _a: Assessment, _st: InsightState, notes = "", rawTriggers: Array<TriggerInput | string> = []): string[] {
   const n = s.n;
-  const paras: string[] = ["Hi there, let's look closely at what your body experienced during this flare-up."];
   const { areas, tids } = cur;
+  const openers = [
+    "Let's look closely at what your body experienced during this flare-up.",
+    "Here is a careful reading of this episode, based on everything you logged.",
+    "Thank you for logging this one. Here is what your body was telling you.",
+    "Let's walk through this episode together, area by area and trigger by trigger.",
+  ];
+  const paras: string[] = [openers[(n + areas.length + tids.length) % openers.length]];
   const areaLabel = areas.length ? your(areas) : "your skin";
 
   paras.push(`You logged an episode affecting ${areaLabel} with a severity rating of HDSS ${cur.hdss} out of 4 (${HDSS_MEANING[cur.hdss] || HDSS_MEANING[2]}).`);
