@@ -22,7 +22,7 @@ export const TRIGGERS: TriggerDef[] = [
       "torso",
       "underarms"
     ],
-    "why": "Hot air raises your core temperature, so your body switches on its normal cooling system. The eccrine sweat glands release sweat, mostly across the face, scalp, back, chest and underarms.",
+    "why": "Hot air raises your core temperature, so your body switches on its normal cooling system. Rising heat increases sympathetic signalling to the eccrine sweat glands, which in hyperhidrosis can respond far more strongly than the cooling need requires.",
     "relief": [
       "Wrap an ice pack or cold damp cloth in a thin towel and hold it on your wrists or the sides of your neck for 1 to 2 minutes. These are pulse points, so you cool the blood as it circulates.",
       "Point a small handheld fan at your face and chest from about an arm's length away and keep it on until the damp feeling fades.",
@@ -867,7 +867,7 @@ export const GLOSSARY: Array<[string, string, string]> = [
   [
     "autonomic",
     "autonomic nervous system",
-    "the part of your nervous system that runs things you do not control, like sweating and heartbeat"
+    "the part of the nervous system that governs involuntary functions, including thermoregulation, heart rate and vascular tone"
   ],
   [
     "pulse",

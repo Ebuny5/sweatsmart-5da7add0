@@ -11,6 +11,7 @@
  *   const result = generateEpisodeInsights({...}, state);
  *   await saveInsightState(userId, result.newState);
  */
+import { AREA_RELIEF, CUSTOM_AREA_RELIEF } from "./areaRelief";
 import {
   AREA_FALLBACK, GLOSSARY, HDSS_LONG, HDSS_SHORT, TREATMENTS, TRIGGERS,
 } from "./strategyLibrary";
@@ -297,39 +298,37 @@ export function assess(eps: NEp[], s: Stats, p: UserProfileInput): Assessment {
 
 // ───────────────────────────── Relief & lifestyle ─────────────────────────────
 function pickRelief(areas: string[], tids: string[], s: Stats, st: InsightState): ReliefItem[] {
-  const items: ReliefItem[] = []; const usedNow = new Set<string>(); const trigUsed: Record<string, number> = {};
-  const known = tids.filter(t => TRIGGER_INDEX[t]); if (!known.length) known.push("no_clear_trigger");
-  for (const area of areas.slice(0, 5)) {
-    const cluster = CLUSTER[area] || "any";
-    let cands: { sid: string; text: string; trigger: string | null; score: number }[] = [];
-    known.forEach((tid, order) => {
-      TRIGGER_INDEX[tid].relief.forEach((text, i) => {
-        const tags = inferClusters(text);
-        if (tags.size && !tags.has(cluster) && cluster !== "all" && cluster !== "any") return;
-        const spec = tags.size && tags.has(cluster) ? 2 : tags.size === 0 ? 0.5 : 0;
-        const score = spec + 0.5 * Math.min(s.clusterTrig[tid + SEP + cluster] || 0, 4) - 1.5 * (trigUsed[tid] || 0) - 0.1 * order;
-        cands.push({ sid: `${tid}:${i}`, text, trigger: tid, score });
+  const items: ReliefItem[] = [];
+  const list = areas.length ? areas.slice(0, 6) : ["entire body"];
+  const perArea = list.length <= 2 ? 2 : 1;
+  for (const area of list) {
+    const pool = AREA_RELIEF[area] || CUSTOM_AREA_RELIEF(area);
+    const key = `area:${area}`;
+    const shown = (st.shownRelief[key] = st.shownRelief[key] || []);
+    const ranked = pool.map((text, i) => ({ sid: `${key}:${i}`, text }))
+      .filter(c => st.feedback[c.sid] !== false)
+      .sort((a, b) => {
+        const ia = shown.indexOf(a.sid), ib = shown.indexOf(b.sid);
+        return (ia === -1 ? -1 : ia) - (ib === -1 ? -1 : ib);
       });
-    });
-    (AREA_FALLBACK[cluster] || AREA_FALLBACK.all).forEach((text, i) =>
-      cands.push({ sid: `fb:${cluster}:${i}`, text, trigger: null, score: -1 }));
-    for (const c of cands) {
-      if (st.recentRelief.includes(c.sid)) c.score -= 1.5;
-      const fb = st.feedback[c.sid]; if (fb === true) c.score += 1; if (fb === false) c.score -= 3;
+    for (const pick of ranked.slice(0, perArea)) {
+      const idx = shown.indexOf(pick.sid); if (idx >= 0) shown.splice(idx, 1);
+      shown.push(pick.sid);
+      st.recentRelief.push(pick.sid); if (st.recentRelief.length > 12) st.recentRelief.shift();
+      items.push({ id: pick.sid, area, because: `Targeted for your ${area}`, text: pick.text });
     }
-    cands = cands.filter(c => !usedNow.has(c.sid));
-    const shown = (st.shownRelief[cluster] = st.shownRelief[cluster] || []);
-    const fresh = cands.filter(c => !shown.includes(c.sid));
-    const pick = fresh.length
-      ? fresh.reduce((a, b) => (b.score > a.score ? b : a))
-      : [...cands].sort((a, b) => (shown.indexOf(a.sid) - shown.indexOf(b.sid)) || (b.score - a.score))[0];
-    const idx = shown.indexOf(pick.sid); if (idx >= 0) shown.splice(idx, 1);
-    shown.push(pick.sid); if (shown.length > 40) shown.splice(0, shown.length - 40);
-    usedNow.add(pick.sid); st.recentRelief.push(pick.sid); if (st.recentRelief.length > 12) st.recentRelief.shift();
-    if (pick.trigger) trigUsed[pick.trigger] = (trigUsed[pick.trigger] || 0) + 1;
-    items.push({ id: pick.sid, area,
-      because: pick.trigger ? `Chosen because you flagged ${labelOf(s, pick.trigger)}` : `A go-to for your ${area}`,
-      text: pick.text });
+  }
+  // One trigger-specific action, rotated, for the first recognised trigger.
+  const tid = tids.find(t => TRIGGER_INDEX[t]);
+  if (tid) {
+    const rel = TRIGGER_INDEX[tid].relief;
+    const key = `trig:${tid}`;
+    const shown = (st.shownRelief[key] = st.shownRelief[key] || []);
+    const i = rel.findIndex((_, k) => !shown.includes(`${key}:${k}`));
+    const k = i >= 0 ? i : rel.findIndex((_, k2) => `${key}:${k2}` === shown[0]);
+    const sid = `${key}:${Math.max(0, k)}`;
+    const idx = shown.indexOf(sid); if (idx >= 0) shown.splice(idx, 1); shown.push(sid);
+    if (rel[Math.max(0, k)]) items.push({ id: sid, area: labelOf(s, tid).toLowerCase(), because: `Chosen because you flagged ${labelOf(s, tid)}`, text: rel[Math.max(0, k)] });
   }
   return items;
 }
@@ -400,6 +399,9 @@ function buildClinical(cur: NEp, s: Stats, _a: Assessment, _st: InsightState, no
     zoneText = `Looking at your body map, sweating on ${areaLabel} reflects localized autonomic eccrine activation.`;
   }
   paras.push(zoneText);
+  if (areas.includes("trunk")) paras.push("Your trunk covers the whole torso, front and back: the chest, upper abdomen, flanks, the thoracic back between the shoulder blades and the lower back down to the waistline. It is the largest sweating surface of the body, so trunk sweating is closely tied to core temperature, clothing that traps heat against the skin, and how strongly the sympathetic nervous system is firing.");
+  const custom = areas.filter(x => !FOCAL.has(x) && !TRUNCAL.has(x));
+  if (custom.length) paras.push(`You also recorded ${your(custom)}. This area is tracked as part of your personal body map; note when it sweats alongside your usual zones so a clinician can judge whether it belongs to a focal pattern or a wider, generalized response.`);
 
   const known = tids.filter(t => TRIGGER_INDEX[t]);
   if (known.length) {
@@ -407,7 +409,7 @@ function buildClinical(cur: NEp, s: Stats, _a: Assessment, _st: InsightState, no
       const tr = TRIGGER_INDEX[tid];
       const matched = areas.filter(x => tr.zones.includes(CLUSTER[x]));
       const affectStr = matched.length ? your(matched) : areaLabel;
-      return `• ${tr.label}: ${tr.why} In this episode, this directly heightened sensitivity across ${affectStr}.`;
+      return `• ${tr.label}: ${tr.why} In this episode it may have contributed to the sweating you logged on ${affectStr}; repeated logs will show whether this is a consistent association.`;
     });
     paras.push(`Understanding Your Triggers:\n${trigLines.join("\n")}`);
   }
@@ -419,14 +421,14 @@ function buildClinical(cur: NEp, s: Stats, _a: Assessment, _st: InsightState, no
   if (note) {
     const t = note.toLowerCase();
     const obs: string[] = [];
-    if (/night|sleep|bed|woke/.test(t)) obs.push("sweating around sleep or at night, which is worth flagging to a doctor because primary hyperhidrosis usually quiets down during sleep");
-    if (/drip|soak|drench|wet through|pour/.test(t)) obs.push("heavy, dripping sweat, which supports the severity you chose");
-    if (/embarrass|shame|avoid|hide|cancel|confiden|cry|sad/.test(t)) obs.push("an emotional and social toll, which is a real part of this condition and something treatment aims to relieve");
-    if (/meeting|exam|interview|presentation|church|class|work|office|date/.test(t)) obs.push("a social or performance setting, where anticipation can switch on nerve-driven sweating");
-    if (/hot|heat|sun|humid|generator|no light|nepa|fan/.test(t)) obs.push("heat or poor cooling around you, which raises core temperature and sweat output");
-    if (/fever|weight loss|palpitat|heart|dizz|faint|tremor|shak/.test(t)) obs.push("body symptoms beyond sweating, which a doctor should check to rule out an underlying cause");
-    if (/pill|tablet|drug|medic|dose|amlodipine|insulin|antidepress/.test(t)) obs.push("a medicine connection, worth tracking against the time you take each dose");
-    if (/coffee|pepper|spicy|alcohol|beer|tea|meal|ate|food/.test(t)) obs.push("a food or drink link, which can stimulate sweat glands within minutes");
+    if (/\b(night|sleep|slept|bed|woke)\b/.test(t)) obs.push("sweating around sleep or at night, which is worth flagging to a doctor because primary hyperhidrosis usually quiets down during sleep");
+    if (/\b(drip\w*|soak\w*|drench\w*|wet through|pour\w*)\b/.test(t)) obs.push("heavy, dripping sweat, which supports the severity you chose");
+    if (/\b(embarrass\w*|shame|avoid\w*|hide|cancel\w*|confiden\w*|cry|cried|sad)\b/.test(t)) obs.push("an emotional and social toll, which is a real part of this condition and something treatment aims to relieve");
+    if (/\b(meetings?|exams?|interviews?|presentations?|church|class|work|working|office|date)\b/.test(t)) obs.push("a social or performance setting, where anticipation can switch on nerve-driven sweating");
+    if (/\b(hot|heat|sun|sunny|humid|humidity|generator|no light|nepa|fan)\b/.test(t)) obs.push("heat or poor cooling around you, which raises core temperature and sweat output");
+    if (/\b(fever|weight loss|palpitat\w*|heart|dizz\w*|faint\w*|tremor|shak\w*)\b/.test(t)) obs.push("body symptoms beyond sweating, which a doctor should check to rule out an underlying cause");
+    if (/\b(pills?|tablets?|drugs?|medic\w*|dose|amlodipine|insulin|antidepress\w*)\b/.test(t)) obs.push("a medicine connection, worth tracking against the time you take each dose");
+    if (/\b(coffee|pepper|spicy|alcohol|beer|tea|meal|ate|food)\b/.test(t)) obs.push("a food or drink link, which can stimulate sweat glands within minutes");
     const quote = note.length > 160 ? note.slice(0, 157).trim() + "..." : note;
     paras.push(`From your notes ("${quote}"): ${obs.length ? "I picked up " + semi(obs) + "." : "this extra context has been saved with your episode and will sharpen future pattern readings as you keep writing notes."}`);
   }
@@ -524,12 +526,12 @@ function buildDryDay(input: EpisodeInput, st: InsightState): InsightResult {
       clinicalAnalysis: { title: "Clinical Analysis", paragraphs: [analysis] },
       immediateRelief: { title: "Maintenance Guidance", subtitle: "", items: relief.map((t, i) => ({ id: `dry:${i}`, area: "", because: "", text: t })) },
       lifestyle: { title: "Lifestyle Modifications", subtitle: "", intro: null, items: life.map((t, i) => ({ id: `dryL:${i}`, trigger: "", text: t, stat: null })) },
-      patternTracker: { title: "Your Pattern Tracker", lines: [header] },
+      patternTracker: { title: "", lines: [] },
       care: { title: "HidroAlly Care & Specialist Scheduling", paragraphs: [care] },
     },
     footer, disclaimer: DISCLAIMER,
     emotionalOpener: `${greeting}, great job tracking an asymptomatic day! Here is your maintenance guidance.`,
-    clinicalAnalysis: analysis, immediateRelief: relief, lifestyleModifications: life, patternTracker: [header],
+    clinicalAnalysis: analysis, immediateRelief: relief, lifestyleModifications: life, patternTracker: [],
     medicalAttention: care, cta: footer.text, isDryDay: true,
     dryDayMetrics: { currentStreak: streak, dryDaysLast7: dry7, monthlyDryTotal: dry30, header }, newState: st,
   };
@@ -579,7 +581,7 @@ export function generateEpisodeInsights(input: EpisodeInput, state?: InsightStat
       clinicalAnalysis: { title: "Clinical Analysis", paragraphs: clinical },
       immediateRelief: { title: "Immediate Relief Strategies", subtitle: "Here are immediate, location-specific actions you can take right now:", items: relief },
       lifestyle: { title: "Lifestyle Modifications", subtitle: "To reduce the frequency of future flare-ups, consider these adjustments:", intro, items: life },
-      patternTracker: { title: "Your Pattern Tracker", lines: tracker },
+      patternTracker: { title: "", lines: [] },
       care: { title: "HidroAlly Care & Specialist Guidance", paragraphs: care },
     },
     footer, disclaimer: DISCLAIMER,
@@ -587,7 +589,7 @@ export function generateEpisodeInsights(input: EpisodeInput, state?: InsightStat
     clinicalAnalysis: clinical.join("\n\n"),
     immediateRelief: relief.map(r => `For your ${r.area}: ${r.text}`),
     lifestyleModifications: life.map(l => `${l.trigger}: ${l.text}${l.stat ? " " + l.stat : ""}`),
-    patternTracker: tracker, medicalAttention: care.join("\n\n"), cta: footer.text, newState: st,
+    patternTracker: [], medicalAttention: care.join("\n\n"), cta: footer.text, newState: st,
   };
 }
 
